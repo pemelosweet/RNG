@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+</head>
+<body>
+	<!--
+		"checkbox",	:选择框
+		"contextmenu",：修改，右键节点，显示操作菜单
+		"dnd",		：拖放功能，整理节点		要想开启需要将core的check_callback设置为true
+		"massload",	：懒加载
+		"search",
+		"sort",	：排序
+		"state",	：保存状态
+		"types",
+		"unique",	：唯一插件
+		"wholerow",:整行，一个条目占满一行
+		"changed",
+		"conditionalselect"
+	-->
+ 搜索框：<input type="search" id="plugins4_q"/>
+ 回显框：<input disabled type="search" id="plugins5_q"/>
+<div id="jstree_demo_div"></div>
+
+</body>
+<script type="text/javascript">
+    // 选择的时候调用的方法
+    $('#jstree_demo_div').on("changed.jstree", function (e, data) {
+        $('#plugins5_q').attr('value',data.node.text);
+      console.log(data,'22');
+      console.log("selected",'11');
+    });
+    //
+    $('a').on('click', function () {
+        //get_selected返回选中的列
+        console.log($('#jstree_demo_div').jstree().get_selected(true),'999');
+    });
+
+    //一般data从后台返回，调用这个方法显示视图
+    $('#jstree_demo_div').jstree({
+    		'plugins':["search","themes","types","state","line"], 	//包含样式，选择框，图片等	
+			'types': {
+		        'default': {
+		            'icon': true // 默认图标,可以写路径名，但是必须将themes的icons打开，否则没有地方展示图标
+		        },
+		   },
+		    
+		    
+		    "checkbox":{  // 去除checkbox插件的默认效果
+		        tie_selection : true,
+		        keep_selected_style : true,
+		        whole_node : true
+		    },
+		   
+		   
+		   
+		    
+			'core' : {	//core主要功能是控制树的形状，单选多选等等
+				'data' :[	//填充数据,data需要识别格式,关键字为id, text,children,展示时显示的是text,传递的可以是id也可以是text
+					{ "id" : "ajson1", "parent" : "#", "text" : "我好像懂了1"},
+                    { "id" : "ajson2", "parent" : "#", "text" : "是的呢2" },
+                    { "id" : "ajson3", "parent" : "ajson1", "text" : "1号位黄斌" },
+                    { "id" : "ajson6", "parent" : "ajson1", "text" : "2号位张凯" },
+					{ "id" : "ajson4", "parent" : "ajson2", "text" : " 是啥啊"},
+					{ "id" : "ajson5", "parent" : "ajson2", "text" : "就是啊" },
+					
+                    { "id" : "1", "parent" : "#", "text" : "真好玩啊3" },
+                    { "id" : "2", "parent" : "#", "text" : "稳住别浪4" },
+					{ "id" : "3", "parent" : "1", "text" : "Child 2" },
+					{ "id" : "6", "parent" : "1", "text" : "Child 2" },
+					{ "id" : "7", "parent" : "1", "text" : "Child 2" },
+					{ "id" : "9", "parent" : "3", "text" : "Child 2" },
+					{ "id" : "4", "parent" : "3", "text" : "Child 2" },
+				],		 
+				'themes':{
+					"icons":true,	//默认图标
+					"theme": "classic",
+					"dots": false,
+					"stripes" : true,	//增加条纹
+				},	//关闭文件夹样式
+				'dblclick_toggle': true,   //允许tree的双击展开,默认是true
+				"multiple" : false, // 单选
+				 "check_callback" : true
+			} 
+		}
+	)
+	
+	// 搜索功能的方法 jstree_demo_div：数据展示的内容    plugins4_q 搜索框
+		var to = false;
+		$('#plugins4_q').keyup(function () {
+		    if(to) { clearTimeout(to); }
+		    	to = setTimeout(function () {
+		      	var v = $('#plugins4_q').val();
+		      	$('#jstree_demo_div').jstree(true).search(v);
+		    }, 250);
+		});
+</script>
+</html>

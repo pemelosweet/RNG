@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #box1{
+            width: 300px;
+            height: 300px;
+        }
+        img{
+            width: 100%;
+         
+    animation: mymove 3s infinite;
+        }
+@keyframes mymove {
+    0% {
+        filter: grayscale(100%);
+    }
+}
+
+
+    </style>
+</head>
+<body>
+    <div id="box1" onclick="fn()">
+    <img id="imgs" src="./2.jpg" alt="">
+    </div>
+</body>
+</html>
+<script>
+function fn(){
+  console.log( imgs.style.filter);
+  
+    
+}
+</script>

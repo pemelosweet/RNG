@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+
+</body>
+</html>
+<script>
+      var arr = []
+      for (let m = 0; m < 10000; m++) {
+        var el = m + ''
+        if (m>10) {
+        for (let x = 0; x < el.length; x++) {
+          if (x % 2) {
+            // 偶数  1331   2552    99  192291
+            var  len =el.length / 2
+            var str = el.substring(0, len)
+            var str2 = el.substring(len)
+            var c=str2.split("").reverse().join("");//最后把数组变成字符串
+           if (str===c) {
+               arr.push(el)
+           }
+          } else {
+            // 奇数  202  303   3
+            var  len =(el.length+1) / 2
+            var str = el.substring(0, el.length/2)
+            var str2 = el.substring(len)
+            var c=str2.split("").reverse().join("");//最后把数组变成字符串
+            if (str===c) {
+               arr.push(el)
+           }
+          }
+          arr=[...new Set(arr)]
+        }
+        // if (el.length === 2 && el[0] === el[1]) {
+        //   arr.push(i)
+        // }
+        // if (el.length === 3 && el[0] === el[2]) {
+        //   arr.push(i)
+        // }
+        // if (el.length === 4 && el[0] === el[3] && el[1] === el[2]) {
+        //   arr.push(i)
+        // }
+      }
+    }
+      console.log(arr)
+</script>

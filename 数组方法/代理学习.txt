@@ -1,0 +1,9 @@
+proxyTable: {
+      '/api': {
+        target: 'http://localhost:1337',      //目标服务器,注意要到端口号
+        changeOrigin: true,                    //是否跨域
+        pathRewrite: {
+          '^/api': ''   //重写api使得 /api/login -> http://localhost:1337/login等等
+        }
+      }
+    },

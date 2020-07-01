@@ -1,0 +1,12 @@
+//日期转时间戳
+function transdate(time){
+    var date = new Date();
+    date.setFullYear(time.substring(0, 4));
+    date.setMonth(time.substring(5, 7) - 1);
+    date.setDate(time.substring(8, 10));
+    date.setHours(time.substring(11, 13));
+    date.setMinutes(time.substring(14, 16));
+    date.setSeconds(time.substring(17, 19));
+    return Date.parse(date) / 1000;
+}
+console.log(transdate("2018-05-28 23:24:12"));

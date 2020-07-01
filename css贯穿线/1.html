@@ -1,0 +1,195 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+       body, ol, ul, dl, li, dt, dd, h1, h2, h3, h4, h5, h6, p, th, td, dl, dd, form, fieldset, legend, input, textarea,select{
+    margin: 0;
+    padding: 0;
+}
+article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {
+    display: block
+}
+
+html, body {
+    height: 100%;
+}
+
+        .box1{
+           font-size: 0px;
+            width: 200px;
+            height: 200px;
+            background: greenyellow;
+        }
+        .l{
+            width: 50%;
+            background: red;
+            display: inline-block;
+            height: 100%;
+        }
+        .r{
+            width: 50%;
+            height: 100%;
+            display: inline-block;
+            background: blue;
+        }
+        .bb{
+            width: 800px;
+            height: 400px;
+            background: red;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            flex-direction: row;
+        }
+        .item{
+           flex: 1;
+            width: 100px;
+            height: 200px;
+            background: greenyellow;
+        }
+        .item2{
+           flex: 14;
+            width: 100px;
+            height: 200px;
+            background: green;
+        }
+    </style>
+</head>
+<body>
+  <div class="box1">
+      <div class="l"></div>
+      <div class="r"></div>
+  </div>
+  <div class="bb">
+      <div class="item2">好的</div>
+      <div class="item">好的</div>
+      <div class="item">好的</div>
+      <div class="item">好的</div>
+      <div class="item">好的</div>
+      <div class="item">好的</div>
+      <div class="item">好的</div>
+      <div class="item">好的</div>
+
+  </div>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html>
+<head></head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style type="text/css">
+.con{
+width:270px;
+border:solid 1px red;
+display: flex;
+flex-wrap: wrap;
+justify-content: flex-start;
+}
+.conlist {
+width:50px;
+margin-left: 10px;
+background: blue;
+height: 50px;
+margin-bottom:2px;
+}
+
+
+
+.b1{
+    width: 200px;
+    height: 100px;
+    background: gray;
+    position: relative;
+}
+.line{
+    width: 200px;
+    height: 1px;
+    border-top: 1px solid red;
+}
+.text{
+    top: 10px;
+    left: 0;
+    position: absolute;
+    margin: 0 auto;
+    width: 90px;
+    height: 20px;
+    display: block;
+    background: firebrick;
+}
+
+.title { position: relative; z-index: 2; font-size: 16px; line-height: 24px; text-align: center; color: #999; overflow: hidden; }
+.title .caption { position: relative; display: inline-block; }
+.title .caption .line { position: absolute; top: 11px; width: 600px; height: 1px; background-color: #ddd; }
+.title .caption .line-l { right: 100%; margin-right: 15px; }
+.title .caption .line-r { left: 100%; margin-left: 15px; }
+.brief-modal-title{
+          position: relative;
+          text-align: center;
+          margin :15px auto 15px;
+          width: 1185px;
+          background-image :linear-gradient(90deg, #fff, #333 50%, #fff);
+          background-size: 100% 1px;
+          background-position: 50%;
+          background-repeat: no-repeat;
+        }
+        .brief-modal-title span{
+            font-size: 12px;
+            padding:0 6px;
+            color: #999;
+            background-color: #fff;
+        }
+    .scorll{
+        width: 400px;
+        max-height: 200px;
+        background: burlywood;
+        overflow: auto;
+    }
+</style>
+<body>
+<div class="con">
+<div class="conlist"></div>
+<div class="conlist"></div>
+<div class="conlist"></div>
+<div class="conlist"></div>
+<div class="conlist"></div>
+<div class="conlist"></div>
+</div>
+
+ <p class="scorll">
+sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨萨sad阿萨sad阿萨ssad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨ad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨sad阿萨
+ </p>
+<div class="b1">
+    <div class="line"></div>
+    <span class="text">秒杀活33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333动</span>
+    
+</div>
+<div class="title">
+    <span class="caption"><span class="line line-l"></span>Hea2dling<span class="line line-r"></span></span>
+</div>
+<h3 class="brief-modal-title">
+    <span>公222222222222222222222共</span>
+</h3>
+
+</body>
+</html>
+<script>
+    `
+???????????????????                       ??????        ??                                            ??????????????????????????
+        ??       ??                         ??         ??????????                                    ??                        ??
+       ??       ??                     ????????????   ??    ?? ??                                    ??                         ??  
+      ??       ??                        ?? ?? ??          ??  ??                                   ??                           ??
+     ??       ??                        ??  ??  ??  ??    ??   ??                                   ??        ????????????                  ??
+    ??????????????????????                      ??  ??  ??                                         ??          ?                 ?? 
+                        ??                   ??     ??     ??                                      ??            ?                  ??
+                       ??                 ??        ??        ??                                  ??              ?                 ??
+????????????????????????               ??     ??    ??    ??     ??                               ??               ?                 ??
+                     ??                         ??  ??  ??                                       ??                 ?                 ??    ?
+                    ??                            ??????                                         ??                  ？                ??   ?
+                ?? ??                           ??  ??  ??                                      ??                                    ?? ?
+                  ??                         ??     ??     ??                                  ??                                      ??
+`
+</script>

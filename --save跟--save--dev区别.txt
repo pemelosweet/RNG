@@ -1,0 +1,2 @@
+--save：将保存配置信息到pacjage.json的dependencies节点中。       //生成环境
+--save-dev：将保存配置信息到pacjage.json的devDependencies节点中。   //  开发环境

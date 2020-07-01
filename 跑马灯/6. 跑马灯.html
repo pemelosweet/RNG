@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #box {
+            width: 600px;
+            height: 200px;
+            border: 1px solid red;
+            margin: 100px auto;
+            overflow: hidden;
+        }
+
+        #content {
+            width: 2400px;
+            height: 200px;
+            font-size: 0;
+        }
+
+        #begin,
+        #end {
+            display: inline-block;
+        }
+
+        img {
+            width: 200px;
+            height: 200px;
+            border: 0;
+            filter: sepia(200%);
+        }
+
+        img:hover {
+            filter: blur();
+            transform: translateY(-5px);
+            transition: all 1s;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="box">
+        <div id="content">
+            <div id="begin">
+                <img src="./1.jpg" alt="">
+                <img src="./2.jpg" alt="">
+                <img src="./4.jpg" alt="">
+                <img src="./3.jpg" alt="">
+                <img src="./5.jpg" alt="">
+
+            </div>
+            <div id="end">
+                <img src="./1.jpg" alt="">
+                <img src="./2.jpg" alt="">
+                <img src="./4.jpg" alt="">
+                <img src="./3.jpg" alt="">
+                <img src="./5.jpg" alt="">
+
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+
+    window.onload = function () {
+        var fun1 = setInterval(fun, 10);
+        function fun() {
+            if (box.scrollLeft > 600) {
+                box.scrollLeft = 0;
+            } else {
+                box.scrollLeft++;
+            }
+        }
+        box.onmouseover = function () {//鼠标经过时  清除定时器  停止图片的滚动
+        clearInterval(fun1)
+    };
+    box.onmouseout = function () {//鼠标离开后  继续滚动图片
+        fun1 = setInterval(fun, 10)
+    };
+    }
+   
+</script>
+
+</html>
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<style type="text/css">
+        div,img{
+            margin:0;
+            padding:0;
+        }
+        img{
+            float:left;
+            height:100px;
+            width:150px;
+        }
+        #div1{
+            width:500px;
+            height:100px;
+            overflow: hidden;
+            border:solid blue 2px;
+        }
+        #div2,#div3{
+            float:left;
+        }
+        #div4{
+            width:500%;/*这个属性很重要 让容器有足够的宽度实现滚动*/
+            float:left;
+        }
+    </style>
+<body>
+             <div id="div1">
+                 <div id="div4">
+                     <div id="div2">
+                         <img src="./1.jpg" alt="图片1"/>
+                         <img src="./2.jpg" alt="图片2"/>
+                     <img src="./3.jpg" alt="图片3"/>
+                         <img src="./4.jpg" alt="图片4"/>
+                     </div>
+                    <div id="div3"></div>
+                </div>
+            </div>
+        </body>
+</html>
+<script type="text/javascript">
+    window.onload=function(){
+          var v1=document.getElementById('div1');
+          var v2=document.getElementById('div2');
+          var v3=document.getElementById('div3');
+ 
+          v3.innerHTML= v2.innerHTML;//将v2容器里面的图片插入到v3容器里面  使其空白区域被遮住。
+          function fun(){
+            if(v1.scrollLeft<=0){
+                v1.scrollLeft=600;
+            }else{
+                v1.scrollLeft--;
+            }
+        }
+
+        var fun1=setInterval(fun,10);
+
+        v1.onmouseover = function() {//鼠标经过时  清除定时器  停止图片的滚动
+                clearInterval(fun1)
+            };
+        v1.onmouseout = function() {//鼠标离开后  继续滚动图片
+                fun1 = setInterval(fun, 10)
+            };
+    }
+</script> -->

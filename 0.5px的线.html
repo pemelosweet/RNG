@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div class="left">
+        <div class="left-div">
+          HELLO WORLD
+        </div>
+      </div>
+      <div class="normal">
+        HELLO WORLD
+      </div>
+      <style>
+          .normal{
+            border-left: 1px solid red;
+          }
+      .left{
+        position: relative;
+        font-size: 16px;
+      }
+      .left .left-div:before{
+        content: " ";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 1px;
+        height: 100%;
+        border-left: 1px solid red;
+        -webkit-transform-origin: 0 0;
+        transform-origin: 0 0;
+        -webkit-transform: scaleX(0.5);
+        transform: scaleX(0.5);
+      }
+      </style>
+</body>
+</html>

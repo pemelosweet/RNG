@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+    var arr =[1,2,3,4,5]
+    // splice包前不包后
+    Array.prototype.mysplice =function(){
+        var len =arguments.length // 长度
+        var index =arguments[0]  // 索引
+        var num =arguments[1]    // 数目
+        var ins =[] // 除去前2项的argument数组, 新增内容
+        var s1 =[]
+        var s2 =[]
+        var  newAry =[] // 新的空数组
+        for (let i = 0; i < len - 2; i++) {
+            ins[i] = arguments[i + 2]
+        }
+        if (len=== 0) {
+        //若不传值，返回空数组
+            return []
+        }
+        if (index<0) {
+            // 第一个参数为负值时,从尾部开始计算
+            index +=this.length
+        }
+         if (len===1) {
+        // 当参数为一个时，以其索引为起点，删除数组中的前i项
+            for (let i = 0; i < this.length-index; i++) {
+                newAry[i]=this[index+i]
+            }
+            this.length = index;
+            return  newAry
+        }
+        if (len >= 2) {
+            for (let i = 0; i < num; i++) {
+                newAry[i] = this[index + i];
+            }
+            for (let i = 0; i < index; i++) {
+                s1[i] = this[i]
+            }
+            for (let i = 0; i < this.length - index - num; i++) {
+                s2[i] = this[i + index + num]
+            }
+            for (let i = 0; i < ins.length; i++) {
+                this[i + index] = ins[i];
+            }
+            this.length = ins.length + index;
+            for (let i = 0; i < s2.length; i++) {
+                this[i + index + ins.length] = s2[i];
+ 
+            }
+            return newAry;
+        }
+      
+    }    
+    console.log(arr.mysplice(2,3))
+    console.log(arr);
+    </script>
+</body>
+</html>

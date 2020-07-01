@@ -1,0 +1,163 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<style>
+    *{
+        margin: 0;
+        padding: 0
+    }
+    .box1{
+        position: relative;
+        width: 400px;
+        border:1px solid red;
+        overflow: hidden;
+        margin: 0 auto
+    }
+    .box1 ul {
+        transition:left  500ms ;
+        position: relative;
+        width: 2400px;
+        height: 300px;
+        list-style: none;
+    }
+    .box1 ul li {
+        float: left;
+        width: 400px;
+        height: 300px;
+    }
+    .box1 ul li a img {
+        width: 100%;
+        height: 100%;
+    }
+.font{
+    left: 40px;
+    bottom: 10px;
+    list-style: none;
+    position: absolute;
+    width: 400px  !important;
+    height: 20px  !important;
+}
+.font li {
+    float: left;
+    width: 10px !important;
+    height: 10px  !important;
+    background: rgb(228, 21, 21);
+    border-radius: 50%;
+    margin-left: 40px;
+}
+#buttons{
+    position: absolute;
+    width: 400px;
+    height: 100px;
+    top:150px;
+}
+#left{
+ float: left;
+ width: 50px;
+ height: 50px;
+ border-radius: 50%;
+ background: rgba(214, 103, 103, 0.8);
+ line-height: 50px;
+ text-align: center;
+}
+#right{
+    float: right; 
+    width: 50px;
+ height: 50px;
+ border-radius: 50%;
+ background: rgba(214, 103, 103, 0.8);
+ line-height: 50px;
+ text-align: center;
+}
+</style>
+<div class="box1">
+    <ul id="uls">
+        <li><a href="#"><img src="./1.jpg"></a></li>
+        <li><a href="#"><img src="./2.jpg"></a></li>
+        <li><a href="#"><img src="./3.jpg"></a></li>
+        <li><a href="#"><img src="./4.jpg"></a></li>
+        <li><a href="#"><img src="./5.jpg"></a></li>
+        <li><a href="#"><img src="./1.jpg"></a></li>
+    </ul>
+    <ul class="font">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+    <div id="buttons">
+            <span id="left">&lt;</span>
+            <span id="right">&gt;</span>
+</div>
+</div>
+</body>
+<script>
+ var box =document.getElementsByClassName('box1')
+ var uls =document.getElementById('uls')
+ var times
+ var step =0
+ tiemrs =setInterval(() => {
+     step -=400
+    Imgchange(step)
+ }, 1000)
+ function Imgchange(val){
+    uls.style.left =val +'px'
+    if (val ===-2400) {
+        uls.style.transition = `left 0ms linear`;
+        step =0
+        uls.style.left =0
+    }else if (val ===-400) {
+        uls.style.transition = `left 500ms linear`;
+    }
+ }
+</script>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+ #box{
+     width: 200px;
+     height: 200px;
+     background: forestgreen;
+     float: left;
+     transition: width  2000ms ;
+ }
+ #box2{
+     width: 0px;
+     height: 200px;
+     background: fuchsia;
+     float: left;
+     display: none;
+     transition: width  2000ms ;
+ }
+</style>
+<body>
+    <div id="box"></div>
+    <div id="box2"></div>
+</body>
+<script>
+    box.onmouseenter =function(){
+        setTimeout(() => {
+            box2.style.width= 200+'px'
+        }, 100);
+        box2.style.display= 'block'  
+       
+    }
+    box2.onmouseout =function(){
+        box2.style.width= 0+'px'
+    }
+</script>
+</html>

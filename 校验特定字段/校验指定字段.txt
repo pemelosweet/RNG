@@ -1,0 +1,23 @@
+   forAsh(...arg) {
+      var formName = arg[0]
+      var step = 0
+      for (let index = 0; index < arg.length; index++) {
+        const element = arg[index]
+        this.$refs[formName].validateField(element, valid => {
+          if (!valid) {
+            step++
+          }
+        })
+      }
+      return step === arg.length - 1
+    },
+
+需要校验的方法里面
+save（）{
+ var fieldFlag = this.forAsh(formName, 'transferDirection', 'transferNumber', 'supplementOne2', 'supplementTwo2')
+      if (fieldFlag) {
+	校验通过的逻辑
+}
+}
+***
+forAsh('表单'，'需要校验的字段')

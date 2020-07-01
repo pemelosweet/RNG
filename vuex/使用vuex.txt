@@ -1,0 +1,44 @@
+存的组件  ：
+  this.$store.dispatch( 'SetStatus', '我要存的东西')
+取的组件：
+import { mapGetters } from 'vuex
+computed:{
+ ...mapGetters(['hahhaha']
+}
+store库里：
+  getters ： hahhaha:state => state.test
+modules文件夹【
+store：【
+import Vuex from 'vuex'
+import Vue from 'vue'
+Vue.use(Vuex)
+const store = new Vuex.Store({
+   state：{
+	test：''		
+ },
+ mutations:{
+	SETSTATUS:(state,params)=>{
+	state.test =params
+ },
+ actions:{
+ SetStatus({ commit }, params) {
+      commit('SETSTATUS', params)
+     },
+ }
+
+ }
+ }
+})
+】
+
+
+
+
+
+】
+
+
+
+  
+
+   

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        #t2{
+            width: 200px;
+           border: 1px solid  rgb(169, 169, 169);
+        }
+    </style>
+</head>
+<body>
+   <div id="t2" contenteditable="true"  oninput="myFunction()"></div>
+</body>
+<script>
+function myFunction(){
+    var a =t2.innerText
+ console.log(a);   
+//  console.log(e.target.innerHTML);
+ 
+}
+</script>
+</html>

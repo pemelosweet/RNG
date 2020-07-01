@@ -1,0 +1,12 @@
+html
+ <div ref="pdfDom" style="padding:40px;">
+    pdf下载的内容
+</div>
+      <el-button type="primary"  plain @click="getPDF();">导出审批表</el-button>
+script
+import { downloadPDF } from '@/utils/pdf.js'
+  // 导出pdf
+    getPDF() {
+      var contant = this.$refs.pdfDom
+      downloadPDF(contant, '反洗钱调查审批表.pdf')
+    },

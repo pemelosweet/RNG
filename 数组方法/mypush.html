@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        var arr=[1,2,3,4]
+        Array.prototype.mypush=function(){
+           var arg =arguments
+           var len =this.length
+           var arglen =arguments.length
+           for (let i = 0; i < arglen; i++) {
+              this[i+len] =arg[i]
+           }
+          return this.length
+
+        }
+      
+        console.log(arr.mypush([1]));
+        console.log(arr);
+        
+        
+    </script>
+</body>
+</html>

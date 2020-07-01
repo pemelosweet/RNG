@@ -1,0 +1,18 @@
+html
+ <el-row class="table processTable">
+              <p>反洗钱中心文件处理单</p>
+              <table border="1">
+                <tr>
+                  <td width="200" height="90;" align="center">主办处室</td>
+	……功能内容
+                </tr>
+              </table>
+ </el-row>
+  <el-button @click="handlePrint">打 印</el-button>
+js
+  handlePrint() {
+      var newHtml = document.getElementsByClassName('processTable')[0].innerHTML
+      document.body.innerHTML = newHtml
+      window.print()
+      window.location.reload()
+    },

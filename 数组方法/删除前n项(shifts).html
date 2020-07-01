@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        var arr =[1,2,3,4,5,6,7]
+        Array.prototype.shifts=function(num){
+            // debugger
+            var a =this[0]
+            var arrys=[]
+            var len= this.length
+                for (let i = 0; i <num; i++) {
+                  arrys[i]=this[i]
+                }
+            for (let i = 0; i < len; i++) {
+                this[i]=this[i+num] 
+            }
+            if (num<len) {
+                for (let i = 0; i < num; i++) {
+                    this.length--
+                    }
+            } else{
+                for (let i = 0; i < len; i++) {
+                    this.length--
+                    }
+            }
+            if (num===1) {
+                return a
+            }else if(num<=len) {
+                return arrys
+            } else{
+                return 
+            }
+        }
+        console.log(arr.shifts(7))
+        console.log(arr)
+        
+    </script>
+</body>
+</html>
