@@ -1,0 +1,11 @@
+1 、  npm i vuedraggable -S
+2、在main里面配置
+import draggable from 'vuedraggable'
+Vue.use(draggable)
+
+3在页面中使用
+import vuedraggable from "vuedraggable";
+  components: { vuedraggable },
+
+
+4详情见项目内容
