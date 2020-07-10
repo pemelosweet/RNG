@@ -28,7 +28,8 @@ caleY)
 	animation  指定要绑定到选择器的关键帧的名称
 	
 
-四、不定宽高的DIV居中	
+四、不定宽高的DIV居中
+	 justify-content: center(text-align:center 水平居中);align-items: center(line-height 竖直居中)
 	1.使用flex  在父盒子设置display: flex; justify-content: center;align-items: center
 	2.使用css的transform  	父盒子设置:display:relative
 				Div 设置: transform: translate(-50%，-50%);position: absolute;top: 50%;left: 50%;

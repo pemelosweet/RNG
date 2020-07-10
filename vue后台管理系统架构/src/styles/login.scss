@@ -1,0 +1,58 @@
+.login-container {
+  .aside-bg-left {
+    background-size: 100% 100%;
+    height: 100vh;
+  }
+  .main-bg {
+    background-size: 100% 100%;
+    height: 100vh;
+  }
+
+  .hearder {
+    padding: 5% 0;
+    text-align: center;
+    .hearder-title {
+      color: #262b56;
+      font-weight: 400;
+      letter-spacing: 5px;
+    }
+    .hearder-desc {
+      margin-top: 0px;
+      font-weight: 400;
+    }
+  }
+
+  .main {
+    padding: 0 31%;
+    .el-select {
+      display: block;
+    }
+    .main-title {
+      // font-weight: 400;
+      text-align: center;
+      color: #2e5894;
+      margin-bottom: 25px;
+    }
+
+    fieldset {
+      border: 0.05em solid rgb(46, 88, 148);
+      border-radius: 0.2em;
+      & legend {
+        color: rgb(46, 88, 148);
+      }
+      & .el-input-group__append {
+        background-color: #34bebe;
+        color: #fff;
+      }
+    }
+  }
+
+  .captcha-img {
+    width: auto;
+    max-height: 36px;
+  }
+
+  .btn-full-width {
+    width: 100%;
+  }
+}
