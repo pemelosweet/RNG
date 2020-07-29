@@ -1,0 +1,4 @@
+1、git checkout -b  FPX
+2、git push origin FPX
+3.git pull origin FPX
+4.git push -u origin FPX
