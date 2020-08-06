@@ -1,0 +1,136 @@
+1、数组扁平化，去重排序
+ <1>  
+var arr = [ [1, 2, 2], [3, 4, 5, 5], [6, 7, 8, 9, [11, 12, [12, 13, [14] ] ] ], 10];
+   function flatten(arr) {
+    while(arr.some(item=>Array.isArray(item))) {
+        arr = [].concat(...arr);
+    }
+     var  mm =[...new Set(arr)].sort(function(a,b){
+          return  a-b
+      })
+    return mm;
+}
+ var c =flatten(arr)
+  <2> 
+var  mm =[...new Set(arr.join(',').split(','))].sort(function(a,b){
+          return  a-b
+      })
+console.log(mm,222);
+2 如何取到object 的key值
+通过object.keys()
+3.判断数据类型的方法
+ typeof    ： typeof('')==='string'
+Object.prototype.toString.call('') =[object  String ]
+constructor :  ''.constructor  ===string
+instanceof:  ''  instanceof  Sting  ====true
+4 es6新特性
+1、拓展运算符 
+2、函数设置默认值
+3、let const
+4、promise
+5、结构赋值
+6、模板字符串
+7、箭头函数
+8、class声明类
+9、字符串的includes
+
+
+
+
+
+push unshift pop shift splice(n,m,x) slice(n,m) sort reverse forEach  map  concat  indexOf lastIndexOf join 
+
+slice()代表复制
+ [].prototype.slice.call()  //类数组转数组
+
+push pop shift unshift splice slice sort indexof lastindexof sort reverse each map tostring join
+
+vue复习
+一、生命周期：beforecreate create beforeMount Mounted beforeUpdate  Updated  beforeDestory Destoryed
+另外keep-alive中有2个钩子函数
+1、activated 2、 deactivated
+vue的生命周期
+beforeCreate  创建前 在这个钩子函数中可以做一些loading配置，也可以直接在axios拦截器中统一配置
+create  创建后 ，此时可以拿到vue的data，也可以发异步请求
+beforeMount 挂载前
+mounted  挂载后  在这个钩子函数中我们可以操作dom结构，但是不保证所有的组件都被挂载，解决方案：在mounted中用$nextTick替换mounted
+beforeUpdate  数据跟新前
+Updated  数据跟新后
+beforeDestory 销毁前
+destoryed  销毁后
+二、常用的一些指令
+v-model       
+v-html 		
+v-text
+v-if v-else     
+v-show
+v-bind 动态绑定  简写:
+v-on   绑定方法  简写@
+v-el
+v-for
+v-once
+三、vue双向绑定的原理
+   当执行new Vue() 的时候，Vue进入了初始化阶段，一方面，它会把data上的数据进行遍历，利用object.definProtoType将其转化成getter和setter的方法，完成数据的监听功能，另一方面，Vue的指令解析器会把当前的元素节点进行解析，实现视图的初始化，并且会订阅watcher，watcher会把自己添加到消息订阅器Dep中，初始化完成
+    当数据发生变化的时候，observe上的setter方法会立即让触发，然后它会调用Dep中的notify方法，将所有的watcher进行遍历，并且会调用watcher身上的update方法，watcher接受到通知后完成对相应视图进行更改，实现视图跟新
+四、vuex
+当项目比较简单的时候，组件之间的通信相对比较简单，我们可以使用父子组件传值，子父组件传值，eventBus，进行组件通信，随着项目的不断开发，组件跟组件之间的通信变的复杂，且不易维护。这时候就需要用到vuex，vuex是一个状态管理模式，将数据进行统一管理，vuex采用单向数据流的方式来管理数据，state->action->view,vuex主要分为5个部分，有mutation，action，state，getter，module，
+state负责存储整个项目的数据，action中可以发送异步请求，mutation中可以突变状态值，如果对数据进行二次处理，可以用getter进行处理，
+其中action mutation映射到当前组件的methods中，getter和state映射到当前组件的computed中，vuex中也有一些辅助函数，可以帮助我们调高效率，
+mapState  mapAction mapGetters mapMutation  
+
+  如何取到vuex中的值，this.$store.state
+五、vue路由
+vue路由分为三种路由钩子函数
+第一种是全局的钩子函数
+第二种是单个路由的钩子函数
+第三种是组件内的钩子函数
+1、beforeEach((to,from,next)=>{})
+   afterEach((to,from)=>{})
+2、beforeEnter
+3、beforeRouteEnter
+   beforeRouteUpdate
+   beforeRouteLeave
+六、路由传参
+1.通过params传参
+2通过query传参
+3用/：id传参
+
+七、父子传参
+父传子 通过props接受
+子传父 可以通过sync 也可以通过给emit的第二个参数
+vuex
+
+let ary =[1,23,4,5,3,6,1];
+function mm(ary){
+	let obj={};let ary1=[];
+for( key in ary){
+	let cur =ary[key];
+	obj[cur] =cur
+}
+for( key in obj){
+	ary1.push(obj[key])
+	return ary1
+}
+
+
+}
+mm()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
