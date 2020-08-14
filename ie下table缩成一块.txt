@@ -1,0 +1,3 @@
+   /deep/ .el-table__body,  /deep/ .el-table__footer,  /deep/ .el-table__header {
+  width: 100% !important;
+}

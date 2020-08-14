@@ -1,0 +1,9 @@
+第一步 在 main.js中配置   
+Vue.prototype.$EventBus = new Vue() // 配置发布订阅
+第二步 设置eventBus
+this.$EventBus.$emit('mode','22222222222222222222')
+第三步获取eventBus
+在cerated或mounted中
+this.$EventBus.$on('mode', (data) => {
+      console.log(data)     //22222222222222222222
+    })

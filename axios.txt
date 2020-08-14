@@ -1,0 +1,53 @@
+在多人协作的项目上应该抽象出API层，在业务组件中进行统一调用。添加到原型上以及使用vue.use（）安装插件的方式使用，
+虽然减少了代码，但从工程化的角度来看，看似简洁，实则混乱。应该新建一个模块，这里模块专门封装数据请求相关的内容，
+比如请求豆瓣电影，你的业务组件中只应该调用getMovies()(注意：只是举例)这个封装好的函数，
+而不是this.$ajax,get() 这种原始的方式，原因就是封装好的函数可以重用在多个组件里，同时阅读性更高
+
+
+1.Vue.use(axios) 会报错， 
+ [Vue warn]: Error in mounted hook: "TypeError: Cannot read property 'get' of undefined"
+因为：axios 是一个基于 promise 的 HTTP 库，axios并没有install 方法，所以是不能使用vue.use()方法的。
+使用axios方法有3中
+1.结合 vue-axios使用
+import axios from 'axios'
+import VueAxios from 'vue-axios'
+Vue.use(VueAxios,axios);
+2.axios 改写为 Vue 的原型属性（不推荐这样用）
+import axios from 'axios'
+Vue.prototype.axios= axios
+3.结合 Vuex的action
+在vuex的仓库文件store.js中引用，使用action添加方法（不是太懂，粘贴）
+import Vue from 'Vue'
+import Vuex from 'vuex'
+
+import axios from 'axios'
+
+Vue.use(Vuex)
+const store = new Vuex.Store({
+  // 定义状态
+  state: {
+    user: {
+      name: 'xiaoming'
+    }
+  },
+  actions: {
+    // 封装一个 ajax 方法
+    login (context) {
+      axios({
+        method: 'post',
+        url: '/user',
+        data: context.state.user
+      })
+    }
+  }
+})
+
+export default store
+——————————————————————————
+在组件中发送请求的时候，需要使用 this.$store.dispatch
+
+methods: {
+  submitForm () {
+    this.$store.dispatch('login')
+  }
+}
