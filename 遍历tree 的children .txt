@@ -1,0 +1,18 @@
+
+findPathByLeafId(res)
+              // 递归
+              function findPathByLeafId(nodes) {
+                for (var i = 0; i < nodes.length; i++) {
+                  routerMenu.push(nodes[i].code)
+                  if (nodes[i].children) {
+                    if (nodes[i].children.length === 0) {
+                      delete nodes[i].children
+                    } else {
+                      var findResult = findPathByLeafId(nodes[i].children)
+                      if (findResult) {
+                        return findResult
+                      }
+                    }
+                  }
+                }
+              }

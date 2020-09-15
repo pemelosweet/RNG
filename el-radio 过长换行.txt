@@ -1,0 +1,6 @@
+  ::v-deep .el-radio__label {
+  width: 100% !important;
+  text-overflow: ellipsis;
+  white-space: normal;
+  // word-wrap: break-word !important;    无效
+}
