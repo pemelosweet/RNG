@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+       class  Hboy extends React.Component{
+        render(){
+            return (
+                <div>
+                  {this.props.text}
+                </div>
+            )
+        }
+   }
+     
+   class  Hboys extends React.Component{
+       constructor(props){
+           super(props)
+          this.state ={
+            flag :'黄斌去挑水'
+          }
+       }
+       func(){
+           if (this.state.flag==='黄斌去喝水') {
+            this.setState({
+              flag:'黄斌去挑水'
+          })
+           }else{
+            this.setState({
+              flag:'黄斌去喝水'
+          })
+           }
+         
+       }
+        render(){
+            return (
+                <div>
+                    <button onClick={this.func.bind(this)}>点击</button>
+                    <Hboy text ={this.state.flag}/>
+                    <Hboy text ={this.state.flag}/>
+                </div>
+            )
+        }
+   }
+         function render(){
+        ReactDOM.render(<Hboys/>,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

@@ -1,0 +1,25 @@
+配置文件package.json
+  "devDependencies": {
+    "uglifyjs-webpack-plugin": "^1.2.7",
+  },
+
+
+在 vue.config中
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
+
+config
+      .when(process.env.NODE_ENV === 'production',
+        config => {
+          config.plugin('js').use(new UglifyJsPlugin({
+            uglifyOptions: {
+              compress: {
+                drop_debugger: true, // 生产环境自动删除debugger
+                drop_console: true // 生产环境自动删除console
+              },
+              warnings: false
+            },
+            sourceMap: false,
+            parallel: true // 使用多进程并行运行来提高构建速度。默认并发运行数：os.cpus().length - 1。
+          }))
+        }
+      )

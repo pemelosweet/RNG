@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <script src="./node_modules/prop-types/prop-types.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+     function Mon(props) {
+         return (
+             <div>我是一个函数组件{props.name}------{props.age}-----------{props.sex}</div>
+         )
+     }
+     function Mon2(props) {
+         return (
+             <div>我是一个函数组件2{props.name}------{props.age}-----------{props.sex}</div>
+         )
+     }
+     function Mon3(props) {
+         return (
+             <div>我是一个函数组件3{props.name}------{props.age}-----------{props.sex}</div>
+         )
+     }
+     function Mon4(props) {
+         return (
+             <div>我是一个函数组件{props.name}------{props.age}-----------{props.sex}------------{props.axx}</div>
+         )
+     }
+     function Moo() {
+          return(
+              <div>
+                <Mon {...obj}/>
+                <Mon2 {...obj}/>
+                <Mon3 {...obj}/>
+                <Mon4 {...obj}/>
+                </div>
+         
+          )
+     }
+     //单个函数组件
+    //  let myMon =<Mon/>
+    //    function render(){
+    //     ReactDOM.render(myMon,root)
+    //    }
+    Mon4.defaultProps={
+         axx:'这是一个默认值'
+     }
+     Mon4.propTypes = {
+  name: PropTypes.string
+};
+    let obj ={
+        name:'黄斌',
+       age:'20',
+       sex:'男',
+    //    axx:'有值了'
+    }
+         function render(){
+        ReactDOM.render(<Moo/>,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

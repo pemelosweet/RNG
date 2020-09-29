@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body> 
+    <div id="root"></div>
+    <script type="text/babel">
+
+//第一种通过bind提前绑定
+// 第二种方法改为箭头函数
+// 第三种调用方法为箭头函数
+// constructor中提前调用
+   class  Hboys extends React.Component{
+       constructor(props){
+           super(props)
+        this.change3 =this.change3.bind(this)
+       }
+        change(params) {
+            console.log(this);
+       }
+       change2=()=>{
+        console.log(this);
+     }
+     change3(val) {
+            console.log(this);
+       }
+     change4(val) {
+            console.log(this,val);
+       }
+       chang5(val,e) {
+            console.log(val,e);
+       }
+        render(){
+            return (
+                <div> 
+                    <button onClick={this.change.bind(this)}>1</button>
+                    <button onClick={this.change2}>2</button>
+                    <button onClick={()=>{console.log(this);}}>3</button>
+                    <button onClick={this.change3}>4</button>
+                    <button onClick={this.change4.bind(this,'我是参数啊')}>传递参数</button>
+                    <button onClick={(e)=>{this.chang5('我是参数2',e)}}>传递参数2</button>
+                    </div>
+            )
+        }
+   }
+         function render(){
+        ReactDOM.render(<Hboys/>,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <script src="./node_modules/prop-types/prop-types.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+   class  Hboys extends React.Component{
+        render(){
+            return   <Some arr ={arr}/>
+        }
+   }
+   let  arr=['黄斌','难','15']
+   class  Some extends React.Component{
+        render(){
+            let item =this.props.arr.map((v)=>{
+               return     {v}
+            })
+           return (
+            <div>
+               {item}
+            </div>
+           )
+        }
+   }
+   
+         function render(){
+        ReactDOM.render(<Hboys />,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

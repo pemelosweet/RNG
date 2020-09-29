@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        .bc {
+            background: green;
+        }
+
+        .bc2 {
+            background: gold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        let name = '黄斌'
+        let age = 18
+        let backAndTextColor = {
+            backgroundColor: 'red',
+            color: 'white',
+            fontSize: 40
+        };
+        let my = <h1 className='bc2' style={backAndTextColor}>hellow,{name},你{age}岁了</h1>
+        let arr = ['吃饭', '睡觉', '玩耍']
+        function hb(){
+            var newArr =[]
+            for (let i = 0; i < arr.length; i++) {
+                newArr.push( <h2 key={i}>{arr[i]}+'ff'</h2>)
+            }
+            console.log(newArr,'33');
+            return  newArr
+        }
+        let myDom = arr.map((it, index) => {
+            return <p onClick={()=>{console.log(index,'333')}} key={index}>{it}</p>
+        })
+        let ss = <h1>{myDom}</h1>
+        // ReactDOM.render(hb(), root)
+        ReactDOM.render(myDom, root)
+    </script>
+</body>
+
+</html>
