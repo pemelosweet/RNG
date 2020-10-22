@@ -1,0 +1,46 @@
+1  vue和react 的区别
+2  reducer的概念
+	首先reducer 是一个纯函数，它的返回值只取决于它的参数，reducer有2个参数 一个是state 一个是aciton，aciotn表	示传进来的动作，我们只可以通过action来进行对state 的修改。
+
+	项目刚开始的时候，组件跟组件之间的通信还比较简单，随着项目的不断开发，组件之间的传值会变的越来越麻烦，尤		其是兄弟组件，此时就需要使用redux，redux是JavaScript提供一个状态容器，它由ruducer  sore和 action构成，其中		ruducer是处理代码逻辑，更改state 的方法 ,action 是发起一个修改state的动作，它是有一个对象构成的，对象必须含		有type，store会通过createStore将ruducer包裹，存到store中。
+	
+	在业务组件 ，我们可以通过dispatch来触发action，通过store.getState（）获取store中的值
+
+3ref的概念
+   	ref 可以允许我们直接操作dom元素或者组件实例，我们可以
+ 	1.通过ref字符串   ref='text'                  console.log(this.refs.text.value); // 字符串方法
+	2. 通过再dom节点或者组件挂载函数，函数的参数就是ref的值 
+	ref ={(input)=>{this.inputText=input}}
+	console.log(this.inputText.value);  //函数方法
+	3.通过react.createRef（）
+4react中的keys
+       由于key是唯一的，react通过keys跟踪哪些项目进行修改 删除 添加，可以提高效率，如果是	
+5 虚拟dom
+	dom是通过js对象来表示页面上的元素， 虚拟dom确保只对界面真正发生变化的部分进行实际的DOM操作,react的UI界面是通过当前的状态决定界面，虚拟dom大体分为了2种，一种是相同组件产生变化或者不同组件产生变化，另一种是对于同层次的结构父子节点通过唯一的id进行区分，在节点上进行同一位置先后时间输出不同节点，直接删除前面的节点 创建并且插入到新节点， 当react在同一个节点遇到不同的组件时，也会吧第一个组件删除，不同的组件有不通的dom结构，与其逐级比较不如直接删除，逐层次进行节点比较
+
+
+
+虚拟dom是框架的一个概念，通过js对象模拟页面上的元素，从而实现dom元素的高效更新，
+6diff算法
+tree diff ：新旧2颗dom树，逐层对比的过程，就是dom树对比；当整棵dom逐层对比完毕，则所有需要别更新的原型必然能够找到
+component diff： 在进行 tree diff的时候 每一层中，组件级别的对比，叫做组件对比，
+		如果比对前后，组件类型相同，我们暂时认为该组件不需要被更新
+		如果比对前后，组件类型不同，则需要移除掉旧组件，创建组件，并且添加到页面上去
+element diff：      在进行组件对比的时候，日过2个组件类型相同，则需要进行元素级别的对比，这个就叫做元素对比；
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 

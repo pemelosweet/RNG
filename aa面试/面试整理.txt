@@ -70,13 +70,13 @@ v-el
 v-for
 v-once
 三、vue双向绑定的原理
-   当执行new Vue() 的时候，Vue进入了初始化阶段，一方面，它会把data上的数据进行遍历，利用object.definProtoType将其转化成getter和setter的方法，完成数据的监听功能，另一方面，Vue的指令解析器会把当前的元素节点进行解析，实现视图的初始化，并且会订阅watcher，watcher会把自己添加到消息订阅器Dep中，初始化完成
+   当执行new Vue() 的时候，Vue进入了初始化阶段，一方面，它会把data上的数据进行遍历，利用object.definPrototy将其转化成getter和setter的方法，完成数据的监听功能，另一方面，Vue的指令解析器会把当前的元素节点进行解析，实现视图的初始化，并且会订阅watcher，watcher会把自己添加到消息订阅器Dep中，初始化完成
     当数据发生变化的时候，observe上的setter方法会立即让触发，然后它会调用Dep中的notify方法，将所有的watcher进行遍历，并且会调用watcher身上的update方法，watcher接受到通知后完成对相应视图进行更改，实现视图跟新
 四、vuex
 当项目比较简单的时候，组件之间的通信相对比较简单，我们可以使用父子组件传值，子父组件传值，eventBus，进行组件通信，随着项目的不断开发，组件跟组件之间的通信变的复杂，且不易维护。这时候就需要用到vuex，vuex是一个状态管理模式，将数据进行统一管理，vuex采用单向数据流的方式来管理数据，state->action->view,vuex主要分为5个部分，有mutation，action，state，getter，module，
 state负责存储整个项目的数据，action中可以发送异步请求，mutation中可以突变状态值，如果对数据进行二次处理，可以用getter进行处理，
-其中action mutation映射到当前组件的methods中，getter和state映射到当前组件的computed中，vuex中也有一些辅助函数，可以帮助我们调高效率，
-mapState  mapAction mapGetters mapMutation  
+vuex中也有一些辅助函数，mapState  mapAction mapGetters mapMutation  ，可以帮助我们调高效率，其中action mutation映射到当前组件的methods中，getter和state映射到当前组件的computed中，
+
 
   如何取到vuex中的值，this.$store.state
 五、vue路由

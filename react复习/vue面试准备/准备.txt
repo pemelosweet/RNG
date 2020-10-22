@@ -1,0 +1,30 @@
+1vue 的双向数据绑定
+当执行new vue（）的时候，vue会把data中的数据遍历 通过object。defineprototy将转化成getter和setter的方法，完成数据监听，另一方面，指令解析器将当前的元素节点进行解析，完成视图的初始化，另一方面  ，他还会订阅watcher，wathcer会把自己添加到消息订阅器Dep中，
+当数据发生变化的时候，setter上的方法会被立即触发，然后他会调用dep上 的notify方法，dep会调用watch上的update方法，将相应变化的节点进行更新 完成视图刷新
+2虚拟dom
+虚拟dom是通过js对象来表页面的的元素节点，目的是为了让dom更加快速的渲染
+3.继承
+	1 原型继承
+	2es6继承
+	3构造继承
+	4实例继承
+	5寄生组合继承
+	5组合继承
+	6拷贝继承
+4.跨域
+proxy
+window.name
+jsonp
+document.domain
+5. JSONP原理
+利用src不受同源策略的影响 ，但是只可以接受到get请求
+6简述css盒模型
+盒模型分为了IE盒模型和标准的W3C模型，
+ border-sizing: border-box, inherit, content-box
+ 普通盒模型的宽度等于盒子真实的宽度+左右boder+左右pading
+怪异盒模型的border-box：宽度等于盒子真实的宽度
+7 说说get和post 的请求的区别
+1get请求会把参数拼接到url后面 post会吧参数放到请求体中
+2get请求一般用于查询以及回显，传少返回多
+ post请求一般用于提交 保存，传多返回的少
+3 get提交的数据有大小限制，而post一般没有限制
