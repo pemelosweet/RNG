@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{name}}</p>
+            </div>
+        </div>
+        <p>{{message}}</p>
+        <p>{{name}}</p>
+    </div>
+</body>
+
+</html>
+<script>
+    var rpx = /\{\{(.+?)\}\}/g
+    function compile(tmpNode, data) {
+        let childNode = tmpNode.childNodes
+        for (let i = 0; i < childNode.length; i++) {
+            const element = childNode[i];
+            let type = childNode[i].nodeType
+            // console.log( childNode[i].nodeValue,'jimo');
+            if (type === 3) {
+                let txt = childNode[i].nodeValue
+                txt = txt.replace(rpx, (m, g) => {
+                    let key = g.trim()
+                    let value = data[key];
+                    return value
+                })
+                childNode[i].nodeValue = txt
+            } else {
+                compile(childNode[i], data)
+            }
+        }
+    }
+    function MVue(option){
+        // 习惯_为内部数据  只读数据的为$
+        this._data =option.data
+        this._el =option.el
+        // 准备阶段
+         this._templateDOM = document.querySelector(this._el )
+         this._parent =  this._templateDOM.parentNode
+         // 渲染工作
+        this.render()
+    }
+    MVue.prototype.render=function(){
+        //渲染阶段
+        this.compile()
+    }
+    MVue.prototype.compile=function () {
+
+        let realHTMLDOM = this._templateDOM.cloneNode( true ); // 用 模板 拷贝 得到 一个 准 DOM
+      compile( realHTMLDOM, this._data );
+      this.update( realHTMLDOM );
+    }
+    MVue.prototype.update=function (real) {
+        this._parent.replaceChild( real, document.querySelector( '#root' ) );
+    }
+    let app =new MVue(
+        {
+        el:'#root',
+        data:{
+            message: '你好',
+            name: '黄斌'
+        }
+    }
+    )
+ 
+  
+  
+</script>

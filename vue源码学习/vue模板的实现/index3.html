@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{obj.a.name}}</p>
+            </div>
+        </div>
+        <p>{{message}}</p>
+        <p>{{name}}</p>
+    </div>
+</body>
+
+</html>
+<script>
+     let  reg =/\{\{(.+?)\}\}/g
+     function Mvue(params) {
+         //准备阶段
+        //  在vue中 默认使用_为外部传入的数据    $为内部不可以修改的数据
+         this. _el =params.el,
+         this._data =params.data
+        this._templateDOM =document.querySelector(this. _el)
+        this._parent =this._templateDOM.parentNode
+         this.render()
+     }
+     Mvue.prototype.render=function(){
+        this.compile()
+     }
+     Mvue.prototype.compile =function(){
+        let realHTMLDOM = this._templateDOM.cloneNode( true ); // 用 模板 拷贝 得到 一个 准 DOM
+        compile( realHTMLDOM, this._data );
+        this.update(realHTMLDOM)
+     }
+     Mvue.prototype.update =function(real){
+        this._parent.replaceChild(real, document.querySelector( '#root' ))
+     }
+function getValueByPath(obj,path){
+        let paths =path.split('.')
+        let res =obj
+        console.log(res,paths,'ioio');
+       let prop
+       while (prop=paths.shift()) {
+           res =res[prop]  
+       }
+       return res
+     }
+    
+    function compile(node,data){
+        let childNode = node.childNodes
+        for (let i = 0; i < childNode.length; i++) {
+            const element = childNode[i]
+            let  nodeType =element.nodeType
+            if (nodeType===3) {
+                let nodeValue=element.nodeValue
+              if (nodeValue) {
+                 let txt =nodeValue.replace(reg,(_,g)=>{
+                     let value =this.getValueByPath(data,g.trim())
+                   return `${value}`
+                 })
+                 childNode[i].nodeValue = txt
+              }
+            }else{
+                compile(element,data) 
+            }
+            
+        }
+   
+     }
+     let vue =new Mvue({
+         el:'#root',
+         data:{
+             message:'苦笑',
+             name:'你好呀~',
+             obj:{
+                 a:{
+                     name:'黄彬彬'
+                 }
+             }
+         }
+     })
+</script>

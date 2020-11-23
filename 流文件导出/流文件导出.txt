@@ -1,0 +1,44 @@
+//注释    data为接口返回的流文件        fileName是导出附件的名称  
+  download(data, fileName) {
+      if (!data) {
+        return
+      }
+      // application/msword
+      const blob = new Blob([data], { type: 'application/x-msdownload' })
+      if (!!window.ActiveXObject || 'ActiveXObject' in window) { // IE (包含10)10+
+        navigator.msSaveBlob(blob, fileName)
+      } else {
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.style.display = 'none'
+        link.href = url
+        link.setAttribute('download', fileName)
+        document.body.appendChild(link)
+        link.click()
+        URL.revokeObjectURL(url) // 释放内存
+      }
+    },
+
+ 类型网址：http://tools.jb51.net/table/http_content_type
+
+其中的类型有 type 有
+.doc	application/x-msdownload	Word 文档
+.pdf	application/pdf	PDF（Portable Document Format的简称，意为“便携式文件格式”）
+.xml	application/xop+xml	二进制优化封装协议(Xmlbinary Optimized Packaging)
+.zip	application/zip	ZIP压缩文件
+.gzip	application/gzip	Gzip是若干种文件压缩程序的简称，通常指GNU计划的实现，此处的gzip代表GNU zip。
+.xls	application/x-xls	XLS 就是 Microsoft Excel 工作表，是一种非常常用的电子表格格式。
+.ai	application/postscript	PostScript（PS）是主要用于电子产业和桌面出版领域的一种页面描述语言和编程语言。
+.xml	application/atom+xml	
+.js	application/ecmascript	相当于application/javascript但是严格的处理规则
+.json	application/json	JSON（JavaScript Object Notation）
+.js	application/javascript	ECMAScript/JavaScript（相当于application/ecmascript但是宽松的处理规则）
+.ogg	application/ogg	Ogg, 视频文件格式
+.rdf	application/rdf+xml	资源描述框架（Resource Description Framework，缩写 RDF），是万维网联盟（W3C）提出的一组标记语言的技术标准，以便更为丰富地描述和表达网络资源的内容与结构。
+.xml	application/rss+xml	RSS（Really Simple Syndication,简易信息聚合）是一种消息来源格式规范，用以聚合经常发布更新数据的网站，例如博客文章、新闻、音频或视频的网摘
+.xml	application/soap+xml	简单对象访问协议（SOAP，全写为Simple Object Access Protocol）是交换数据的一种协议规范，使用在计算机网络Web服务（web service）中，交换带结构信息。
+.woff	application/font-woff	Web开放字体格式（Web Open Font Format，简称WOFF）是一种网页所采用的字体格式标准。（推荐使用；使用application/x-font-woff直到它变为官方标准）
+.xhtml	application/xhtml+xml	可扩展超文本标记语言（eXtensible HyperText Markup Language，XHTML），是一种标记语言，表现方式与超文本标记语言（HTML）类似，不过语法上更加严格。
+.xml	application/xml	可扩展标记语言（英语：eXtensible Markup Language，简称: XML），是一种标记语言。
+.dtd	application/xml-dtd	XML文件的文件型别定义（Document Type Definition）可以看成一个或者多个XML文件的模板，在这里可以定义XML文件中的元素、元素的属性、元素的排列方式、元素包含的内容等等。
+

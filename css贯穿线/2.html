@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    .order {  
+   height: 60px;  
+   line-height: 60px;  
+   text-align: center;  
+}  
+ .order .line {  
+   display: inline-block;  
+   width: 150px;  
+   border-top: 1px solid #ccc ;  
+}  
+.order .txt {  
+    vertical-align: -8%;
+   color: #686868;  
+   /* vertical-align: middle;   */
+}
+.el-divider{
+    background-color: #dcdfe6;
+    position: relative;
+    display: block;
+    height: 1px;
+    width: 100%;
+    margin: 24px 0;
+}
+.el-divider__text{
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    position: absolute;
+    background-color: #fff;
+    padding: 0 20px;
+    font-weight: 500;
+    color: #303133;
+    font-size: 14px
+}
+.b1{
+    width: 200px;
+    height: 1px;
+    background: gray;
+    position: relative;
+}
+.text{
+    background-color: #fff;
+    top: -10px;
+    left: 40px;
+    position: absolute;
+    display: block;
+    padding: 0 20px;
+}
+</style>
+<body>
+    <div class="order">  
+        <span style="white-space:pre">   </span><span class="line"></span>  
+        <span style="white-space:pre">   </span><span class="txt">产品111111111111111111111清单</span>  
+        <span style="white-space:pre">   </span><span class="line"></span>  
+     </div>
+
+     <div class="el-divider">
+        <div class="el-divider__text">
+            <span>秒杀秒杀</span>
+        </div>
+     </div>
+     <div class="b1">
+        <span class="text">秒杀活动</span>
+    </div>
+</body>
+<script>
+ var arr=   ["{src: '/unqualiTask', name: '问题简报', value: 1}", "{src: '/home', name: '数据中心', value: 2}", "{src: '/areaCheck', name: '区域抽查', value: 4}", "{src: '/workAnalyze', name: '业务分析', value: 5}", "{src: '/riskAnalyze', name: '风险分析', value: 6}", "{src: '/userManage', name: '用户管理', value: 7}", "{src: '/departInfo', name: '部门概况', value: 3}"]
+    console.log(arr,555);
+    var obj={}
+    arr.forEach((el,idx)=>{
+        console.log(el,'444');
+        obj[idx]= el
+       
+    })
+</script>
+</html>

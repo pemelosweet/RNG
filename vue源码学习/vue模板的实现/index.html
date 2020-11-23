@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{name}}</p>
+            </div>
+        </div>
+        <p>{{message}}</p>
+        <p>{{name}}</p>
+    </div>
+</body>
+
+</html>
+<script>
+    var data = {
+        message: '你好',
+        name: '黄斌'
+    }
+    var rpx = /\{\{(.+?)\}\}/g
+    let tmpNode = document.querySelector('#root')
+    //childNodes  获取元素的子节点
+    //nodeType  获取元素的节点类型
+    //cloneNode  克隆节点元素
+    //replaceChild 替换节点元素
+    function compile(tmpNode, data) {
+        let childNode = tmpNode.childNodes
+        for (let i = 0; i < childNode.length; i++) {
+            const element = childNode[i];
+            let type = childNode[i].nodeType
+            // console.log( childNode[i].nodeValue,'jimo');
+            if (type === 3) {
+                let txt = childNode[i].nodeValue
+                txt = txt.replace(rpx, (m, g) => {
+                    let key = g.trim()
+                    let value = data[key];
+                    return value
+                })
+                childNode[i].nodeValue = txt
+            } else {
+                compile(childNode[i], data)
+            }
+        }
+    }
+    let queryNode = tmpNode.cloneNode(true)
+    compile(queryNode, data)
+    root.parentNode.replaceChild(queryNode, root);
+    //局限  不支持多属性        没有使用虚拟dom    代码没有整合  
+</script>

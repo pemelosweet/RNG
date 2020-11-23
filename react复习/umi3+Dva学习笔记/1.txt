@@ -1,0 +1,8 @@
+ 1如果项目的配置不复杂，推荐在 .umirc.ts 中写配置； 如果项目的配置比较复杂，可以将配置写在 config/config.ts 中，并把配置的一部分拆出去，比如路由配置可以拆成单独的 config/routes.ts。
+两种方式二选一，.umirc.ts 优先级更高。
+2 在umi3中如果想进入约定式路由，需要在配置中将route去掉，
+3   react的快捷键  rcc 类组件     rac  函数组件
+4 全局css样式编写  （src中的golbal.css）  编写完css需要重新运行一下程序
+5  model中的函数的acion参数 可以写 {type，payload}    type是dispatch必须要有的参数  payload是其他参数的综合体
+
+

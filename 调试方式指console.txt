@@ -1,0 +1,6 @@
+console.error         控制台有红色提示
+console.warn         控制台有橘黄色提示
+console.table         会将复合数据类型（对象，数组等）在控制台中以表格的形式打印输出
+console.trace         他可以追溯你的逻辑执行过程。
+console.clear         会清空控制台所有打印内容
+        
