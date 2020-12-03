@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <p>Set是一种叫做集合的数据结构，Map是一种叫做字典的数据结构</p>
+      <p>集合</p>  
+      <p>集合，是由一堆无序的、相关联的，且不重复的内存结构【数学中称为元素】组成的组合</p> 
+  <p>字典</p>
+  <p>字典（dictionary）是一些元素的集合。每个元素有一个称作key 的域，不同元素的key 各不相同</p>   
+  <p>  那么集合和字典又有什么区别呢？</p>
+
+<p> 共同点：集合、字典都可以存储不重复的值</p>
+<p>  不同点：集合是以[值，值]的形式存储元素，字典是以[键，值]的形式存储</p>
+ 
+</body>
+</html>
+<script>
+    let s1 =[1,2,4,7,2,3,12]
+    let s2 =[13,17,15,12,12,10]
+    let quchong =[...new Set ([...s1])]
+    let jiaoji = [... new Set([...s1,...s2])]
+    let binji = [...new Set([...s1].filter(x =>new Set(s2).has(x)))]
+    let chaji = [...new Set ([...s1])].filter(el=>{ return !new Set(s2).has(el)})
+    let buji =[...new Set ([...s1])].filter(el=>{ return !new Set(s2).has(el)})
+    .concat([...new Set ([...s2])].filter(el=>{ return !new Set(s1).has(el)}))
+    // let chaji = [...new Set ([...s1])].filter(el=>{ return s2.indexOf(el)===-1})
+    // let binji = s1.filter(el=>{ return s2.indexOf(el)!==-1})
+    console.log(jiaoji)// [1, 2, 4, 7, 3,12, 13, 17, 15, 10]
+    console.log(chaji) // [1, 2, 4, 7, 3]
+    console.log(binji) // [12]
+    console.log(buji) // [1, 2, 4, 7, 3, 13, 17, 15, 10]
+    // set的4个遍历方法
+    //    keys(): 返回键名的遍历器
+    //  values(): 返回键值的遍历器
+    // entries(): 返回键值对的遍历器
+    // forEach(): 使用回调函数遍历每个成员
+    // set的4个操作方法
+    //    add(value): 向集合中添加一个新的项
+    // delete(value): 从集合中删除一个值
+    //    has(value): 如果值在集合中存在，返回ture, 否则返回false
+    //       clear(): 移除集合中的所有项
+
+
+    function mapToObj(map) {
+    let obj = Object.create(null)
+    for (let [key, value] of map) {
+        obj[key] = value
+    }
+    return obj
+}
+const map = new Map().set('name', 'vue3js.cn').set('age', '18')
+mapToObj(map)  // {name: "vue3js.cn", age: "18"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </script>
