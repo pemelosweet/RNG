@@ -1,0 +1,7 @@
+1.首先引入了一些依赖或插件（webpack，mearge，node的path模块，utils，生成端口号...以及config.js）
+2.书写配置：
+ a:配置样式部分，引入utils中一些css-loader和postcss-loade
+ b:配置devServer（全局变量），配置内容大致是从config.js引入
+ c:配置插件部分，包括（配置全局变量process.env，热更新，打包代码并且在dist中创建目录结构以及静态资源）
+3.利用mearge插件，利用baseWebpackConfig插件将生产或开发环境下共用的配置文件和当前配置合并
+4.将这个生成的总配置暴露到外界去
