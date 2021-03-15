@@ -1,0 +1,329 @@
+<template>
+  <div class="dataQuery_dataDown"
+     v-loading="loading"
+    element-loading-text="拼命加载中"
+    element-loading-background="rgba(0, 0, 0, 0.4)"
+  >
+    <el-card>
+      <div slot="header">
+        <span>近、离线数据任务下载</span>
+      </div>
+      <el-form  :model="myform" ref="forms" label-width="120px" :rules="rules">
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="任务名称：" prop="taskName">
+                     <el-input v-model="myform.taskName"  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="查询数据类型：" prop="queryType">
+                     <el-select
+                v-model="myform.queryType"
+                placeholder="请选择"
+              >
+                <el-option
+                  v-for="item in Listname"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.label"
+                >
+                </el-option>
+              </el-select>
+                </el-form-item>
+              </el-col>
+                <el-col :span="8">
+                <el-form-item label="任务状态：" prop="status">
+                    <el-select v-model="myform.status"  placeholder="请选择">
+                      <el-option label="在等待"  value="0"></el-option>
+                       <el-option label="执行中"  value="1"></el-option>
+                        <el-option label="已完成"  value="2"></el-option>
+                   </el-select>
+                </el-form-item>
+              </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+                <el-form-item label="任务开始时间：" prop="startEndTime">
+                    <el-date-picker
+                        v-model="myform.startEndTime"
+                        type="daterange"
+                        range-separator="至"
+                        start-placeholder="开始月份"
+                        end-placeholder="结束月份"
+                        style="width:97%">
+                    </el-date-picker>
+                </el-form-item>
+            </el-col>
+        </el-row>
+
+           <el-row style="padding-bottom:10px">
+          <el-col
+            :span="12"
+            style="text-align:right;float:right"
+          >
+            <el-button
+              type="primary"
+                @click="query"
+            >查 询</el-button>
+             <el-button
+            @click="cleanUp"
+              type="primary"
+              plain
+            >清 空</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <h4>任务列表：</h4>
+         <el-table
+        :data="tableData"
+        tooltip-effect="dark"
+        @selection-change="handleChange"
+        v-loading="loadingBoxLv"
+        element-loading-text="正在查询中，请稍候……"
+        element-loading-background="rgba(0, 0, 0, 0.1)"
+      >
+        <el-table-column label="序号" width="50"  type="index"></el-table-column>
+        <el-table-column label="任务名称" prop="taskName" min-width="220" show-overflow-tooltip></el-table-column>
+        <el-table-column label="查询数据类型" prop="queryType" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="查询范围" prop="queryRangeCn" min-width="220" show-overflow-tooltip></el-table-column>
+        <el-table-column label="任务开始时间" prop="taskStart" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="任务完成时间" prop="taskEnd" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="任务状态" prop="status" min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+              <span v-if="scope.row.status==='0'" class="mark-span" style="background:#CFCFCF"></span>
+              <span v-if="scope.row.status==='1'" class="mark-span" style="background:#436EEE"></span>
+              <span v-if="scope.row.status==='2'" class="mark-span" style="background:#00EE00"></span>
+             {{scope.row.status | Transform}}
+          </template>
+        </el-table-column>
+         <el-table-column label="操作" width="220">
+          <template slot-scope="scope">
+            <el-button type="text" :disabled="scope.row.delFlag !== 1" @click="findOneEvent(scope)">查 询</el-button>
+            <el-button  type="text" :disabled="scope.row.status !=='2' || scope.row.delFlag === 1" @click="downLoading(scope)">下载结果</el-button>
+            <el-button  type="text" :disabled="scope.row.status !=='2' || scope.row.delFlag === 1" @click="deletEvent(scope)">删 除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-row style="margin-top:10px;">
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-size="pageInfo.pagesize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.total"
+          background
+        ></el-pagination>
+      </el-row>
+    </el-card>
+  </div>
+</template>
+<script>
+import {
+  getNearOffKey,
+  delNearOffKey,
+  findNearOffKey
+} from '@/api/sys-monitoringAnalysis/dataQuery/dataDown/index.js'
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getToken } from '@/utils/auth'
+export default {
+  data() {
+    return {
+      delArr: [],
+      loading: false,
+      loadingBoxLv: false,
+      Listname: [
+        { label: '在线', value: 1 },
+        { label: '离线', value: 2 }
+      ],
+      myform: {
+        delFlag: '',
+        status: '',
+        startEndTime: [],
+        taskName: ''
+      },
+      rules: {
+        delFlag: '',
+        status: '',
+        startEndTime: [],
+        taskName: [{ validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }]
+      },
+      tableData: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: null
+      },
+      timer: null, // 定时任务
+      token: getToken()
+    }
+  },
+  filters: {
+    Transform(val) {
+      switch (val) {
+        case '0':
+          return '在等待'
+        case '1':
+          return '执行中'
+        case '2':
+          return '已完成'
+        default:
+          return ''
+      }
+    }
+  },
+
+  mounted() {
+    this.getListEvent()
+    this.loadingBoxLv = true
+    if (this.timer) { // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.getListEvent()
+      }, 30000)
+    }
+  },
+  methods: {
+    // 获取列表
+    getListEvent() {
+      const obj = {
+        pageSize: this.pageInfo.pageSize,
+        pageNum: this.pageInfo.pageNum,
+        queryType: this.myform.queryType ? encodeURI(this.myform.queryType) : null,
+        status: this.myform.status ? this.myform.status : null,
+        taskEnd: this.myform.startEndTime[1] ? this.myform.startEndTime[1] : null,
+        taskName: this.myform.taskName ? encodeURI(this.myform.taskName) : null,
+        taskStart: this.myform.startEndTime[0] ? this.myform.startEndTime[0] : null
+      }
+      getNearOffKey(obj).then(res => {
+        if (res.code === 200) {
+          this.loadingBoxLv = false
+          this.tableData = res.data.list
+          this.pageInfo.total = res.data.total
+        }
+      })
+        .catch(() => {
+          this.loadingBoxLv = false
+        })
+    },
+    // 选择要删的数据
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 查询
+    query() {
+      this.$refs['forms'].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.pageInfo.pageSize = 10
+          this.pageInfo.pageNum = 1
+          this.getListEvent()
+          setTimeout(() => {
+            this.loading = false
+          }, 1000)
+        }
+      })
+    },
+    // 清空
+    cleanUp() {
+      this.$refs.forms.resetFields()
+      this.myform = {
+        delFlag: '',
+        status: '',
+        startEndTime: [],
+        taskName: ''
+      }
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.getListEvent()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.getListEvent()
+    },
+    // 删除接口
+    deletEvent(scope) {
+      this.$confirm('是否删除当前的数据?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          delNearOffKey(scope.row.id).then(res => {
+            if (res.code === 200) {
+              this.getListEvent()
+              this.$message({
+                message: '删除成功',
+                type: 'success',
+                duration: 6000,
+                showClose: true
+              })
+            } else {
+              this.$message({
+                message: res.message,
+                type: 'error',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+            duration: 6000,
+            showClose: true
+          })
+        })
+    },
+    // 下载接口
+    downLoading(scope) {
+      location.href = '/caml-query/query/template/download/task-list/' + scope.row.id + '?token=' + this.token
+    },
+    // 查询接口
+    findOneEvent(scope) {
+      findNearOffKey(scope.row.id).then(res => {
+        if (res.code === 200) {
+          this.getListEvent()
+          this.$message({
+            message: res.data,
+            type: 'success',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    }
+  },
+
+  destroyed() {
+    console.log(11122222, this.timer)
+    clearInterval(this.timer)
+  }
+}
+</script>
+
+<style lang="scss">
+.dataQuery_dataDown {
+    position: relative;
+  .mark-span{
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    vertical-align: 1px;
+  }
+  .el-date-editor--daterange {
+    min-width: 97%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

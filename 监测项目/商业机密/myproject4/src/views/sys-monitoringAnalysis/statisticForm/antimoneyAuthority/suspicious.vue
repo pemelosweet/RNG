@@ -1,0 +1,2134 @@
+<template>
+<div style='width:100%;height:100%;background-color:#fff;position: relative'>
+  <div
+    v-if='dataPermission && initPermission'
+    class="statisticsuspicious"
+    v-loading="loading2"
+    element-loading-text="首次加载较慢，请稍侯……"
+    element-loading-background="rgba(0, 0, 0, 0.1)"
+  >
+    <el-card>
+      <div slot="header"><span>可疑交易统计分析</span>
+      <el-popover placement="bottom-start" width="1000" trigger="hover">
+         <el-row>
+            <el-col style="margin-left:20px" :span="22">
+              <div v-for="(item,index) in title" :key="index">
+              <span>{{item}}</span>
+              <br/>
+              </div>
+            </el-col>
+          </el-row>
+          <el-button type="text" slot="reference" icon="el-icon-warning">口径说明</el-button>
+        </el-popover>
+      </div>
+      <el-row>
+        <!-- <div style='text-align: right;font-size:10px'>
+          <el-button type='text' color="red">*统计时间区间限制在30天以内</el-button>
+        </div> -->
+        <el-form
+          :model="form"
+          :rules = 'formRules'
+          label-width="140px"
+          ref="searchForm"
+        >
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item
+                label="统计类型："
+                prop="statisticalType"
+              >
+                <el-select
+                  clearable
+                  style="width:100%;"
+                  v-model="form.statisticalType"
+                  placeholder="请选择统计类型(必填)"
+                  @change="handleChange"
+                >
+                  <el-option
+                    label="按报告机构统计"
+                    value="RICD"
+                  ></el-option>
+                  <el-option
+                    label="按行业统计"
+                    value="INDUSTRY"
+                  ></el-option>
+                  <el-option
+                    label="按可疑特征统计"
+                    value="STCR"
+                  ></el-option>
+                  <el-option
+                    label="按上报网点所在地统计"
+                    value="TRCD"
+                  ></el-option>
+                  <el-option
+                    label="按报告金额段统计"
+                    value="CRATPART"
+                  ></el-option>
+                  <el-option
+                    label="按账户类型统计"
+                    value="CATP"
+                  ></el-option>
+                  <el-option
+                    label="按业务种类统计"
+                    value="TSTP"
+                  ></el-option>
+                  <el-option
+                    label="按渉罪类型统计"
+                    value="TOSC"
+                  ></el-option>
+                  <el-option
+                    label="按客户职业或行业统计"
+                    value="CTTP"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item
+                label="落地日期："
+                prop="statisticalTime"
+              >
+                <el-date-picker
+                  style="width:100%!important;"
+                  v-model="form.statisticalTime"
+                  value-format="yyyy-MM-dd"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  :picker-options="pickerOptions"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-col>
+          <div class="clearfix">
+            <el-col :span="12">
+              <el-form-item label="分支行辖区：" prop="area">
+                <el-cascader style="width:100%" :options="citiesOptions" :props="props" v-model="form.area" collapse-tags clearable></el-cascader>
+                <!-- <treeselect :multiple="true" v-if="citiesOptions.length>0" :options="citiesOptions" placeholder="请选择分支行辖区(必填)" v-model="form.area"/> -->
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-col :span="15">
+                <el-form-item
+                  label="义务机构类型："
+                  prop="levelType"
+                >
+                  <el-select
+                    clearable
+                    v-model="form.levelType"
+                    placeholder="请选择"
+                    @change="isTypeShow"
+                    @clear='clearOptions'
+                    style="width:100%;"
+                  >
+                    <el-option
+                      v-for="(item,index) in options"
+                      :key="index"
+                      :label="item.text"
+                      :value="item.value"
+                    >
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="9">
+                <el-form-item
+                  label=""
+                  label-width="0"
+                  prop="Cust"
+                >
+                  <el-select
+                    class='custOptions'
+                    multiple
+                    v-model="form.Cust"
+                    placeholder="请选择"
+                    @focus="getIndustry"
+                    @change='changeOptions'
+                    style="width:100%;"
+                  >
+                    <el-option
+                      v-for="(item,index) in typeDate"
+                      :key="index+ '-only'"
+                      :label="item.text"
+                      :value="item.value"
+                      :disabled="item.disabled"
+                    >
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-col>
+
+            <!-- <el-col :span="10" v-if="placeShow">
+             <el-form-item label="交易发生地：" prop="mechanismType" >
+                <el-select v-model="form.country" placeholder="请选择" @focus="handleFocus">
+                   <el-option label="中国" value="CHN"></el-option>
+                  <el-option label="大陆地区保税区" value="Z01"></el-option>
+                  <el-option label="大陆地区加工区" value="Z02"></el-option>
+                  <el-option label="大陆地区加工区钻石交易所" value="Z03"></el-option>
+                  <el-option v-for="(item,index) in countryData" :key="index" :label="item.chSName" :value="item.numCode"></el-option>
+                </el-select>
+                <el-tree v-model="form.regionTree" :data="dataMec" show-checkbox="true" getHalfCheckedNodes="true"  node-key="value" ref="tree" highlight-current :props="defaultProps" v-show="isRegion" @check-change="handleCheckChange">
+                </el-tree>
+              </el-form-item>
+           </el-col> -->
+          </div>
+          <!-- <el-col :span="24" v-if="placeShow">
+             <el-form-item label="交易发生地：" prop="mechanismType" >
+                <el-select v-model="form.country" placeholder="请选择" @focus="handleFocus">
+                   <el-option label="中国" value="CHN"></el-option>
+                  <el-option label="大陆地区保税区" value="Z01"></el-option>
+                  <el-option label="大陆地区加工区" value="Z02"></el-option>
+                  <el-option label="大陆地区加工区钻石交易所" value="Z03"></el-option>
+                  <el-option v-for="(item,index) in countryData" :key="index" :label="item.chSName" :value="item.numCode"></el-option>
+                </el-select>
+                <el-tree v-model="form.regionTree" :data="dataMec" show-checkbox="true" getHalfCheckedNodes="true"  node-key="value" ref="tree" highlight-current :props="defaultProps" v-show="isRegion" @check-change="handleCheckChange">
+                </el-tree>
+              </el-form-item>
+           </el-col>  -->
+          <!-- <el-col  v-if="placeShow"  class="regionwrap" >
+              <el-form-item label="上报网点所在地：" prop="country" >                
+                <el-col :span="6">
+                    <el-select clearable style="width:100%;" v-model="form.country" placeholder="请选择" @change="judgeCountry">
+                      <el-option label="中国" value="CHN"></el-option>
+                      <el-option label="大陆地区保税区" value="Z01"></el-option>
+                      <el-option label="大陆地区加工区" value="Z02"></el-option>
+                      <el-option label="大陆地区加工区钻石交易所" value="Z03"></el-option>
+                      <el-option label="国际" value="111"></el-option>
+                    </el-select> 
+                </el-col>
+              </el-form-item>
+          </el-col> -->
+          <!-- <el-col>
+            <el-col :span="8" v-if="placeShow&&isBlock">
+              <el-form-item prop="international" :rules="[{ required: true, message: '请选择地区', trigger: 'change' }]">
+                <el-select clearable v-model="form.international" placeholder="请选择">
+                  <el-option v-for="(item,index) in countryData" :key="index" :label="item.chSName" :value="item.pkMc">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          
+            <el-col :span="8" v-if="placeShow&&isShow">
+              <el-form-item prop="domesticCity" :rules="[{ required: true, message: '请选择地区', trigger: 'change' }]">
+                <treeselect :multiple="true" :options="citiesOptions" placeholder="请选择地区(必填)" v-model="form.domesticCity"/>
+              </el-form-item>
+            </el-col>
+          </el-col> -->
+          <el-col
+            :span="12"
+            v-show="show"
+          >
+            <el-form-item
+              label="义务机构名称："
+              v-if="organame"
+              class="multiple_select"
+              prop="str"
+            >
+              <el-select
+                style="width:100%;"
+                v-model="form.str"
+                multiple
+                filterable
+                remote
+                reserve-keyword
+                placeholder="请输入关键词"
+                :remote-method="remoteMethod"
+                :loading="loading"
+              >
+                <el-option
+                  v-for="item in rinmOptions"
+                  :key="item.ricd"
+                  :label="item.rinm"
+                  :value="item.ricd"
+                >
+                </el-option>
+              </el-select>
+              <!-- <el-select style="width:100%;" v-model="form.str" filterable multiple @focus="getDivision()"  placeholder="请选择义务机构名称(必填)">
+                  <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd"></el-option>
+                </el-select> -->
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item
+              label="客户性质："
+              prop="nature"
+              v-if="natureShow"              
+            >
+              <el-select
+                clearable
+                style="width:100%;"
+                v-model="form.nature"
+                placeholder="请选择客户性质"
+                @change="clientType"
+              >
+                <el-option
+                  label="个人客户"
+                  value="0"
+                ></el-option>
+                <el-option
+                  label="单位客户"
+                  value="1"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="24" v-show="lastlineShow"> -->
+          <!-- <el-col :span="12">
+              <el-form-item label="资金流向：" prop="tsdr">
+                <el-select v-model="form.tsdr">
+                  <el-option label="流入" value="0"></el-option>
+                  <el-option label="流出" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col> -->
+          <!-- <el-col :span="12">
+              <el-form-item label="显示记录条数：" prop="num">
+                <el-input style="width: 20%;" v-model="form.num"></el-input>
+              </el-form-item>
+            </el-col> -->
+          <!-- </el-col> -->
+        </el-form>
+      </el-row>
+      <div
+        class="btnalign"
+        style="text-align: right;margin-bottom: 15px;"
+      >
+        <el-button
+          type="primary"
+          @click="handleQury"
+        >统计</el-button>
+        <el-button
+          @click="clearForm"
+          type="primary"
+          plain
+        >清空</el-button>
+      </div>
+      <div style="margin-bottom:10px;margin-left:35px;">统计结果表：
+        <el-button
+          type="primary"
+          plain
+          @click="exportAll"
+          style="margin-left:10px;"
+        >导出全部</el-button>
+        <el-button
+          type="primary"
+          plain
+          @click="exportStatistics"
+          style="margin-left:10px;"
+        >导出已选</el-button>
+        <el-button type="primary" @click="graphicalDisplay" style="margin-left:10px;">图形化展示</el-button>
+
+      </div>
+
+      <!-- 初始化统计结果 -->
+      <el-table
+        :data="list"
+        v-if="!initType"
+        :empty-text="tableClue"
+      >
+        <el-table-column type="selection"></el-table-column>
+        <el-table-column
+          prop="index"
+          label="序号"
+          width="55"
+        ></el-table-column>
+        
+        <el-table-column
+          prop="organizationName"
+          v-if="form.statisticalType === 'RICD'"
+          min-width="80"
+          label="金融机构名称"
+          key='1'
+        ></el-table-column>
+        <el-table-column
+          prop="ricd"
+          v-if="form.statisticalType === 'RICD'"
+          min-width="80"
+          label="金融机构编码"
+          key='2'
+        ></el-table-column>
+        <el-table-column
+          prop="reportAmount"
+          min-width="80"
+          v-if="form.statisticalType === 'CRATPART'"
+          label="报告金额段"
+          key='3'
+        ></el-table-column>
+        <el-table-column
+          prop="industryName"
+          v-if="form.statisticalType === 'INDUSTRY'||form.statisticalType === 'RICD'"
+          min-width="80"
+          label="行业名称"
+          key='4'
+        ></el-table-column>
+        <!-- <el-table-column prop="transactionCharacteristicCode" v-if="form.statisticalType === 'STCR'" min-width="170" label="可疑交易特征"></el-table-column> -->
+        <el-table-column
+          prop="placeOfBusiness"
+          min-width="80"
+          v-if="form.statisticalType === 'TRCD'"
+          label="上报网点所在地"
+          key='5'
+        ></el-table-column>     
+        <el-table-column
+          prop="tosc"
+          min-width="80"
+          v-if="form.statisticalType === 'TOSC'"
+          label="涉罪类型"
+          key='6'
+        ></el-table-column>
+        <el-table-column
+          prop="accountType"
+          min-width="80"
+          v-if="form.statisticalType === 'CATP'"
+          label="账户类型"
+          key='7'
+        ></el-table-column>
+        <el-table-column
+          prop="sevc"
+          min-width="80"
+          v-if="form.statisticalType === 'CTTP' && w === '1'"
+          label="职业"
+          key='8'
+        ></el-table-column>
+        <el-table-column
+          prop="sevc"
+          min-width="80"
+          v-if="form.statisticalType === 'CTTP' && w === '2'"
+          label="行业"
+          key='9'
+        ></el-table-column>
+        <el-table-column
+          prop="sevc"
+          min-width="80"
+          v-if="form.statisticalType === 'CTTP' && w === '3'"
+          label="职业或行业"
+          key='10'
+        ></el-table-column>      
+        <el-table-column prop="public" min-width="80" v-if="form.statisticalType === 'TSTP'" label="业务种类" key='11'></el-table-column>
+        <!-- <el-table-column prop="moneyFlow" min-width="180" v-if="form.statisticalType === 'RICD'" label="资金流向"></el-table-column> -->
+        <el-table-column
+          prop="stcr"
+          min-width="80"
+          v-if="form.statisticalType === 'STCR'"
+          label="可疑特征"
+          key='12'
+        ></el-table-column>
+        <!-- <el-table-column prop="placeOfInflux" min-width="180" v-if="form.statisticalType === 'RICD'" label="流入流出地"></el-table-column> -->
+        <!-- <el-table-column prop="tstp" min-width="220" v-if="form.statisticalType === 'RICD'" label="业务种类"></el-table-column> -->
+        <el-table-column
+          prop="largeNumberOfReports"
+          min-width="100"
+          label="可疑交易报告份数"
+          key='13'
+        ></el-table-column>
+        <el-table-column
+          prop="transactionPenNumber"
+          min-width="110"
+          label="可疑交易报告交易笔数"
+          key='15'
+        ></el-table-column>
+        <el-table-column
+          prop="largeAmountOfReportStr"
+          min-width="100"
+          label="可疑交易报告总金额(万元)"
+          key='14'
+        ></el-table-column>
+        <el-table-column
+          prop="accountNumber"
+          min-width="100"
+          label="可疑交易报告涉及账户数 "
+          key='16'
+        ></el-table-column>
+        <el-table-column
+          prop="numberOfSubjects"
+          min-width="120"
+          label="可疑交易报告涉及主体数"
+          key='17'
+        ></el-table-column>
+
+      </el-table>
+      <!-- 实际统计结果 -->
+      <el-table
+        :data="list.length > 0 ? list.concat([sum]) : list"
+        @selection-change="handleSelectionChange"
+        :empty-text="tableClue"
+        v-if="initType" @sort-change="tabSortChange" v-loading="loadingTab" :element-loading-text="loadingStr" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column  type="selection"></el-table-column>
+        <el-table-column prop="index" label="序号" width="55"></el-table-column>    
+        <el-table-column prop="organizationName" v-if="oOrganizationName" min-width="80" sortable="custom" label="金融机构名称" key='1'>
+          <template slot-scope="scope">
+            <el-tooltip  effect="dark" placement="top-start">
+              <div slot="content" style="margin:4px">{{scope.row.organizationName}}</div>
+              <span class="tableCell">{{scope.row.organizationName}}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ricd" v-if="oOrganizationName" min-width="80" sortable="custom" label="金融机构编码" key='2'>
+          <template slot-scope="scope">
+            <el-tooltip  effect="dark" placement="top-start">
+              <div slot="content" style="margin:4px">{{scope.row.ricd}}</div>
+              <span class="tableCell">{{scope.row.ricd}}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="tosc" min-width="80" v-if="otosc" label="涉罪类型" sortable="custom" key='3'>
+          <template slot-scope="scope">
+            <el-tooltip  effect="dark" placement="top-start">
+              <div slot="content" style="margin:4px">{{scope.row.tosc}}</div>
+              <span class="tableCell">{{scope.row.tosc}}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+         <el-table-column prop="stcr" min-width="80" v-if="ostcr" label="可疑特征" sortable="custom" key='4'>
+            <template slot-scope="scope">
+              <el-tooltip  effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.stcr}}</div>
+                <span class="tableCell">{{scope.row.stcr}}</span>
+              </el-tooltip>
+            </template>
+         </el-table-column>
+        <el-table-column prop="placeOfBusiness" min-width="80" v-if="oplaceOfBusiness" sortable="custom" label="上报网点所在地" key='5'>
+          <template slot-scope="scope">
+              <el-tooltip  effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.placeOfBusiness}}</div>
+                <span class="tableCell">{{scope.row.placeOfBusiness}}</span>
+              </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="tstp" min-width="80" v-if="otstp" label="业务种类" sortable="custom" key='6'>
+          <template slot-scope="scope">
+              <el-tooltip  effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.tstp}}</div>
+                <span class="tableCell">{{scope.row.tstp}}</span>
+              </el-tooltip>
+          </template>
+        </el-table-column>           
+        <el-table-column prop="reportAmount" min-width="80" v-if="oreportAmount" sortable="custom" label="报告金额段" key='7'></el-table-column>
+        <el-table-column prop="industryName" v-if="oIndustryName" min-width="80" sortable="custom" label="行业名称" key='8'>
+          <template slot-scope="scope">
+              <el-tooltip  effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.industryName}}</div>
+                <span class="tableCell">{{scope.row.industryName}}</span>
+              </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sevc" min-width="80" v-if="form.statisticalType === 'CTTP' && w === '1'" label="职业"  sortable="custom" key='9'></el-table-column>
+        <el-table-column prop="sevc" sortable="custom" min-width="80" v-if="form.statisticalType === 'CTTP' && w === '2'" label="行业" key='10'></el-table-column>
+        <el-table-column prop="sevc" min-width="80" v-if="form.statisticalType === 'CTTP' && w === '3'" label="职业或行业" sortable="custom" key='11'></el-table-column>
+        <el-table-column prop="accountType" min-width="80" v-if="oaccountType" sortable="custom" label="账户类型" key='12'>
+          <template slot-scope="scope">
+              <el-tooltip  effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.accountType}}</div>
+                <span class="tableCell">{{scope.row.accountType}}</span>
+              </el-tooltip>
+          </template>
+        </el-table-column>  
+        <el-table-column prop="largeNumberOfReports" min-width="80" v-if="olargeAmountOfReport" sortable="custom" label="可疑交易报告份数" key='13'></el-table-column>
+        <el-table-column prop="transactionPenNumber" min-width="100" v-if="otransactionPenNumber" sortable="custom" label="可疑交易报告交易笔数" key='15'></el-table-column>
+        <el-table-column prop="largeAmountOfReportStr" min-width="100" v-if="olargeAmountOfReport" label="可疑交易报告总金额(万元)" sortable="custom" key='14'></el-table-column>
+        <el-table-column prop="accountNumber" min-width="110" v-if="oaccountNumber" label="可疑交易报告涉及账户数 " sortable="custom" key='16'></el-table-column>
+        <el-table-column prop="numberOfSubjects" min-width="120" v-if="onumberOfSubjects" label="可疑交易报告涉及主体数" sortable="custom" key='17'></el-table-column>               
+        <el-table-column prop="transactionCharacteristicCode" v-if="oTransactionCharacteristicCode" min-width="80" label="可疑交易特征" key='18'></el-table-column>          
+        <!-- <el-table-column prop="public" min-width="170" v-if="osevc" label="业务种类"></el-table-column> -->
+        <el-table-column prop="moneyFlow" min-width="80" v-if="omoneyFlow" label="资金流向" key='19'></el-table-column>
+        <el-table-column prop="placeOfInflux" min-width="80" v-if="oplaceOfInflux" label="流入流出地" key='20'></el-table-column>
+      </el-table>
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pageInfo.pageNum"
+        :page-sizes="[10, 20, 30, 40]"
+        :page-size="pageInfo.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        background
+      ></el-pagination>
+      <!-- <div v-if="!initType" style="width:100%;height:200px;"></div> -->
+    </el-card>
+
+    <!-- 图表 -->
+    <!-- <el-dialog :visible.sync="statisticalDialog"
+      width="80%" :close-on-click-modal="false">
+      <template slot="title">
+        {{statisticalChart}}
+        <el-radio-group v-model="valueType"
+          @change="changeValueType"
+          :style="{marginLeft:'20px'}">
+          <el-radio-button label="largeNumberOfReports">份数</el-radio-button>
+          <el-radio-button label="largeAmountOfReport">金额</el-radio-button>
+          <el-radio-button label="accountNumber">涉及账户数</el-radio-button>
+          <el-radio-button label="transactionPenNumber">笔数</el-radio-button>
+          <el-radio-button label="numberOfSubjects">涉及交易主题数</el-radio-button>
+        </el-radio-group>
+        <el-radio-group v-model="changeChartTypeDefault"
+          @change="changeChartType"
+          :style="{float: 'right',marginRight:'50px'}">
+          <el-radio-button label="line">线图</el-radio-button>
+          <el-radio-button label="pie">饼图</el-radio-button>
+          <el-radio-button label="histogram">柱状图</el-radio-button>
+        </el-radio-group>
+      </template>
+      <ve-chart :data="chartData"
+        :settings="chartSettings" :toolbox="toolbox" v-if="changeChartTypeDefault==='line' || changeChartTypeDefault==='histogram'" :data-zoom="dataZoom"></ve-chart>
+        <ve-chart :data="chartData"
+        :settings="chartSettings" :toolbox="toolbox" v-else></ve-chart>
+    </el-dialog> -->
+    <graphical :id="id" :dialogTableVisible="dialogTableVisible" :S_TYPES="form.newStatisticalType" :S_NAMES="'可疑交易统计分析 ' + S_NAME" :tablist="list" @setDialog="setDialog"></graphical>
+  </div>
+  <div v-if='!dataPermission||!initPermission' style="height:656px;position: relative;">
+    <div style="position: absolute;left: 50%; top: 50%; transform: translateX(-50%) translateY(-50%);text-align: center">
+      <i v-if='!dataPermission' class="el-icon-warning" style="font-size:65px;color: #E6A23C;"></i>
+      <p v-if='!dataPermission' style="height:40px;font-size:18px;letter-spacing: 2px" >您还未申请数据权限，请到"数据权限管理模块"申请!</p>
+    </div>
+  </div>
+</div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { country } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import VeHistogram from 'v-charts/lib/histogram'
+import Treeselect from '@riophae/vue-treeselect'
+import { mapGetters } from 'vuex'
+import {
+  getRinmList,
+  getList,
+  getSum,
+  // getIndustry,
+  administrativeDivision
+} from '@/api/sys-monitoringAnalysis/statisticForm/sauspicious'
+import {
+  getIndustryFrist,
+  getIndustrySecond,
+  endTimes,
+  getPermission,
+  outputLog
+} from '@/api/sys-monitoringAnalysis/statisticForm/large'
+import graphical from '@/views/sys-monitoringAnalysis/statisticForm/antimoneyAuthority/graphical'
+export default {
+  components: {
+    Treeselect,
+    VeHistogram,
+    graphical
+  },
+  data() {
+    return {
+      downIndustryType: '',
+      allValues: [],
+      dialogTableVisible: false,
+      id: '2',
+      dateRule: 29,
+      pickerMinDate: '',
+      pickerOptions: {
+        // onPick: ({ maxDate, minDate }) => {
+        //   this.pickerMinDate = minDate.getTime()
+        //   if (!maxDate) {
+        //     this.pickerOptions.disabledDate = (time) => {
+        //       var _now = this.pickerMinDate
+        //       var seven = this.dateRule * 24 * 60 * 60 * 1000
+        //       var sevenDays = _now - seven
+        //       var minusSevenDays = _now + seven
+        //       if (this.endTime !== '') {
+        //         const d = new Date(this.endTime)
+        //         return time.getTime() > minusSevenDays || time.getTime() < sevenDays || time.getTime() > d.getTime()
+        //       } else {
+        //         return time.getTime() > minusSevenDays || time.getTime() < sevenDays
+        //       }
+        //     }
+        //   } else {
+        //     this.pickerOptions.disabledDate = (time) => {
+        //       if (this.endTime !== '') {
+        //         const d = new Date(this.endTime)
+        //         return time.getTime() > d.getTime()
+        //       } else {
+        //         return time.getTime() > Date.now()
+        //       }
+        //     }
+        //   }
+        // },
+        disabledDate: (time) => {
+          if (this.endTime !== '') {
+            const d = new Date(this.endTime)
+            return time.getTime() > d.getTime()
+          } else {
+            return time.getTime() > Date.now()
+          }
+        }
+      },
+      loadingTab: false,
+      props: { multiple: true },
+      loadingStr: '',
+      dataPermission: true,
+      initPermission: false,
+      S_NAME: '',
+      w: '',
+      career: '职业或行业',
+      tableClue: ' ',
+      endTime: '',
+      typeDate: [],
+      oldOptions: [],
+      typeShow: false,
+      loading: false,
+      initType: false,
+      loading2: false,
+      public: '',
+      isBlock: false,
+      isShow: false,
+      typeArr: ['line', 'histogram', 'pie'],
+      dataZoom: [
+        {
+          type: 'slider',
+          start: 0,
+          end: 50
+        }
+      ],
+      toolbox: {
+        feature: {
+          saveAsImage: {
+            name: ''
+          }
+        }
+      },
+      chartData: {
+        columns: [],
+        rows: []
+      },
+      changeChartTypeDefault: 'line',
+      chartSettings: {
+        type: 'line',
+        labelMap: {
+          RICD: '报告机构',
+          INDUSTRY: '行业',
+          CRCD: '可疑特征',
+          TRCD: '业务发生地区',
+          CRATPART: '报告金额段',
+          CATP: '账户类型',
+          FINNNAME: '资金流向',
+          largeNumberOfReports: '可疑交易报告份数',
+          largeAmountOfReport: '可疑交易报告金额',
+          accountNumber: '可疑交易报告涉及账户数',
+          transactionPenNumber: '可疑交易报告笔数',
+          numberOfSubjects: '可疑交易报告涉及交易主题数'
+        }
+      },
+      statisticalDialog: false,
+      statisticalChart: '未选择统计类型',
+      valueType: 'largeNumberOfReports',
+      organame: true,
+      ishead: false,
+      countrys: ['CHN', 'Z01', 'Z02', 'Z03'],
+      isRegion: false,
+      corresponding: '',
+      oOrganizationName: true,
+      oIndustryName: true, //  行业名称
+      oTransactionCharacteristicCode: true, //  大额交易特征码
+      oplaceOfBusiness: true, //  业务发生地
+      oreportAmount: true, //   报告金额段
+      oaccountType: true, //  账户类型/账户类别
+      omoneyFlow: true, // 资金流向
+      oplaceOfInflux: true, //   流入流出地
+      olargeNumberOfReports: true, //   大额交易报告份数
+      olargeAmountOfReport: true, //   大额交易报告金额
+      oaccountNumber: true, //  大额交易报告涉及账户数
+      otransactionPenNumber: true, //   大额交易报告交易笔数
+      onumberOfSubjects: true, //   大额交易报告涉及交易主体数
+      otstp: true, // 业务种类
+      otosc: true, // 涉罪类型
+      osevc: true, // 可疑主体职业(对私)或行业(对公)
+      ostcr: true, // 可疑交易特征代码
+      placeShow: false,
+      show: true,
+      natureShow: false,
+      lastlineShow: false,
+      countryData: [],
+      form: {
+        newStatisticalType: '',
+        order: '',
+        sort: '',
+        levelType: '', // 一级类型选择
+        international: '',
+        statisticalType: 'RICD',
+        statisticalTime: [],
+        region: '',
+        country: '',
+        str: [],
+        mechanismType: '',
+        CustomerType: [],
+        tsdr: '',
+        ids: '',
+        area: [],
+        domesticCity: '',
+        Cust: [],
+        nature: ''
+      },
+      formTwo: {},
+      citiesOptions: [], //   地区
+      rinmOptions: [],
+      options: [],
+      list: [],
+      sum: {},
+      multipleSelection: [], // 表格选择项
+      GraphicDisplay: '1', // 样式切换
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      token: getToken(),
+      title: [
+        '分支行所统计的数据范围为：本分支行辖区的法人报告机构所报送的可疑交易报告数据。',
+        '可疑交易报告均统计通过二级校验的数据，即报文的Xml_type取值为新增N/重发R/补报A/补正I，再去除trade_state为待补正(trade_state=2) / 因补正失效(按期)(trade_state=3)/因补正失效(延期)(trade_state=4)/删除前待补正(延期)(trade_state=7)的数量。统计时间段均为落地日期，包含首尾日。',
+        '1、可疑交易报告份数：通过二级校验的报告数COUNT(xml_ID)',
+        '2、可疑交易报告总金额(万元)：统计满足条件报告下的所有交易的总金额sum(CRAT_RMB)',
+        '3、可疑交易报告交易笔数：统计累加报文中的"可疑交易笔数(stnm)"，新三类的均取"可疑交易数量(ttnm)"',
+        '4、可疑交易报告涉及账户数：统计报文内所有交易的交易方的账户总数(去重标准：按账户号与账户类型均相同记为同一账户的规则报文内去重)',
+        '5、可疑交易报告涉及主体数：统计报文中的“可疑主体总数”;(银证保取报文表中的“可疑主体总数(setn))”、支付机构取“可疑主体数量(sctn)”、银联和清算取交易中的交易方的主体数(去重标准：按证件号与姓名均相同记为同一主体的规则报文内去重)'
+      ],
+      formRules: {
+        statisticalType: [{ required: true, message: '请选择统计类型', trigger: 'change' }],
+        statisticalTime: [{ required: true, message: '请选择统计时间', trigger: 'change' }],
+        area: [{ required: true, message: '请选择分支行辖区', trigger: 'change' }],
+        levelType: [{ required: true, message: '请选择义务机构类型', trigger: 'change' }],
+        // Cust: [{ required: true, message: '请选择义务机构类型', trigger: 'change' }],
+        country: [{ required: true, message: '请选择上报网点所在地', trigger: 'change' }],
+        nature: [{ required: true, message: '请选择客户性质', trigger: 'change' }]
+      }
+    }
+  },
+  created() {
+    this.getPermission()
+  },
+  mounted() {
+    this.getData()
+    this.outputLog()
+  },
+  destroyed() {
+    this.$message.closeAll()
+  },
+  computed: {
+    ...mapGetters(['roles']),
+    form_Cust: {
+      get: function() {
+        return this.form.Cust
+      },
+      set: function(val) {
+        this.form.Cust = val
+      }
+    },
+    form_area: {
+      get: function() {
+        return this.form.area
+      },
+      set: function(val) {
+        this.form.area = val
+      }
+    },
+    downLoadURL() {
+      const obj = {
+        starStatisticalTime: this.form.statisticalTime[0],
+        endStatisticalTime: this.form.statisticalTime[1],
+        region: this.form.area.join(','),
+        industryType: this.downIndustryType,
+        mechanismType: this.form.mechanismType,
+        st: this.form.str.join(),
+        tsdr: this.form.tsdr
+      }
+      const arr = []
+      this.multipleSelection.map(function(item) {
+        arr.push(item.rowNum)
+      })
+      obj.ids = arr.join(',')
+      var str = ''
+      for (var key in obj) {
+        str += `${key}=${obj[key]}&`
+      }
+      str = str.substr(0, str.length - 1)
+      return (
+        '/monitor/suspicious/statistics/export?' +
+        str +
+        '&token=' +
+        this.token
+      )
+    }
+  },
+  methods: {
+    outputLog() {
+      outputLog('3').then(res => {
+      })
+    },
+    setDialog(val) {
+      this.dialogTableVisible = val
+    },
+    tabSortChange(column) {
+      if (column.prop === 'reportAmount') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '5'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '5'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'sevc') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '9'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '9'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'oplaceOfBusiness') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '4'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '4'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'largeNumberOfReports') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '10'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '10'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'largeAmountOfReportStr') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '11'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '11'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'transactionPenNumber') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '12'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '12'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'accountNumber') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '13'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '13'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'numberOfSubjects') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '14'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '14'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'industryName') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '2'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '2'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'tosc') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '8'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '8'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'accountType') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '6'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '6'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'stcr') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '3'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '3'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'tstp') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '7'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '7'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'organizationName') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '1'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '1'
+          this.form.sort = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'ricd') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '15'
+          this.form.sort = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.order = '15'
+          this.form.sort = '2'
+          this.getList()
+        }
+      }
+    },
+    // 控制机构类型二级显示
+    isTypeShow() {
+      if (this.form.levelType) {
+        this.form.Cust = []
+        this.typeDate = []
+        getIndustrySecond({ type: this.form.levelType })
+          .then(res => {
+            if (res.code === 200) {
+              this.typeDate = res.data
+              this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+              // const arr = []
+              // this.typeDate.forEach(res => {
+              //   arr.push(res.value)
+              // })
+              // this.form.Cust = arr
+            }
+          })
+      }
+    },
+    getIndustry() {
+      if (this.form.levelType !== '') {
+        var params = { type: this.form.levelType }
+        getIndustrySecond(params).then(res => {
+          if (res.code === 200) {
+            this.typeDate = res.data
+            this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+            if (this.form.Cust.includes('ALL_SELECT')) {
+              this.typeDate.map(item => {
+                if (item.value === 'ALL_SELECT') {
+                  this.form.Cust = ['ALL_SELECT']
+                  item.disabled = false
+                } else {
+                  item.disabled = true
+                }
+              })
+            } else {
+              this.typeDate.map(item => {
+                item.disabled = false
+              })
+            }
+          }
+        })
+      } else {
+        this.typeDate = []
+        this.$message({
+          type: 'success',
+          showClose: true,
+          duration: 6000,
+          message: '请先选择义务机构类型'
+        })
+      }
+    },
+    remoteMethod(query) {
+      if ((this.form.Cust.length > 0 || this.form.levelType !== '') && this.form.area.length > 0) {
+        if (query === '' || query.indexOf('[') !== -1 || query.indexOf(']') !== -1) {
+          this.rinmOptions = []
+        } else {
+          this.loading = true
+          setTimeout(() => {
+            getRinmList(this.form.Cust.join(',') || this.form.levelType, this.form.area.join(','), decodeURI(query))
+              .then(res => {
+                if (res.code === 200) {
+                  this.loading = false
+                  this.rinmOptions = res.data.filter(item => {
+                    return item.rinm.toLowerCase().indexOf(query.toLowerCase()) > -1
+                  })
+                }
+              })
+              .catch()
+          }, 200)
+        }
+      }
+    },
+    listSort(column, prop, order) {
+      console.log(column, 1)
+      console.log(prop, 2)
+      console.log(order, 3)
+    },
+    graphicalDisplay() {
+      if (this.list.length === 0) {
+        this.$message({
+          message: '无可展示数据',
+          showClose: true,
+          duration: 6000,
+          type: 'warning'
+        })
+      } else {
+        this.dialogTableVisible = true
+      }
+    },
+    judgeCountry(value) {
+      if (value === '111') {
+        this.isBlock = true
+        this.isShow = false
+      } else {
+        this.isBlock = false
+        this.isShow = true
+      }
+      this.form.international = ''
+      this.form.domesticCity = []
+      this.$refs.searchForm.clearValidate(['international', 'domesticCity'])
+    },
+    /**
+     * 图表切换
+     */
+    changeChartType(val) {
+      this.changeChartTypeDefault = val
+      this.chartSettings.type = val
+    },
+    /**
+     * 设置图表维度
+     */
+    getViserVue_data(keyType, valueType) {
+      this.chartData.columns = [keyType, valueType]
+    },
+    /**
+     * 获取数据
+     */
+    handlStatisticalChart() {
+      if (this.form.statisticalType === '') {
+        this.$notify({
+          title: '警告',
+          message: '未选择统计类型',
+          type: 'warning',
+          duration: 5000
+        })
+      } else if (this.multipleSelection.length === 0) {
+        this.$notify({
+          title: '警告',
+          message: '您还没有选择任何数据，勾选以展示。',
+          type: 'warning',
+          duration: 5000
+        })
+      } else {
+        // 初始化数据
+        this.chartData.rows = []
+
+        // 设置图标维度
+        this.chartData.columns = [this.form.statisticalType, this.valueType]
+
+        const rowsArr = []
+        // 获取已选择的数据
+        this.multipleSelection.map(function(item) {
+          rowsArr.push({
+            RICD: item.organizationName,
+            INDUSTRY: item.industryName,
+            CRCD: item.transactionCharacteristicCode,
+            TRCD: item.placeOfBusiness,
+            CRATPART: item.reportAmount,
+            CATP: item.accountType,
+            FINNNAME: item.moneyFlow,
+            largeNumberOfReports: item.largeNumberOfReports,
+            largeAmountOfReport: item.largeAmountOfReport,
+            numberOfSubjects: item.numberOfSubjects,
+            transactionPenNumber: item.transactionPenNumber,
+            accountNumber: item.accountNumber
+          })
+        })
+        // 设置数据
+        this.chartData.rows = rowsArr
+
+        // 获取选择的统计类型
+        if (this.form.statisticalType === 'RICD') {
+          this.statisticalChart = '按报告机构统计'
+        } else if (this.form.statisticalType === 'INDUSTRY') {
+          this.statisticalChart = '按行业统计'
+        } else if (this.form.statisticalType === 'CRCD') {
+          this.statisticalChart = '按大额特征统计'
+        } else if (this.form.statisticalType === 'TRCD') {
+          this.statisticalChart = '按业务发生地区统计'
+        } else if (this.form.statisticalType === 'CRATPART') {
+          this.statisticalChart = '按报告金额段统计'
+        } else if (this.form.statisticalType === 'CATP') {
+          this.statisticalChart = '按账户类型统计'
+        } else if (this.form.statisticalType === 'FINNNAME') {
+          this.statisticalChart = '按资金流向统计'
+        }
+
+        this.statisticalDialog = true
+      }
+    },
+    /**
+     * 切换展示维度
+     */
+    changeValueType(val) {
+      this.getViserVue_data(this.form.statisticalType, val)
+    },
+    getData() {
+      endTimes('1').then(res => {
+        if (res.code === 200) {
+          this.endTime = res.data
+          // const arr = this.endTime.split('-')
+          // var startTime = arr[0] + '-' + arr[1] + '-' + '01'
+          // this.form.statisticalTime = [startTime, this.endTime]
+        }
+      })
+      // 获取省份
+      country()
+        .then(res => {
+          if (res.code === 200) {
+            this.countryData = res.data.list
+          }
+        })
+        .catch(() => {})
+      // getIndustry()
+      //   .then(res => {
+      //     if (res.code === 200) {
+      //       this.options = res.data
+      //     }
+      //   })
+      //   .catch(() => {})
+      getIndustryFrist()
+        .then(res => {
+          if (res.code === 200) {
+            this.options = res.data
+            this.form.levelType = 'B'
+            var params = { type: this.form.levelType }
+            getIndustrySecond(params)
+              .then(res => {
+                if (res.code === 200) {
+                  this.typeDate = res.data
+                  this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+                  // const arr = []
+                  // this.typeDate.forEach(res => {
+                  //   arr.push(res.value)
+                  // })
+                  // this.form.Cust = arr
+                }
+              })
+          }
+        })
+        .catch(() => {})
+      administrativeDivision({ type: 'KYJYTJFX' })
+        .then(res => {
+          if (res.code === 200) {
+            this.citiesOptions = res.data
+            const arr = []
+            this.citiesOptions.forEach(res => {
+              if (res.id) {
+                res.value = res.id
+                delete res.id
+              }
+              if (res.children) {
+                for (let i = 0; i < res.children.length; i++) {
+                  if (res.children[i].id) {
+                    res.children[i].value = res.children[i].id
+                    delete res.children[i].id
+                  }
+                  arr.push([res.value, res.children[i].value])
+                }
+              }
+              if (!res.children) {
+                arr.push([res.value])
+              }
+            })
+            this.form.area = arr
+          }
+        })
+        .catch()
+    },
+    areaFormat(area) {
+      var areaArr = []
+      var region = ''
+      if (this.form.area.length > 0) {
+        if (this.citiesOptions[0].children && area.length === this.citiesOptions[0].children.length) {
+          areaArr.push('all')
+        } else {
+          area.forEach(res => {
+            for (let i = 0; i < res.length; i++) {
+              if (res[i] === 'all') {
+                res.splice(i, 1)
+              }
+              areaArr.push(res[0])
+            }
+          })
+        }
+        region = areaArr.join(',')
+      } else {
+        region = ''
+      }
+      return region
+    },
+    getList() {
+      this.formTwo = Object.assign({}, this.form)
+      this.list = []
+      this.tableClue = ' '
+      const startDate = this.form.statisticalTime[0].split('-')
+      if (startDate[1] < 10) {
+        startDate[1] = '0' + Number(startDate[1])
+        this.form.statisticalTime[0] = startDate.join('-')
+      }
+      const endDate = this.form.statisticalTime[1].split('-')
+      if (endDate[1] < 10) {
+        endDate[1] = '0' + Number(endDate[1])
+        this.form.statisticalTime[1] = endDate.join('-')
+      }
+      const obj = JSON.parse(JSON.stringify(this.form))
+      obj.region = this.areaFormat(this.form.area)
+      obj.str = obj.str.join(',')
+      obj.order = this.form.order
+      obj.sort = this.form.sort
+      if (this.form.Cust.length === 0) {
+        obj.industryType = this.form.levelType
+      } else {
+        if (this.form.Cust.includes('ALL_SELECT')) {
+          obj.industryType = this.allValues
+        } else {
+          obj.industryType = this.form.Cust
+        }
+        obj.industryType = obj.industryType.join(',')
+      }
+      this.downIndustryType = obj.industryType
+      obj.region = obj.region.toString()
+      obj.CustomerType = obj.nature
+      if (this.form.country !== '') {
+        if (this.form.country === '111') {
+          obj.mechanismType = this.form.international + '000000'
+        } else {
+          const arr = []
+          this.form.domesticCity.forEach(element => {
+            arr.push(obj.country + element)
+          })
+          obj.mechanismType = arr.join(',')
+        }
+      }
+      getList(obj, this.pageInfo)
+        .then(res => {
+          // this.initType = false
+          if (res) {
+            if (res.code === 200) {
+              this.loadingTab = false
+              this.loading2 = false
+              this.meterCntroller()
+              this.list = res.data.list
+              if (this.list.length > 0) {
+                this.initType = true
+              } else {
+                this.tableClue = '暂无数据'
+                this.$alert('暂无数据', '提示', {
+                  confirmButtonText: '确定'
+                })
+              }
+              for (var i = 0; i < this.list.length; i++) {
+                this.list[i].index = i + 1
+              }
+              if (obj.num) {
+                this.total = obj.num
+              } else {
+                this.total = res.data.total
+              }
+            } else {
+              this.loadingTab = false
+              this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+                .then(() => {})
+                .catch(() => {})
+            }
+          } else {
+            this.loadingTab = false
+            this.loading2 = false
+          }
+        })
+        .catch()
+    },
+    getSum() {
+      this.sum = ''
+      const startDate = this.form.statisticalTime[0].split('-')
+      if (startDate[1] < 10) {
+        startDate[1] = '0' + Number(startDate[1])
+        this.form.statisticalTime[0] = startDate.join('-')
+      }
+      const endDate = this.form.statisticalTime[1].split('-')
+      if (endDate[1] < 10) {
+        endDate[1] = '0' + Number(endDate[1])
+        this.form.statisticalTime[1] = endDate.join('-')
+      }
+      const obj = JSON.parse(JSON.stringify(this.form))
+      obj.region = this.areaFormat(this.form.area)
+      obj.str = obj.str.join(',')
+      obj.order = this.form.order
+      obj.sort = this.form.sort
+      if (this.form.Cust.length === 0) {
+        obj.industryType = this.form.levelType
+      } else {
+        if (this.form.Cust.includes('ALL_SELECT')) {
+          obj.industryType = this.allValues
+        } else {
+          obj.industryType = this.form.Cust
+        }
+        obj.industryType = obj.industryType.join(',')
+      }
+      obj.region = obj.region.toString()
+      obj.CustomerType = obj.nature
+      if (this.form.country !== '') {
+        if (this.form.country === '111') {
+          obj.mechanismType = this.form.international + '000000'
+        } else {
+          const arr = []
+          this.form.domesticCity.forEach(element => {
+            arr.push(obj.country + element)
+          })
+          obj.mechanismType = arr.join(',')
+        }
+      }
+      getSum(obj, this.pageInfo).then(res => {
+        if (res.code === 200) {
+          this.sum = res.data
+        }
+      })
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleQury() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading2 = true
+          this.form.newStatisticalType = this.form.statisticalType
+          if (this.form.statisticalType === 'RICD') {
+            this.S_NAME = '按报告机构统计的'
+          } else if (this.form.statisticalType === 'INDUSTRY') {
+            this.S_NAME = '按行业统计的'
+          } else if (this.form.statisticalType === 'STCR') {
+            this.S_NAME = '按可疑特征统计的'
+          } else if (this.form.statisticalType === 'TRCD') {
+            this.S_NAME = '按上报网点所在地统计的'
+          } else if (this.form.statisticalType === 'CRATPART') {
+            this.S_NAME = '按报告金额段统计的'
+          } else if (this.form.statisticalType === 'CATP') {
+            this.S_NAME = '按账户类型统计的'
+          } else if (this.form.statisticalType === 'TSTP') {
+            this.S_NAME = '按业务种类统计的'
+          } else if (this.form.statisticalType === 'TOSC') {
+            this.S_NAME = '按渉罪类型统计的'
+          } else if (this.form.statisticalType === 'CTTP') {
+            this.S_NAME = '按客户职业或行业统计的'
+          }
+          this.form.sort = ''
+          this.form.order = ''
+          this.getList()
+          this.getSum()
+        } else {
+          return false
+        }
+      })
+    },
+    // 批量导出
+    exportStatistics() {
+      for (var i = 0; i < this.multipleSelection.length; i++) {
+        if (this.multipleSelection[i].rowNum == null) {
+          this.multipleSelection.splice(i, 1)
+        }
+      }
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$message({
+          type: 'warning',
+          showClose: true,
+          duration: 6000,
+          message: '请至少选择一条导出数据'
+        })
+      } else {
+        const ids = this.multipleSelection
+          .map(function(item) {
+            return item.rowNum
+          })
+          .toString()
+        if (ids) {
+          const obj = JSON.parse(JSON.stringify(this.formTwo))
+          obj.region = this.areaFormat(this.formTwo.area)
+          obj.order = this.formTwo.order
+          obj.sort = this.formTwo.sort
+          // obj.str = obj.str.join(',')
+          if (this.formTwo.Cust.length > 0) {
+            obj.industryType = this.formTwo.Cust
+            obj.industryType = this.downIndustryType
+          } else {
+            obj.industryType = this.formTwo.levelType
+          }
+          obj.region = obj.region.toString()
+          obj.CustomerType = obj.nature
+          if (this.formTwo.country !== '') {
+            if (this.formTwo.country === '111') {
+              obj.mechanismType = this.formTwo.international + '000000'
+            } else {
+              const arr = []
+              this.formTwo.domesticCity.forEach(element => {
+                arr.push(obj.country + element)
+              })
+              obj.mechanismType = arr.join(',')
+            }
+          }
+
+          obj.ids = ids
+          location.href =
+            '/monitor/suspicious/statistics/export?statisticalType=' +
+            obj.statisticalType +
+            '&starStatisticalTime=' +
+            obj.statisticalTime[0] +
+            '&endStatisticalTime=' +
+            obj.statisticalTime[1] +
+            '&region=' +
+            obj.region +
+            '&CustomerType=' +
+            obj.CustomerType +
+            '&industryType=' +
+            obj.industryType +
+            '&mechanismType=' +
+            obj.mechanismType +
+            '&st=' +
+            obj.str +
+            '&tsdr=' +
+            obj.tsdr +
+            '&ids=' +
+            obj.ids +
+            '&order=' +
+            obj.order +
+            '&sort=' +
+            obj.sort +
+            '&token=' +
+            this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    // 全部导出
+    exportAll() {
+      if (this.list.length > 0) {
+        this.$confirm('此操作将导出此统计条件下的所有数据, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+          .then(() => {
+            // this.$message({
+            //   type: 'success',
+            //   message: '导出成功!'
+            // })
+            const obj = JSON.parse(JSON.stringify(this.formTwo))
+            obj.region = this.areaFormat(this.formTwo.area)
+            obj.order = this.formTwo.order
+            obj.sort = this.formTwo.sort
+            if (this.formTwo.Cust.length > 0) {
+              obj.industryType = this.formTwo.Cust
+              obj.industryType = this.downIndustryType
+            } else {
+              obj.industryType = this.formTwo.levelType
+            }
+            obj.region = obj.region.toString()
+            obj.CustomerType = obj.nature
+            if (this.formTwo.country !== '') {
+              if (this.formTwo.country === '111') {
+                obj.mechanismType = this.formTwo.international + '000000'
+              } else {
+                const arr = []
+                this.formTwo.domesticCity.forEach(element => {
+                  arr.push(obj.country + element)
+                })
+                obj.mechanismType = arr.join(',')
+              }
+            }
+            location.href =
+              '/monitor/suspicious/statistics/all?statisticalType=' +
+              obj.statisticalType +
+              '&starStatisticalTime=' +
+              obj.statisticalTime[0] +
+              '&endStatisticalTime=' +
+              obj.statisticalTime[1] +
+              '&region=' +
+              obj.region +
+              '&CustomerType=' +
+              obj.CustomerType +
+              '&industryType=' +
+              obj.industryType +
+              '&mechanismType=' +
+              obj.mechanismType +
+              '&st=' +
+              obj.str +
+              '&tsdr=' +
+              obj.tsdr +
+              '&order=' +
+              obj.order +
+              '&sort=' +
+              obj.sort +
+              '&token=' +
+              this.token
+          })
+          .catch(() => {
+            this.$message({
+              type: 'warning',
+              message: '已取消导出'
+            })
+          })
+      } else {
+        this.$message({
+          type: 'warning',
+          showClose: true,
+          duration: 6000,
+          message: '无可导出数据'
+        })
+      }
+    },
+    // 如果没有选地区 和 行业的时候 提醒
+    // getDivision() {
+    //   if (this.form.area.length === 0 && this.form.Cust.length !== 0) {
+    //     this.$message({
+    //       message: '请选择分支行辖区',
+    //       type: 'success'
+    //     })
+    //   }
+    //   if (this.form.Cust.length === 0 && this.form.area.length !== 0) {
+    //     this.$message({
+    //       message: '请选择义务机构类型',
+    //       type: 'success'
+    //     })
+    //   }
+    //   if (this.form.Cust.length === 0 && this.form.area.length === 0) {
+    //     this.$message({
+    //       message: '请选择分支行辖区和机构类型',
+    //       type: 'success'
+    //     })
+    //   }
+    // },
+    getMechanism(val) {
+      const category = []
+      category.push('B')
+      category.push('I')
+      getRinmList(this.form.CustomerType.join(','))
+        .then(res => {
+          if (res.code === 200) {
+            this.rinmOptions = res.data
+          } else {
+            this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+              .then(() => {})
+              .catch(() => {})
+          }
+        })
+        .catch()
+    },
+    //  表头控制方法
+    meterCntroller() {
+      if (this.w === '1') {
+        this.career = '职业'
+      } else {
+        this.career = '行业'
+      }
+      this.organame = true
+      this.ishead = true
+      this.oOrganizationName = true //   金融机构名称
+      this.oIndustryName = false //   行业名称
+      this.oTransactionCharacteristicCode = true //   大额交易特征码
+      this.oplaceOfBusiness = true //   业务发生地
+      this.oreportAmount = true //   报告金额段
+      this.oaccountType = true //   账户类型/账户类别
+      this.omoneyFlow = true //   资金流向
+      this.oplaceOfInflux = true //   流入流出地
+      this.olargeNumberOfReports = true //   大额交易报告份数
+      this.olargeAmountOfReport = true //   大额交易报告金额
+      this.oaccountNumber = true //   大额交易报告涉及账户数
+      this.otransactionPenNumber = true //   大额交易报告交易笔数
+      this.onumberOfSubjects = true //   大额交易报告涉及交易主体数
+      this.placeShow = false
+      this.natureShow = false
+      this.otstp = true // 业务种类
+      this.otosc = true // 涉罪类型
+      this.osevc = true // 可疑主体职业(对私)或行业(对公)
+      this.ostcr = true // 可疑交易特征代码
+      if (this.form.statisticalType === 'RICD') {
+        this.oIndustryName = true //   行业名称
+        this.oTransactionCharacteristicCode = false //   大额交易特征码
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.oaccountType = false //  账户类型/账户类别
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'INDUSTRY') {
+        this.organame = false
+        this.oIndustryName = true //   行业名称
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.oaccountType = false //  账户类型/账户类别
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'CRCD') {
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.oaccountType = false //  账户类型/账户类别
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'TRCD') {
+        this.placeShow = true
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oreportAmount = false //  报告金额段
+        this.oaccountType = false //  账户类型/账户类别
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'CRATPART') {
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oaccountType = false //  账户类型/账户类别
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'CATP') {
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'FINNNAME') {
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.oaccountType = false //  账户类型/账户类别
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'CTTP') {
+        // 可疑主体职业(对私)或行业(对公)
+        this.natureShow = true
+        this.olargeAmountOfReport = true
+        this.oIndustryName = false //   行业名称
+        this.oaccountType = false //  账户类型/账户类别
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.otosc = false // 涉罪类型
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'TOSC') {
+        // 涉嫌犯罪类型
+        this.oaccountType = false //  账户类型/账户类别
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otstp = false // 业务种类
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'TSTP') {
+        // 业务种类统计
+        this.oaccountType = false //  账户类型/账户类别
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.ostcr = false // 可疑交易特征代码
+      } else if (this.form.statisticalType === 'STCR') {
+        this.oaccountType = false //  账户类型/账户类别
+        // 可疑交易特征
+        this.oOrganizationName = false //   金融机构名称"></el-table-column>
+        this.oIndustryName = false //  大额交易报告涉及交易主体数
+        this.oTransactionCharacteristicCode = false //  大额交易报告涉及交易主体数
+        this.oplaceOfBusiness = false //  业务发生地
+        this.oreportAmount = false //  报告金额段
+        this.omoneyFlow = false //  资金流向
+        this.oplaceOfInflux = false //  流入流出地
+        this.otosc = false // 涉罪类型
+        this.osevc = false // 可疑主体职业(对私)或行业(对公)
+        this.otstp = false // 业务种类
+      }
+    },
+    //   查询条件清空
+
+    clearForm() {
+      this.clearData()
+      this.$nextTick(function() {
+        this.$refs.searchForm.clearValidate()
+      })
+      this.form.statisticalType = ''
+      this.isShow = false
+      this.isBlock = false
+      this.placeShow = false
+      this.natureShow = false
+      this.list = []
+      this.initType = false
+      this.total = 0
+    },
+    // 重置所选值
+    clearData() {
+      this.$nextTick(function() {
+        this.$refs.searchForm.clearValidate()
+      })
+      // this.form.statisticalType = ''
+      this.career = '职业或行业'
+      this.form.statisticalTime = ''
+      this.form.area = []
+      this.form.Cust = []
+      this.form.country = ''
+      this.form.international = ''
+      this.form.domesticCity = ''
+      this.form.str = []
+      this.form.nature = ''
+      this.form.num = ''
+      this.show = true
+      this.lastlineShow = false
+      this.placeShow = false
+      this.natureShow = false
+      this.form.levelType = ''
+      this.typeShow = false
+    },
+    handleChange() {
+      this.list = []
+      this.initType = false
+      this.total = 0
+      this.$nextTick(function() {
+        this.$refs.searchForm.clearValidate()
+      })
+      this.clearData()
+      this.form.levelType = 'B'
+      const arr = []
+      this.citiesOptions.forEach(res => {
+        if (res.id) {
+          res.value = res.id
+          delete res.id
+        }
+        if (res.children) {
+          for (let i = 0; i < res.children.length; i++) {
+            if (res.children[i].id) {
+              res.children[i].value = res.children[i].id
+              delete res.children[i].id
+            }
+            arr.push([res.value, res.children[i].value])
+          }
+        }
+        if (!res.children) {
+          arr.push([res.value])
+        }
+      })
+      this.form.area = arr
+      // this.$refs.searchForm.clearValidate(['statisticalTime'])
+      this.$refs.searchForm.clearValidate()
+      this.corresponding = this.form.statisticalType
+      if (this.form.statisticalType === 'INDUSTRY') {
+        this.show = false
+      } else {
+        this.show = true
+      }
+      if (this.form.statisticalType === 'TSTP') {
+        this.lastlineShow = true
+      } else {
+        this.lastlineShow = false
+      }
+      if (this.form.statisticalType === 'TRCD') {
+        this.placeShow = true
+      } else {
+        this.placeShow = false
+      }
+      if (this.form.statisticalType === 'CTTP') {
+        this.w = '3'
+        this.natureShow = true
+      } else {
+        this.natureShow = false
+      }
+    },
+    clientType() {
+      if (this.form.nature === '0') {
+        this.w = '1'
+      } else {
+        this.w = '2'
+      }
+    },
+    handleFocus() {
+      if (this.countrys.indexOf(this.form.country)) this.isRegion = true
+    },
+    handleCheckChange(data, checked, indeterminate) {
+      const list = this.$refs.tree.getCheckedKeys()
+      const au = ',' + this.form.country
+      this.form.mechanismType = this.form.country + list.join(au)
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.loadingStr = '正在统计中，请稍候……'
+      this.loadingTab = true
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.loadingStr = '正在统计中，请稍候……'
+      this.loadingTab = true
+      this.getList()
+    },
+    changeOptions(val) {
+      this.allValues = []
+      // 保留所有值
+      for (const item of this.typeDate) {
+        this.allValues.push(item.value)
+      }
+      if (this.form.Cust.includes('ALL_SELECT')) {
+        this.typeDate.map(item => {
+          if (item.value === 'ALL_SELECT') {
+            this.form.Cust = ['ALL_SELECT']
+            item.disabled = false
+          } else {
+            item.disabled = true
+          }
+        })
+      } else {
+        this.typeDate.map(item => {
+          item.disabled = false
+        })
+      }
+      // 用来储存上一次的值，可以进行对比
+      // const oldVal = this.oldOptions.length === 1 ? this.oldOptions[0] : []
+
+      // 若是全部选择
+      // if (val.includes('ALL_SELECT')) this.form.Cust = allValues
+
+      // 取消全部选中 上次有 当前没有 表示取消全选
+      // if (oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) this.form.Cust = []
+
+      // 点击非全部选中 需要排除全部选中 以及 当前点击的选项
+      // 新老数据都有全部选中
+      // if (oldVal.includes('ALL_SELECT') && val.includes('ALL_SELECT')) {
+      //   const index = val.indexOf('ALL_SELECT')
+      //   val.splice(index, 1) // 排除全选选项
+      //   this.form.Cust = val
+      // }
+
+      // 全选未选 但是其他选项全部选上 则全选选上 上次和当前 都没有全选
+      // if (!oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) {
+      //   if (val.length === allValues.length - 1) this.form.Cust = ['ALL_SELECT'].concat(val)
+      // }
+
+      // 储存当前最后的结果 作为下次的老数据
+      // this.oldOptions[0] = this.form.Cust
+    },
+    clearOptions() {
+      this.typeDate = []
+      this.form.Cust = []
+    },
+    getPermission() {
+      getPermission().then(res => {
+        if (this.roles === 'branch' && !res.data.includes('KYJYTJFX')) {
+          this.dataPermission = false
+        }
+        this.initPermission = true
+      })
+    }
+  },
+  watch: {
+    form_Cust: function(val) {
+      this.form.str = []
+      this.rinmOptions = []
+    },
+    form_area: function(val) {
+      this.form.str = []
+      this.rinmOptions = []
+    }
+  }
+}
+</script>
+
+<style src="@riophae/vue-treeselect/dist/vue-treeselect.min.css"></style>
+<style lang="scss">
+
+.tableCell{
+    text-align: left; 
+    overflow:hidden; 
+    white-space: nowrap; 
+    text-overflow:ellipsis;
+}
+
+.el-cascader-menu{
+min-width: 270px !important;
+}
+
+.vue-treeselect__menu {
+  z-index: 2999 !important;
+}
+.statisticsuspicious {
+  .el-cascader__tags .el-tag > span{
+    -webkit-box-flex:1;
+    -ms-flex:none;
+    flex:none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .multiple_select {
+    .el-select {
+      width: 100%;
+    }
+  }
+  .title {
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .addtype {
+    .el-form-item__label {
+      padding-right: 0;
+    }
+  }
+  .btnalign {
+    text-align: right;
+    margin-bottom: 15px;
+  }
+  .custOptions > div{
+    word-break:normal;
+    display:block;
+    white-space:pre-wrap;
+    overflow:hidden;
+  }
+  .el-select__input.is-small{
+    width: 100% !important;
+  }
+  .el-table thead tr th>.cell{
+    white-space:normal !important;
+  } 
+}
+</style>

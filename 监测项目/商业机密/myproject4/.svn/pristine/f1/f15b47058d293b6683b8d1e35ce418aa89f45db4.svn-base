@@ -1,0 +1,617 @@
+<template>
+  <div class="wait-handle">
+    <el-form ref="remainFormRef" class="waitRemain" :model="remainForm" label-width="152px">
+      <div v-if="branckUserWait === 'branch'">
+        <template>
+          <el-row>
+            <!-- <el-col :span="6">
+              <el-form-item label="联合分析流程">
+                <template>
+                  <span>(共计：{{remainForm.jointAnalysis}})</span>
+                </template>
+              </el-form-item>
+            </el-col>
+            <el-col :span="6">
+                <el-form-item label="行政调查管理">
+                  <template>
+                    <span>(共计：{{remainForm.adm}})</span>
+                  </template>
+                </el-form-item>
+            </el-col> -->
+            <el-col :span="6">
+                <el-form-item label="上报分析申请">
+                  <template>
+                    <span>(共计：{{remainForm.reportLeads}})</span>
+                  </template>
+                </el-form-item>
+            </el-col>
+            <el-col :span="6">
+                <el-form-item label="跨区域数据申请">
+                  <template>
+                    <span>(共计：{{remainForm.specialApply}})</span>
+                  </template>
+                </el-form-item>
+            </el-col>
+            <el-col :span="6">
+                <el-form-item label="跨境协查申请">
+                  <template>
+                    <span>(共计：{{remainForm.crossbrApply}})</span>
+                  </template>
+                </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
+      </div>
+      <div v-if="branckUserWait !== 'branch'">
+        <template v-if="toggleSearch">
+          <el-row>
+          <el-col :span="5">
+            <el-form-item label="排名规则预警" >
+              <template>
+                <span>(共计：{{remainForm.rankingRules}})</span>
+              </template>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5">
+            <el-form-item label="模型预警">
+              <template>
+                <span>(共计：{{remainForm.modelQuery}})</span>
+              </template>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5">
+            <el-form-item label="高级名单预警">
+              <template>
+                <span>(共计：{{remainForm.seniorListWarnQuery}})</span>
+              </template>
+            </el-form-item>
+          </el-col>
+          <el-col :span="4">
+            <el-button type="text" style="padding: 7px" icon="el-icon-arrow-down" @click="toggleSearch=false">展开</el-button>
+          </el-col>
+          </el-row>
+        </template>
+        <template v-else>
+            <el-row>
+              <el-col :span="6">
+                <el-form-item label="排名规则预警" >
+                  <template>
+                    <span>(共计：{{remainForm.rankingRules}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="模型预警">
+                  <template>
+                    <span>(共计：{{remainForm.modelQuery}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="高级名单预警">
+                  <template>
+                    <span>(共计：{{remainForm.seniorListWarnQuery}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="高级名单预警任务审批">
+                  <template>
+                    <span>(共计：{{remainForm.seniorListWarnJob}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+            <!-- </el-row>
+            <el-row> -->
+              <el-col :span="6">
+                  <el-form-item label="数据录入">
+                    <template>
+                      <span>(共计：{{remainForm.inputafter}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="自主分析流程">
+                  <template>
+                    <span>(共计：{{remainForm.InAnalysis}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="境内协查类文件流程">
+                  <template>
+                    <span>(共计：{{remainForm.AnalysisFile}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="境内情报类文件流程">
+                  <template>
+                    <span>(共计：{{remainForm.IntelliFile}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+            <!-- </el-row>
+            <el-row> -->
+              <el-col :span="6">
+                  <el-form-item label="名单预警任务审批">
+                    <template>
+                      <span>(共计：{{remainForm.listWarnJob}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="国际协查报行领导">
+                  <template>
+                    <span>(共计：{{remainForm.interHangQingbao}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="国际协查报中心领导" >
+                  <template>
+                    <span>(共计：{{remainForm.gjzhongxin}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="联合分析流程">
+                  <template>
+                    <span>(共计：{{remainForm.jointAnalysis}})</span>
+                  </template>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row>
+              <el-col :span="6">
+                  <el-form-item label="行政调查管理">
+                    <template>
+                      <span>(共计：{{remainForm.adm}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="宏观分析报告审批">
+                    <template>
+                      <span>(共计：{{remainForm.mpReportManagement}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="上报分析申请">
+                    <template>
+                      <span>(共计：{{remainForm.reportLeads}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="规则删除">
+                    <template>
+                      <span>(共计：{{remainForm.ruleDeletion}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+            <!-- </el-row> -->
+            <!-- <el-row> -->
+              <el-col :span="6">
+                  <el-form-item label="国际协查提请">
+                    <template>
+                      <span>(共计：{{remainForm.interXiecha}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+                <el-col :span="6">
+                  <el-form-item label="数据清理审批">
+                    <template>
+                      <span>(共计：{{remainForm.planApproval}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="信息补充通知审批">
+                    <template>
+                      <span>(共计：{{remainForm.supplyCorrect}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="举报处理">
+                    <template>
+                      <span>(共计：{{remainForm.fillReport}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+            <!-- </el-row>
+            <el-row> -->
+              <el-col :span="6">
+                  <el-form-item label="敏感人物审批">
+                    <template>
+                      <span>(共计：{{remainForm.sensitivePersons}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="跨区域数据申请">
+                    <template>
+                      <span>(共计：{{remainForm.specialApply}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="跨境协查申请">
+                  <template>
+                    <span>(共计：{{remainForm.crossbrApply}})</span>
+                  </template>
+                </el-form-item>
+            </el-col>
+              <el-col :span="6">
+                  <el-form-item label="规则禁用">
+                    <template>
+                      <span>(共计：{{remainForm.ruleDisable}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="规则启动">
+                    <template>
+                      <span>(共计：{{remainForm.ruleStart}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+            <!-- </el-row>
+            <el-row> -->
+              <el-col :span="6">
+                  <el-form-item label="规则添加">
+                    <template>
+                      <span>(共计：{{remainForm.ruleAdd}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="定点监测审批">
+                    <template>
+                      <span>(共计：{{remainForm.point}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="大额信息补正">
+                    <template>
+                      <span>(共计：{{remainForm.correctApproval}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="可疑信息更正">
+                    <template>
+                      <span>(共计：{{remainForm.suspectCorrect}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+            <!-- </el-row>
+            <el-row> -->
+              <el-col :span="6">
+                  <el-form-item label="数据迁移">
+                    <template>
+                      <span>(共计：{{remainForm.dataLifeCycleManage}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                  <el-form-item label="可疑交易报告预警">
+                    <template>
+                      <span>(共计：{{remainForm.findByReportDispose}})</span>
+                    </template>
+                  </el-form-item>
+              </el-col>
+          </el-row>
+          <div style="text-align:right; margin-bottom:10px">
+            <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch=true">收起</el-button>
+          </div>
+        </template>
+      </div>
+    </el-form>
+    <el-row>
+      <el-col :span="24" style="text-align: right;">
+        <el-form :model="form" ref="searchForm" :rules="searchRules" :inline="true">
+        <el-form-item label="标题：" prop="title" label-width="60px">
+          <el-input v-model="form.title"></el-input>
+        </el-form-item>
+        <el-form-item label="接收日期：" label-width="100px">
+          <el-date-picker v-model="form.date" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+          </el-date-picker>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="searchData">查 询</el-button>
+          <el-button type="primary" plain @click="clearSearchData">清 空</el-button>
+        </el-form-item>
+      </el-form>
+      </el-col>
+    </el-row>
+    <el-table style="width: 100%;margin-top:10px" :data="tableData" tooltip-effect="dark">
+      <el-table-column type="index" label="序号" width="80"></el-table-column>
+      <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip>
+
+      </el-table-column>
+      <el-table-column prop="createtime" label="接收日期">
+        <template slot-scope="scope">
+          {{scope.row.createtime}} <!-- | formatTime('{y}-{m}-{d} {h}:{m}:{s}')-->
+        </template>
+      </el-table-column>
+      <!-- <el-table-column prop="creatorName" label="申请人"></el-table-column>
+      <el-table-column prop="senderNames" label="发送人"></el-table-column> -->
+      <el-table-column prop="workitemName" label="环节名称" show-overflow-tooltip></el-table-column>
+
+      <el-table-column prop="option" label="操作" width="180">
+        <template slot-scope="scope">
+          <router-link :to="{name:'monitoringAnalysisWorkFlow',query:{
+            proInstId: scope.row.proInstId,
+            workitemId: scope.row.workitemId,
+            workitemName: scope.row.workitemName,
+            actInstId: scope.row.actInstId,
+            actDefId: scope.row.actDefId,
+            pkgId: scope.row.pkgId,
+            readType:'todo',
+            roleType:'todo'
+
+          }}">
+            <el-button type="text" @click="setSess">处理</el-button>
+          </router-link>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-pagination v-if="pageInfo.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total">
+    </el-pagination>
+  </div>
+</template>
+<script>
+import { operatPlatform, tallPlatform } from '@/api/sys-monitoringAnalysis/workFlow/index.js'
+import { formatTime } from '@/utils'
+import { mapGetters } from 'vuex'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  component() {
+    formatTime
+  },
+  data() {
+    return {
+      form: {
+        title: null,
+        date: null,
+        readType: 'todo'
+      },
+      remainForm: {
+        dataLifeCycleManage: '0',
+        findByReportDispose: '0',
+        rankingRules: '0',
+        modelQuery: '0',
+        seniorListWarnQuery: '0',
+        seniorListWarnJob: '0',
+        inputafter: '0',
+        InAnalysis: '0',
+        AnalysisFile: '0',
+        IntelliFile: '0',
+        listWarnJob: '0',
+        interHangQingbao: '0',
+        gjzhongxin: '0',
+        jointAnalysis: '0',
+        adm: '0',
+        mpReportManagement: '0',
+        reportLeads: '0',
+        interXiecha: '0',
+        supplyCorrect: '0',
+        specialApply: '0',
+        crossbrApply: '0',
+        ruleDisable: '0',
+        ruleStart: '0',
+        ruleAdd: '0',
+        point: '0',
+        correctApproval: '0',
+        suspectCorrect: '0',
+        fillReport: '0',
+        planApproval: '0',
+        ruleDeletion: '0',
+        sensitivePersons: '0'
+      },
+      toggleSearch: true,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: null
+      },
+      tableData: [],
+      branckUserWait: '',
+      objInfo: {}, // 分页中间量
+      searchRules: {
+        title: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  filters: {
+    formatTime(date, option) {
+      return formatTime(date, option)
+    }
+  },
+  computed: {
+    ...mapGetters([
+      //   'name',
+      'roles'
+    ]),
+    paramsObj() {
+      const obj = Object.assign({}, this.form)
+      delete obj.date
+      delete obj.total
+      if (this.form.date) {
+        obj.startTime = this.form.date[0]
+        obj.endTime = this.form.date[1]
+      } else {
+        obj.startTime = ''
+        obj.endTime = ''
+      }
+      return obj
+    }
+    // paramsObj: function() {
+    //   return {
+    //     pageSize: this.pageInfo.pageSize,
+    //     pageNum: this.pageInfo.pageNum,
+    //     title: this.form.title ? this.form.title : '',
+    //     startTime: this.form.date ? this.form.date[0] : '',
+    //     endTime: this.form.date ? this.form.date[1] : '',
+    //     readType: 'todo'
+    //   }
+    // }
+  },
+  mounted() {
+    this.branckUserWait = this.roles
+    if (sessionStorage.getItem('xtfWait') !== null) {
+      this.getSeeion()
+    } else {
+      this.searchData()
+    }
+  },
+  methods: {
+    setSess() {
+      this.setSeeion()
+    },
+    getSeeion() {
+      console.log(sessionStorage.getItem('xtfWait'))
+      const xtfSessionChuLi = JSON.parse(sessionStorage.getItem('xtfWait'))
+      this.objInfo.title = xtfSessionChuLi[0].title
+      this.form.title = xtfSessionChuLi[0].title
+      this.form.date = xtfSessionChuLi[0].date
+      this.objInfo.startTime = xtfSessionChuLi[0].startTime
+      this.objInfo.endTime = xtfSessionChuLi[0].endTime
+      this.pageInfo.pageNum = xtfSessionChuLi[0].pageNum
+      this.pageInfo.pagesize = xtfSessionChuLi[0].pagesize
+      this.searchDataSess()
+      this.sessionStorageClear()
+      // this.$$nextTick(() => {
+      //   this.sessionStorageClear()
+      // })
+    },
+    setSeeion() {
+      const sess = [{
+        title: this.objInfo.title ? this.objInfo.title : '',
+        date: this.form.date,
+        startTime: this.objInfo.startTime ? this.objInfo.startTime : '',
+        endTime: this.objInfo.endTime ? this.objInfo.endTime : '',
+        pageNum: this.objInfo.pageNum,
+        pagesize: this.objInfo.pagesize
+      }]
+      console.log(sess)
+      sessionStorage.setItem('xtfWait', JSON.stringify(sess))
+    },
+    sessionStorageClear() {
+      sessionStorage.removeItem('xtfWait')
+    },
+    searchDataSess() {
+      this.fetchData()
+    },
+    //
+    searchData() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.pageInfo.total = 0
+          this.objInfo = Object.assign({}, this.paramsObj, this.pageInfo)
+          this.fetchData()
+        }
+      })
+    },
+    // 重置
+    clearSearchData() {
+      this.form = {
+        title: null,
+        date: null,
+        readType: 'todo'
+      }
+      this.objInfo = {}
+    },
+    // 请求数据
+    fetchData() {
+      this.objInfo = Object.assign({}, this.objInfo, this.pageInfo)
+      this.objInfo.readType = 'todo'
+      operatPlatform(this.objInfo).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.pageInfo.total = res.data.total
+        }
+      })
+      tallPlatform(this.objInfo).then(res => {
+        if (res.code === 200) {
+          this.remainForm.rankingRules = res.data.rankingRules ? res.data.rankingRules : '0'
+          this.remainForm.modelQuery = res.data.modelQuery ? res.data.modelQuery : '0'
+          this.remainForm.seniorListWarnQuery = res.data.seniorListWarnQuery ? res.data.seniorListWarnQuery : '0'
+          this.remainForm.seniorListWarnJob = res.data.seniorListWarnJob ? res.data.seniorListWarnJob : '0'
+          this.remainForm.inputafter = res.data.inputafter ? res.data.inputafter : '0'
+          this.remainForm.InAnalysis = res.data.InAnalysis ? res.data.InAnalysis : '0'
+          this.remainForm.AnalysisFile = res.data.AnalysisFile ? res.data.AnalysisFile : '0'
+          this.remainForm.IntelliFile = res.data.IntelliFile ? res.data.IntelliFile : '0'
+          this.remainForm.listWarnJob = res.data.listWarnJob ? res.data.listWarnJob : '0'
+          this.remainForm.interHangQingbao = res.data.interHangQingbao ? res.data.interHangQingbao : '0'
+          this.remainForm.gjzhongxin = res.data.gjzhongxin ? res.data.gjzhongxin : '0'
+          // this.remainForm.jointAnalysis = res.data.jointAnalysis ? res.data.jointAnalysis : '0'
+          this.remainForm.adm = res.data.adm ? res.data.adm : '0'
+          this.remainForm.mpReportManagement = res.data.mpReportManagement ? res.data.mpReportManagement : '0'
+          this.remainForm.reportLeads = res.data.reportLeads ? res.data.reportLeads : '0'
+          // this.remainForm.interQingbao = res.data.interQingbao ? res.data.interQingbao : '0'
+          this.remainForm.interXiecha = res.data.interXiecha ? res.data.interXiecha : '0'
+          // this.remainForm.receiver = res.data.receiver ? res.data.receiver : '0'
+          this.remainForm.supplyCorrect = res.data.supplyCorrect ? res.data.supplyCorrect : '0'
+          // this.remainForm.interTongbao = res.data.interTongbao ? res.data.interTongbao : '0'
+          // this.remainForm.interInvest = res.data.interInvest ? res.data.interInvest : '0'
+          this.remainForm.specialApply = res.data.specialApply ? res.data.specialApply : '0'
+          this.remainForm.crossbrApply = res.data.crossbrApply ? res.data.crossbrApply : '0'
+          this.remainForm.ruleDisable = res.data.ruleDisable ? res.data.ruleDisable : '0'
+          this.remainForm.ruleStart = res.data.ruleStart ? res.data.ruleStart : '0'
+          this.remainForm.ruleAdd = res.data.ruleAdd ? res.data.ruleAdd : '0'
+          this.remainForm.point = res.data.point ? res.data.point : '0'
+          this.remainForm.correctApproval = res.data.correctApproval ? res.data.correctApproval : '0'
+          this.remainForm.suspectCorrect = res.data.suspectCorrect ? res.data.suspectCorrect : '0'
+          this.remainForm.fillReport = res.data.fillReport ? res.data.fillReport : '0'
+          this.remainForm.jointAnalysis = res.data.jointAnalysis ? res.data.jointAnalysis : '0'
+          this.remainForm.planApproval = res.data.planApproval ? res.data.planApproval : '0'
+          this.remainForm.ruleDeletion = res.data.ruleDeletion ? res.data.ruleDeletion : '0'
+          this.remainForm.sensitivePersons = res.data.sensitivePersons ? res.data.sensitivePersons : '0'
+          this.remainForm.dataLifeCycleManage = res.data.dataLifeCycleManage ? res.data.dataLifeCycleManage : '0'
+          this.remainForm.findByReportDispose = res.data.findByReportDispose ? res.data.findByReportDispose : '0'
+        }
+      })
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData()
+    }
+  }
+}
+</script>
+
+<style rel="stylesheet/scss" lang="scss">
+.wait-handle {
+  .el-form--inline .el-form-item{
+    margin-bottom: 8px;
+    margin-right: 0px;
+    margin-top: 15px;
+  }
+  .waitRemain{
+    .el-row{
+      line-height: 12px;
+      .el-col-6,.el-col-5{
+        .el-form-item{
+          margin-bottom: -8px;
+        }
+        .el-form-item label,.el-form-item span{
+          font-size: 12px;
+          color:#606266
+        }
+      }
+    }
+  }
+}
+</style>

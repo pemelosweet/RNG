@@ -1,0 +1,762 @@
+<template>
+  <div class="alignmenttaskwrap">
+    <el-card>  
+      <div slot="header" class="clearfix">
+        <span>跨机构比对</span>
+        <el-button type="text" style="float:right;" @click="handleAdd($event)" class="el-icon-plus">建立比对任务</el-button>
+      </div>
+      <el-form :model="searchForm" ref="searchForm" :rules="rules" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="任务编号：" prop="taskNumber">
+              <el-input v-model="searchForm.taskNumber" placeholder="最大长度为64位" maxlength="64"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="任务名称：" prop="taskName">
+              <el-input v-model="searchForm.taskName" placeholder="最大长度为200位" maxlength="200"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="任务执行情况：" prop="taskPerformS">
+              <el-select v-model="searchForm.taskPerformS" placeholder="请选择任务执行情况" clearable>
+                <el-option v-for="(item, index) in performList" :key="index" :label="item.label" :value="item.value"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="建立时间：" prop="dateValue">
+              <el-date-picker v-model="searchForm.dateValue" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="16" style="text-align: right;">
+            <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+            <el-button type="primary" plain @click="resetForm">清 空</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div style="margin-bottom:10px; font-size: 14px;">
+        <span>比对任务列表：</span>
+      </div>
+      <el-table :data="list" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="index" label="序号" width="55" fixed></el-table-column>
+        <el-table-column prop="taskNumber" label="任务编号" min-width="136px"></el-table-column>
+        <el-table-column prop="taskName" label="任务名称" min-width="130px" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="reportName" label="报告机构" min-width="130px"></el-table-column>
+        <el-table-column prop="rivalName" label="对手机构" min-width="130px"></el-table-column>
+        <el-table-column prop="createDate" label="建立时间" min-width="140px"></el-table-column>
+        <el-table-column prop="operator" label="操作员"></el-table-column>
+        <el-table-column prop="taskPerformS" label="任务执行情况" min-width="130px"></el-table-column>
+        <el-table-column label="操作" width="300" fixed="right">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleView(scope,$event)">查看任务</el-button>
+            <el-button type="text" @click="handleExecution(scope)" :disabled="scope.row.taskPerformS === '执行中' || scope.row.taskPerformS === '执行成功' || scope.row.taskPerformS === '执行失败'">执行任务</el-button>
+            <el-button type="text" :disabled="scope.row.taskPerformS === '未执行' || scope.row.taskPerformS === '执行中' || scope.row.taskPerformS === '执行失败'" @click="handleResult(scope)">查看比对结果</el-button>
+            <el-button type="text" @click="deleRow(scope)">删除任务</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+    </el-card>
+
+    <el-dialog width="90%" :title="title" :visible.sync="addDialogvisible" top="3vh">
+      <div>
+        <el-form :model="dialogForm" ref="dialogForm" :rules="dialogRules" :disabled="disabled" label-width="170px">
+          <div class="addDialogtitle">任务基本信息</div>
+          <el-form-item label="任务名称：" prop="taskName">
+            <el-input v-model="dialogForm.taskName" style="width: 60%;" placeholder="任务名称"></el-input>
+          </el-form-item>
+          <el-form-item label="任务描述：" prop="taskDesc" class="textwrap">
+            <el-input type="textarea" v-model="dialogForm.taskDesc" rows="5" maxlength="1000" show-word-limit placeholder="最大长度为1000位"></el-input>
+          </el-form-item>
+          <div class="addDialogtitle">比对任务信息</div>
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="落地时间：" prop="dataValue">
+                <el-date-picker v-model="dialogForm.dataValue" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+                </el-date-picker>
+                <span style="width:100%;color:#f56c6c;font-size:10px; margin-left:6px;">提示：建议只查询一天！</span>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="报告机构：" prop="reportFicc">
+                <el-select v-model="dialogForm.reportFicc" placeholder="报告机构" style="width:100%" :remote-method="querySearchRinm" @focus="querySearchRinm" filterable remote clearable>
+                  <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd">
+                  </el-option>
+                </el-select> 
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 第二行 -->
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="比对交易条数：" prop="contrastTrad">
+                <el-input v-model="dialogForm.contrastTrad" placeholder="比对交易条数" style="width: 30%"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="对手机构：" prop="rivalFicc">
+                <el-select v-model="dialogForm.rivalFicc" placeholder="对手机构" style="width:100%" :remote-method="querySearchrivalRinm" @focus="querySearchrivalRinm" filterable remote clearable>
+                  <el-option v-for="(item,index) in rivalRinmOptions" :key="index" :label="item.rinm" :value="item.ricd">
+                  </el-option>
+                </el-select> 
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 第三行 -->
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="业务标识号：" prop="businessNumber">
+                <el-input v-model="dialogForm.businessNumber" placeholder="业务标识号"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-form-item label="大额交易特征：" prop="largeTradSpe">
+              <el-select v-model="dialogForm.largeTradSpe" multiple style="width: 100%;" clearable placeholder="大额交易特征">
+                <el-option v-for="(item,index) in largeOptions" :label="item.codeName" :value="item.codeId" :key="index"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-row>
+           <!-- 第五行 -->
+          <el-row>
+            <el-col :span="12">  
+              <div v-for="(item,index) in dialogForm.receivMatchN" :key="index">
+                <el-form-item :label="item.lable +' - '+ (index+1)+ '：'" :prop="'receivMatchN.' + index + '.value'" :rules="getreceivMatchNoRules()">
+                  <el-input v-model="item.value" placeholder="收付款方匹配号" maxlength="500" style="width: 80%;"></el-input>
+                  <i v-if="(dialogForm.receivMatchN.length === 1 && !disabled) || (index == dialogForm.receivMatchN.length - 1&& !disabled)" class="el-icon-circle-plus-outline icon-add" @click="addItem" />
+                  <i v-if="dialogForm.receivMatchN.length > 1 && !disabled" class="el-icon-remove-outline icon-remove" @click="delItem(index)" />
+                </el-form-item>
+              </div>  
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="收付款方匹配号类型：" prop="receivMatchT">
+                <el-select v-model="dialogForm.receivMatchT" clearable placeholder="收付款方匹配号类型">
+                  <el-option v-for="(item, index) in rpmtOptions" :label="item.codeName" :value="item.codeId" :key="index"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-form-item label="交易方式：" prop="transModes">
+              <el-select v-model="dialogForm.transModes" placeholder="交易方式" multiple filterable remote clearable style="width: 80%;" :remote-method="remoteTradeWayMethod" @focus="handleTradeWay">
+                <el-option v-for="(item,index) in tradeWayOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+              </el-select>
+              <span style="display: inline-block">注：该交易方式仅作为筛选”报告机构“交易时有效，不作为筛选”对手机构“交易的条件。</span>
+            </el-form-item>
+            
+          </el-row>
+        </el-form>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="addDialogvisible = false">取消</el-button>
+        <el-button type="primary" @click="addSubmit('dialogForm')" v-show="!disabled" :loading="saveLoading">保存</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { isValidInput, isApplyInfoValidInput } from '@/utils/formValidate.js'
+import { getList, addTaskData, updateTaskData, delTaskData, viewTaskData, dataTask, executionTask } from '@/api/sys-monitoringAnalysis/dataGovernance/crossbodyAlignment/index'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { dataDimqueryTask } from '@/api/sys-monitoringAnalysis/dataGovernance/dataSampling/index'
+
+export default {
+  data() {
+    const isValidDate = (rule, value, callback) => {
+      if (value) {
+        if (Date.parse(value[0]) + 3600 * 1000 * 24 * 7 <= Date.parse(value[1])) {
+          callback(new Error('时间跨度应为7天'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    }
+    const isValidRadio = (rule, value, callback) => {
+      if (value.length === 0) {
+        callback(new Error('请选择至少一个交易方式'))
+      } else {
+        callback()
+      }
+    }
+    const isValidMaxNum = (rule, value, callback) => {
+      const numb = /^\d+(\.{0,1}\d+){0,1}$/
+      if (value > 100) {
+        callback(new Error('最大数值为100'))
+      } else if (!numb.test(value) && value) {
+        callback(new Error('必须为数值'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      searchForm: {
+        taskNumber: '',
+        taskName: '',
+        taskPerformS: null,
+        dataValue: ''
+      },
+      performList: [{
+        label: '未执行',
+        value: 0
+      }, {
+        label: '执行中',
+        value: 1
+      }, {
+        label: '执行成功',
+        value: 2
+      }, {
+        label: '执行失败',
+        value: 3
+      }],
+      rules: {
+        taskNumber: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }],
+        taskName: [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 200, message: '最大长度为200位', trigger: 'blur' }
+        ]
+      },
+      loading: false,
+      listLoading: false,
+      saveLoading: false,
+      file: '',
+      title: '', // 弹框title
+      disabled: false, // 表单是否只读
+      mulMatchNo: false,
+      dialogForm: {
+        mulMatchNo: false,
+        taskName: '',
+        taskDesc: '',
+        dataValue: '',
+        reportFicc: '',
+        contrastTrad: '',
+        rivalFicc: '',
+        businessNumber: '',
+        largeTradSpe: [],
+        receivMatchN: [
+          {
+            lable: '收付款方匹配号',
+            value: ''
+          }
+        ],
+        receivMatchT: '',
+        receivMatchF: '', // 获取文件名
+        transModes: []
+      },
+      dialogRules: {
+        taskName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 200, message: '最大长度为200位', trigger: 'blur' }
+        ],
+        taskDesc: [{ validator: isApplyInfoValidInput, trigger: 'blur' }, { max: 1000, message: '最大长度为1000位', trigger: 'blur' }],
+        contrastTrad: [{ validator: isValidMaxNum, trigger: 'blur' }],
+        businessNumber: [{ validator: isValidInput, trigger: 'blur' }, { max: 256, message: '最大长度为256位', trigger: 'blur' }],
+        receivMatchN: [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { max: 500, message: '最大长度为500位', trigger: 'blur' }],
+        dataValue: [{ required: true, message: '内容不能为空', trigger: 'change' }, { validator: isValidDate, trigger: 'change' }],
+        reportFicc: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        rivalFicc: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        transModes: [{ validator: isValidRadio, required: true, trigger: 'change' }]
+      },
+      timer: null, // 定时任务
+      addDialogvisible: false,
+      tradeWayOptions: [], // 交易方式
+      rpmtOptions: [],
+      largeOptions: [],
+      rinmOptions: [],
+      rivalRinmOptions: [],
+      isIndeterminate: true,
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      taskPerformS: null,
+      taskId: '',
+      token: getToken()
+    }
+  },
+  created() {
+    const obj = JSON.parse(sessionStorage.getItem('searchCrossbodyData'))
+    if (obj) {
+      if (obj.ifCrossFlag) {
+        this.pageInfo = obj.pageInfo
+        this.searchForm = obj.searchForm
+      }
+    }
+    sessionStorage.removeItem('searchCrossbodyData')
+  },
+  mounted() {
+    this.getData()
+    if (this.timer) { // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.getData()
+      }, 180000)
+    }
+  },
+  methods: {
+    getData() {
+      this.reportFiccRicd = ''
+      this.rivalFiccRicd = ''
+      this.listLoading = true
+      const obj = {
+        taskNumber: this.searchForm.taskNumber,
+        taskName: this.searchForm.taskName,
+        taskPerformS: this.searchForm.taskPerformS,
+        startTime: this.searchForm.dateValue ? this.searchForm.dateValue[0] : '',
+        endTime: this.searchForm.dateValue ? this.searchForm.dateValue[1] : '',
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(obj)
+        .then(res => {
+          if (res.code === 200) {
+            this.list = res.data.list
+            this.total = res.data.total
+            res.data.list.forEach((item, index) => {
+              if (item.taskPerformS !== null) {
+                switch (item.taskPerformS) {
+                  case 0:
+                    item.taskPerformS = '未执行'
+                    break
+                  case 1:
+                    item.taskPerformS = '执行中'
+                    break
+                  case 2:
+                    item.taskPerformS = '执行成功'
+                    break
+                  case 3:
+                    item.taskPerformS = '执行失败'
+                    break
+                  default:
+                    break
+                }
+              }
+            })
+            this.$nextTick(function() {
+              this.listLoading = false
+              this.loading = false
+            })
+          } else {
+            this.$nextTick(function() {
+              this.listLoading = false
+              this.loading = false
+            })
+          }
+        })
+        .catch(() => {
+          this.$nextTick(function() {
+            this.listLoading = false
+            this.loading = false
+          })
+        })
+    },
+    handleQuery() {
+      this.loading = true
+      this.getData()
+    },
+    getDialogData() {
+      const typeId = 'CRCD'
+      dataTask(typeId)
+        .then(res => {
+          if (res.code === 200) {
+            this.largeOptions = res.data
+          }
+        })
+        .catch()
+
+      const typeId2 = 'RPMT'
+      dataTask(typeId2)
+        .then(res => {
+          // 收付款方匹配号类型
+          if (res.code === 200) {
+            this.rpmtOptions = res.data
+          }
+        })
+        .catch()
+    },
+    querySearchRinm(query) {
+      if (query !== '') {
+        const paramsObj = {
+          industry: 'B',
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            // cb(res.data)
+            this.rinmOptions = res.data
+          }
+        })
+        return this.rinmOptions
+      } else {
+        this.rinmOptions = []
+      }
+    },
+    querySearchrivalRinm(query) {
+      if (query !== '') {
+        const paramsObj = {
+          industry: 'B',
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            // cb(res.data)
+            this.rivalRinmOptions = res.data
+          }
+        })
+        return this.rivalRinmOptions
+      } else {
+        this.rivalRinmOptions = []
+      }
+    },
+    handleTradeWay() {
+      const typeId4 = 'TSTP_H'
+      dataTask(typeId4)
+        .then(res => {
+          // 交易方式
+          if (res.code === 200) {
+            this.tradeWayOptions = res.data
+          }
+        })
+        .catch()
+    },
+    remoteTradeWayMethod(query) { // 交易方式
+      if (query !== '') {
+        const paramsObj = {
+          typeId: 'TSTP_H',
+          codeName: query
+        }
+        dataDimqueryTask(paramsObj).then(res => {
+          if (res.code === 200) {
+            this.tradeWayOptions = res.data.list
+          }
+        })
+        return this.tradeWayOptions
+      } else {
+        this.tradeWayOptions = []
+      }
+    },
+    handleResult(scope) {
+      this.taskPerformS = null
+      if (scope.row.taskPerformS !== null) {
+        switch (scope.row.taskPerformS) {
+          case '未执行' :
+            this.taskPerformS = 0
+            break
+          case '执行中':
+            this.taskPerformS = 1
+            break
+          case '执行成功':
+            this.taskPerformS = 2
+            break
+          case '执行失败':
+            this.taskPerformS = 3
+            break
+          default:
+            break
+        }
+      }
+      const searchData = {
+        pageInfo: this.pageInfo,
+        searchForm: this.searchForm
+      }
+      sessionStorage.setItem('searchCrossbodyData', JSON.stringify(searchData))
+      this.$router.push({ name: 'dataGovernance_crossbodyAlignment_exceptionList', query: { id: scope.row.id, taskPerformS: this.taskPerformS }})
+    },
+    handleReportFiccSelect(val) {
+      if (val) {
+        this.reportFiccRicd = val.ricd
+      }
+    },
+    handleRivalFiccSelect(val) {
+      if (val) {
+        this.rivalFiccRicd = val.ricd
+      }
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    addSubmit(formName) {
+      // 提交添加任务操作
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.saveLoading = true
+          if (this.title === '建立比对任务') {
+            const paramsObj = this.getParams()
+            console.log('paramsObj', paramsObj)
+            addTaskData(paramsObj).then(res => {
+              if (res.code === 200) {
+                this.saveLoading = false
+                this.addDialogvisible = false
+                this.$message.success('新建成功！')
+                this.saveLoading = false
+                setTimeout(() => {
+                  this.getData()
+                }, 5)
+              } else {
+                this.saveLoading = false
+              }
+            }).catch(() => {
+              this.saveLoading = false
+            })
+          } else {
+            const paramsObj = this.getUpdateParams()
+            updateTaskData(paramsObj).then(res => {
+              if (res.code === 200) {
+                this.saveLoading = false
+                this.addDialogvisible = false
+                this.$message.success('修改成功！')
+                setTimeout(() => {
+                  this.getData()
+                }, 5)
+              } else {
+                this.saveLoading = false
+              }
+            })
+          }
+        } else {
+          this.$confirm('以上有不符合规则的校验', '提示', {
+            confirmButtonText: '确定',
+            showCancelButton: false,
+            type: 'warning'
+          }).then(() => {}).catch()
+        }
+      })
+    },
+    addItem() { // 添加收付款匹配号（表单）
+      if (this.dialogForm.receivMatchN.length < 10) {
+        this.dialogForm.receivMatchN.push({
+          lable: '收付款方匹配号',
+          value: ''
+        })
+      } else {
+        this.$confirm('最多可添加10个收付款方匹配号', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      }
+    },
+    // 删除一条收付款匹配号
+    delItem(index) {
+      this.dialogForm.receivMatchN.splice(index, 1)
+    },
+    deleRow(scope) {
+      this.$confirm('是否删除？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          const id = scope.row.id
+          delTaskData(id).then(res => {
+            this.getData()
+            this.$message({
+              type: 'success',
+              message: '删除成功!'
+            })
+          })
+        })
+        .catch(() => {})
+    },
+    getreceivMatchNoRules() { // 收付款匹配号校验
+      const R = [{ max: 500, message: '最大长度为500位', trigger: 'blur' }]
+      return R
+    },
+    resetForm() {
+      this.$nextTick(function() {
+        this.$refs.searchForm.resetFields()
+        this.$refs.dialogForm.resetFields()
+      })
+    },
+    handleAdd(e) {
+      // 新建比对任务
+      // this.fileDisable = false
+      this.saveLoading = false
+      this.resetForm()
+      this.dialogForm.receivMatchN = [
+        {
+          lable: '收付款方匹配号',
+          value: ''
+        }
+      ]
+      this.getDialogData()
+      this.addDialogvisible = true
+      this.disabled = false
+      this.title = e.target.innerText
+    },
+    handleView(scope, e) {
+      this.resetForm()
+      const taskPerformS = scope.row.taskPerformS
+      this.taskId = scope.row.id
+      this.addDialogvisible = true
+      this.title = e.target.innerText
+      if (taskPerformS === '未执行') { // 任务未完成，可编辑
+        this.disabled = false
+      } else {
+        this.disabled = true
+      }
+      const id = scope.row.id
+      viewTaskData(id).then(res => {
+        if (res.code === 200) {
+          const obj = Object.assign({}, res.data)
+          if (obj.largeTradSpe !== null && obj.largeTradSpe !== '') {
+            obj.largeTradSpe = obj.largeTradSpe.split(',')
+          } else {
+            obj.largeTradSpe = ''
+          }
+          if (obj.receivMatchN !== null) {
+            const rNo = obj.receivMatchN.split(',')
+            const arr = []
+            rNo.forEach(item => {
+              const obj = {
+                lable: '收付款方匹配号',
+                value: item
+              }
+              arr.push(obj)
+            })
+            obj.receivMatchN = arr
+          }
+
+          obj.dataValue = []
+          obj.dataValue[0] = obj.startDate
+          obj.dataValue[1] = obj.endDate
+          this.dialogForm = obj
+          if ((obj.reportFicc !== null && obj.reportFicc !== '') || (obj.rivalFicc !== null && obj.rivalFicc !== '')) {
+            this.querySearchRinm()
+            this.querySearchrivalRinm()
+          }
+
+          if (this.dialogForm.transModes.length > 0) {
+            this.handleTradeWay()
+          }
+        }
+      })
+      this.getDialogData()
+    },
+    handleExecution(scope) {
+      // 执行任务
+      const id = scope.row.id
+      executionTask(id)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '执行任务提交成功！'
+            })
+            setTimeout(() => {
+              this.getData()
+            }, 10)
+          }
+        })
+        .catch()
+    },
+    getParams() {
+      const obj = Object.assign({}, this.dialogForm)
+      if (obj.largeTradSpe.length !== 0) {
+        obj.largeTradSpe = obj.largeTradSpe.toString()
+      } else {
+        obj.largeTradSpe = ''
+      }
+      const rNo = []
+      if (obj.receivMatchN.length !== 0) {
+        obj.receivMatchN.forEach(item => {
+          rNo.push(item.value)
+        })
+        obj.receivMatchN = rNo.toString()
+      } else {
+        obj.receivMatchN = ''
+      }
+      const pramasObj = {
+        taskName: obj.taskName,
+        taskDesc: obj.taskDesc,
+        startDate: obj.dataValue ? obj.dataValue[0] : '',
+        endDate: obj.dataValue ? obj.dataValue[1] : '',
+        reportFicc: obj.reportFicc,
+        rivalFicc: obj.rivalFicc,
+        contrastTrad: obj.contrastTrad,
+        businessNumber: obj.businessNumber,
+        largeTradSpe: obj.largeTradSpe,
+        receivMatchN: obj.receivMatchN,
+        receivMatchT: obj.receivMatchT,
+        transModes: obj.transModes
+      }
+      return pramasObj
+    },
+    getUpdateParams() {
+      const obj = Object.assign({}, this.dialogForm)
+      if (obj.largeTradSpe !== null) {
+        obj.largeTradSpe = obj.largeTradSpe.toString()
+      } else {
+        obj.largeTradSpe = ''
+      }
+      const rNo = []
+      if (obj.receivMatchN !== null) {
+        obj.receivMatchN.forEach(item => {
+          rNo.push(item.value)
+        })
+        obj.receivMatchN = rNo.toString()
+      } else {
+        obj.receivMatchN = ''
+      }
+      const pramasObj = {
+        id: this.taskId,
+        taskName: obj.taskName,
+        taskDesc: obj.taskDesc,
+        startDate: obj.dataValue ? obj.dataValue[0] : '',
+        endDate: obj.dataValue ? obj.dataValue[1] : '',
+        reportFicc: obj.reportFicc,
+        rivalFicc: obj.rivalFicc,
+        contrastTrad: obj.contrastTrad,
+        businessNumber: obj.businessNumber,
+        largeTradSpe: obj.largeTradSpe,
+        receivMatchN: obj.receivMatchN,
+        receivMatchT: obj.receivMatchT,
+        transModes: obj.transModes
+      }
+      return pramasObj
+    },
+    destoryed() {
+      clearInterval(this.timer)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.alignmenttaskwrap {
+  .btnalign {
+    text-align: right;
+  }
+  .addDialogtitle {
+    margin-bottom: 10px;
+  }
+  .icon-remove, .icon-add {
+    font-size: 20px;
+  }
+  .textwrap .el-textarea .el-input__count {
+    background: none;
+  }
+}
+</style>

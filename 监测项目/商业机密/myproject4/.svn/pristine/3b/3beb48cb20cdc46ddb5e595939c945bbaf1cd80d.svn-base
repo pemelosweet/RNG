@@ -1,0 +1,205 @@
+<template>
+  <div class="nTradeList">
+    <el-card>
+      <a @click="routerBack" class="back" :style="backImg"></a>
+      <div slot="header" class="clearfix">
+        <span>查看交易列表</span>
+      </div>
+      <el-button type="primary" @click="handleViewCorrect">查看补正通知</el-button>
+      <div v-if="cType !== '信息补充'">
+        <el-table :data="list" style="width: 100%;">
+          <el-table-column type="index" label="序号"></el-table-column>
+          <el-table-column prop="tradeId" label="交易ID"></el-table-column>
+          <el-table-column prop="ocnm" label="原客户号" v-if="cType === '大额信息更正'"></el-table-column>
+          <el-table-column prop="otdt" label="原大额交易发生日期" v-if="cType === '大额信息更正'"></el-table-column>
+          <el-table-column prop="otcd" label="原大额交易特征代码" v-if="cType === '大额信息更正'"></el-table-column>
+          <el-table-column prop="otic" label="原业务标识号" v-if="cType === '大额信息更正'"></el-table-column>
+          
+          <el-table-column prop="ornm" label="原可疑交易报告报文名" v-if="cType === '可疑信息更正'"></el-table-column>
+          <el-table-column prop="tsno" label="可疑交易序号" v-if="cType === '可疑信息更正'"></el-table-column>
+          <el-table-column prop="stdt" label="可疑交易发生日期" v-if="cType === '可疑信息更正'"></el-table-column>
+          <el-table-column label="操作" min-width="120">
+            <template slot-scope="scope">
+              <router-link :to="{name:'dataGovernance_tradeDetail_tradeDetail', query: { tradeId: scope.row.tradeId, type: scope.row.type}}">
+                <el-button type="text">查看</el-button>
+              </router-link>
+              <!-- <el-button type="text" @click="handleRecord(scope)">追溯对比</el-button> -->
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" background :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+        </el-pagination>
+      </div>
+
+    </el-card>    
+
+    <!-- <el-dialog title="查看追溯对比" width="70%" :visible.sync="recordVisible">
+      <deleteRecord :recordVisible="recordVisible" :recordObj="recordObj" @setRecordVisible="getRecordVisible"></deleteRecord>
+    </el-dialog> -->
+
+    <!-- 人工补正弹框 -->
+    <el-dialog :title="correctionDialogTitle" :visible.sync="dialogVisible" width="90%">
+      <component :is="correctionComName" :correctParams="correctParams" @dialogState="closeDialog" :dialogVisible="dialogVisible"></component>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { viewData } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/history'
+import deleteRecord from '@/views/sys-monitoringAnalysis/dataQuery/dataType/deleteRecord'
+import LargeSingle from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/largeSingle'
+import SuspiciousSingle from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/suspiciousSingle'
+import NoticeSingle from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/noticeSingle'
+
+export default {
+  components: {
+    deleteRecord,
+    LargeSingle,
+    SuspiciousSingle,
+    NoticeSingle
+  },
+  data() {
+    return {
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      // recordVisible: false, // 纠删
+      // recordObj: {}, // 查看追溯对比
+      correctionComName: null,
+      correctionDialogTitle: null,
+      dialogVisible: false,
+      correctParams: {}
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  computed: {
+    cType() {
+      return this.$route.query.correctType
+    },
+    correctId() {
+      return this.$route.query.correctId
+    },
+    tradeIdInfo() {
+      return this.$route.query.tradeId
+    },
+    industryInfo() {
+      return this.$route.query.industry
+    },
+    hOrnm() {
+      return this.$route.query.ornm
+    }
+  },
+  watch: {
+    cType(val) {
+      if (val) this.getData()
+    },
+    correctId(val) {
+      if (val) this.getData()
+    }
+  },
+  methods: {
+    getData() {
+      if (this.cType !== '信息补充') {
+        const obj = {
+          pageNum: this.pageInfo.pageNum,
+          pageSize: this.pageInfo.pageSize
+        }
+        viewData(this.correctId, obj)
+          .then(res => {
+            if (res.code === 200) {
+              this.list = res.data.list
+              if (this.list.length > 0) {
+                this.list.forEach((item) => {
+                  item.ornm = this.hOrnm
+                })
+              }
+              this.total = res.data.total
+            }
+          })
+          .catch(() => {})
+      }
+    },
+    // handleRecord(scope) {
+    //   if (scope.row.type && scope.row.tradeId) {
+    //     this.recordObj = {
+    //       type: scope.row.type,
+    //       tradeId: scope.row.tradeId
+    //     }
+    //     this.recordVisible = true
+    //   } else {
+    //     this.$message.error('查不到相关交易信息')
+    //   }
+    // },
+    closeDialog(val) {
+      this.dialogVisible = val
+    },
+    getRecordVisible(val) {
+      this.recordVisible = val
+    },
+    handleViewCorrect() {
+      this.dialogVisible = true
+      switch (this.cType) {
+        case '大额信息更正':
+          this.correctionComName = 'LargeSingle'
+          this.correctionDialogTitle = '大额信息更正通知'
+          this.correctParams = {
+            correctId: this.correctId,
+            tradeId: this.tradeIdInfo,
+            correctType: '0',
+            industry: this.industryInfo
+          }
+          break
+        case '可疑信息更正':
+          this.correctionComName = 'SuspiciousSingle'
+          this.correctionDialogTitle = '可疑信息更正通知'
+          this.correctParams = {
+            correctId: this.correctId,
+            tradeId: this.tradeIdInfo,
+            correctType: '1',
+            industry: this.industryInfo
+
+          }
+          break
+        case '信息补充':
+          this.correctionComName = 'NoticeSingle'
+          this.correctionDialogTitle = '信息补充通知'
+          this.correctParams = {
+            correctId: this.correctId
+          }
+          break
+        default:
+          break
+      }
+    },
+    routerBack() {
+      const obj = JSON.parse(sessionStorage.getItem('searchCorrectionData'))
+      if (obj) {
+        obj.ifCorrectionFlag = true
+        sessionStorage.setItem('searchCorrectionData', JSON.stringify(obj))
+      }
+      this.$router.go(-1)
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.nTradeList {
+  position: relative;
+}
+</style>

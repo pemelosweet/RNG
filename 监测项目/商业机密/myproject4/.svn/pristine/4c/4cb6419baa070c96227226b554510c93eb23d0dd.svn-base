@@ -1,0 +1,563 @@
+<template>
+  <div class="advancedList_handle">
+    <el-card>
+      <div slot="header">
+        <span>高级名单预警处理</span>
+      </div>
+      <el-form label-width="130px" :model="form" ref="searchForm">
+        <template v-if="toggleSearch">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="主体名称：" prop="ctnm" :rules="[{validator: delDataValidInput, trigger: 'blur'}]">
+                <el-input placeholder="请输入主体名称,最长50字符" maxlength="50" v-model="form.ctnm"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 来源方向 ：" prop="sourceDire">
+                <el-select placeholder="请选择" v-model="form.sourceDire" clearable>
+                  <el-option
+                    v-for="(item,index) in sourceDireArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-button type="primary" @click="onSubmit">查 询</el-button>
+              <el-button @click="cleanUp">清 空</el-button>
+              <el-button type="text" icon="el-icon-arrow-down" @click="toggleSearch=false">展开</el-button>
+            </el-col>
+          </el-row>
+        </template>
+        <template v-else>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="主体名称：" prop="ctnm" :rules="[{validator: delDataValidInput, trigger: 'blur'}]">
+                <el-input placeholder="请输入主体名称,最长50字符" maxlength="50" v-model="form.ctnm"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 来源方向 ：" prop="sourceDire">
+                <el-select placeholder="请选择" v-model="form.sourceDire" clearable>
+                  <el-option
+                    v-for="(item,index) in sourceDireArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 来源业务 ：" prop="sourceBusiness">
+                <el-select placeholder="请选择" v-model="form.sourceBusiness" clearable>
+                  <el-option
+                    v-for="(item,index) in sourceBusinessArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="证件号码 ：" prop="ctid" :rules="[{validator: onlyNumberValidate1, trigger: 'blur'}]">
+                <el-input placeholder="请输入证件号码,最长50字符" maxlength="50" v-model="form.ctid"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 预警编号 ：" prop="code" :rules="[{validator: onlyNumberValidate, trigger: 'blur'}]">
+                <el-input placeholder="请输入预警编号,最长50字符" maxlength="50" v-model="form.code"></el-input>
+              </el-form-item>
+            </el-col>
+             <el-col :span="8">
+              <el-form-item label=" 预警时间 ：" prop="warningTime">
+                <el-date-picker
+                  value-format="yyyy-MM-dd"
+                  v-model="form.warningTime"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="  文档来源编码 ：" prop="listSourceDocNum" :rules="[{validator: isValidInput, trigger: 'blur'}]">
+                <el-input placeholder="请输入文档来源编码,最长50字符" maxlength="50" v-model="form.listSourceDocNum"></el-input>
+              </el-form-item>
+            </el-col>
+
+            <el-col :span="8">
+              <el-form-item label=" 状态 ：" prop="workstatus">
+                <el-select placeholder="请选择" v-model="form.workstatus" clearable>
+                  <el-option label="未分配" value="1"></el-option>
+                  <el-option label="待处理" value="2"></el-option>
+                  <el-option label="处理中" value="3"></el-option>
+                  <el-option label="已处理" value="4"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20" class="toggle">
+            <el-col>
+              <div>
+                <el-form-item label="涉罪类型：" prop="preliminaryJudgme">
+                  <el-select
+                    filterable
+                    clearable
+                    multiple
+                    v-model="form.preliminaryJudgme"
+                    placeholder="请选择"
+                    @change="replenish"
+                  >
+                    <el-option
+                      v-for="(item,index) in dialogJudgmentData"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item
+                  v-if="isReplenishOne"
+                  prop="supplementOne"
+                  :rules="[{required:true, validator: szisValidInput1, trigger: 'blur'}]"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="supplementOne"
+                    placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充"
+                  ></el-input>
+                </el-form-item>
+                <el-form-item
+                  v-if="isReplenishTwo"
+                  prop="supplementTwo"
+                  :rules="[{required:true, validator: szisValidInput2, trigger: 'blur'}]"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="supplementTwo"
+                    placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充"
+                  ></el-input>
+                </el-form-item>
+              </div>
+            </el-col>
+          </el-row>
+          <div style="text-align:right; margin-bottom:10px">
+            <el-button type="primary" @click="onSubmit">查 询</el-button>
+            <el-button type @click="cleanUp">清 空</el-button>
+            <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch=true">收起</el-button>
+          </div>
+        </template>
+      </el-form>
+      <el-table
+        v-loading="loading"
+        element-loading-text="拼命加载中"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)"
+        :data="tableData"
+        tooltip-effect="dark"
+        @selection-change="handleChange"
+      >
+        <el-table-column label="序号" type="index" fixed="left"></el-table-column>
+        <el-table-column prop="ctnm" label="主体名称" min-width="160" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <el-button type="text" @click="showDetail(scope)">{{scope.row.ctnm}}</el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="code" label="预警编号 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="ctid" label="证件号码 " min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="listSourceDocNum" label="文档来源编码 " min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{scope.row.listSourceDocNum}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sourceDire" label="来源方向 " min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{scope.row.sourceDire}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sourceBusiness" label="来源业务 " min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{scope.row.sourceBusiness}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="preliminaryJudgme" label="涉罪类型 " min-width="120">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content" v-for="(item,index2) in scope.row.charosterPreliminaryJudgmentDOList" :key="index2" style="margin:4px">{{item.id}}</div>
+                <span v-for="(item,index) in scope.row.charosterPreliminaryJudgmentDOList" :key="index">
+                  <span>{{item.id}}</span>
+                </span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="earlywarningtime" label="预警时间" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="workstatus" label="状态 " min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{scope.row.workstatus=='1'?'未分配': scope.row.workstatus=='2'?'待处理':scope.row.workstatus=='3'?'处理中':'已处理'}}</span>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column prop="updateTime" label="更新时间 " min-width="120" show-overflow-tooltip></el-table-column> -->
+        <el-table-column label="操作" min-width="125" fixed="right">
+          <template slot-scope="scope">
+            <el-button type="text" >进入分析工具</el-button>
+            <el-button :disabled="scope.row.workstatus === '4'" @click="goAnalyze(scope)" type="text">创建线索表</el-button>         
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-row style="margin-top:10px;">
+        <!-- <el-col :span="8">
+          <el-button type="primary" plain @click="exportData">导 出</el-button>
+        </el-col>-->
+        <!-- <el-col :span="16"> -->
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-size="pageInfo.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.total"
+          background
+        ></el-pagination>
+        <!-- </el-col> -->
+      </el-row>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { commonPattern } from '@/utils/formValidate'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { getList } from '@/api/sys-monitoringAnalysis/roster-warning/advancedWarnListDispos.js'
+import { getsourceBusinessArr } from '@/api/sys-monitoringAnalysis/roster-warning/levelConfiguration.js'
+export default {
+  data() {
+    return {
+      tableData: [],
+      delArr: [],
+      sourceDireArr: [],
+      dialogJudgmentData: [],
+      sourceBusinessArr: [],
+      toggleSearch: true,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      supplementOne: '',
+      supplementTwo: '',
+      loading: false,
+      params: {},
+      form: {
+        ctnm: '',
+        sourceDire: '',
+        sourceBusiness: '',
+        ctid: '',
+        code: '',
+        warningTime: [],
+        listSourceDocNum: '',
+        preliminaryJudgme: '',
+        workstatus: ''
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      }
+    }
+  },
+  computed: {
+    searchParams() {
+      const obj = Object.assign({}, this.form)
+      delete obj.total
+      if (this.form.preliminaryJudgme) {
+        for (var i = 0; i < this.form.preliminaryJudgme.length; i++) {
+          if (this.form.preliminaryJudgme[i].indexOf('1401') !== -1) {
+            this.form.preliminaryJudgme[i] = '1401-' + this.supplementOne
+          }
+          if (this.form.preliminaryJudgme[i].indexOf('1402') !== -1) {
+            this.form.preliminaryJudgme[i] = '1402-' + this.supplementTwo
+          }
+        }
+        obj.preliminaryJudgment = this.form.preliminaryJudgme.join(',')
+        obj.preliminaryJudgme = this.form.preliminaryJudgme.join(',')
+      }
+      if (obj.warningTime) {
+        obj.earlywarningtimeStartDate = obj.warningTime[0]
+        obj.earlywarningtimeEndDate = obj.warningTime[1]
+      }
+      delete obj.warningTime
+      return obj
+    }
+  },
+  methods: {
+    getsourceBusinessArr() {
+      var paramsObj = {
+        pageNum: 1,
+        pageSize: 9999
+      }
+      getsourceBusinessArr(paramsObj, '0').then(res => {
+        if (res.code === 200) {
+          this.sourceBusinessArr = res.data.list
+        }
+      })
+      getsourceBusinessArr(paramsObj, '1').then(res => {
+        if (res.code === 200) {
+          this.sourceDireArr = res.data.list
+        }
+      })
+      // getsourceBusinessArr().then(res => {
+      //   if (res.code === 200) {
+      //     this.sourceBusinessArr = res.data
+      //   }
+      // })
+    },
+    // 查询
+    onSubmit() {
+      this.$refs.searchForm.validate((valid) => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.params = Object.assign({}, this.searchParams, this.pageInfo)
+          this.getList()
+        }
+      })
+    },
+    getList() {
+      this.loading = true
+      this.params = Object.assign({}, this.params, this.pageInfo)
+      getList(this.params).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.pageInfo.total = res.data.total
+          this.tableData.forEach(res => {
+            for (var item in res) {
+              if (res[item] === '@N' || res[item] === 'null' || res[item] === '-') {
+                res[item] = ''
+              }
+            }
+          })
+          this.loading = false
+        } else {
+          this.loading = false
+        }
+      })
+        .catch(err => {
+          this.loading = false
+          console.log(err)
+        })
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.form.preliminaryJudgme.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.form.preliminaryJudgme.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            // case 'SCDT':
+            //   this.sourceDireArr = res.data
+            //   break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    // 清空
+    cleanUp() {
+      this.$refs.searchForm.resetFields()
+      this.form = {
+        ctnm: '',
+        sourceDire: '',
+        sourceBusiness: '',
+        ctid: '',
+        code: '',
+        warningTime: [],
+        listSourceDocNum: '',
+        preliminaryJudgme: '',
+        workstatus: ''
+      }
+      this.supplementOne = ''
+      this.supplementTwo = ''
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+    },
+    // 选择的数据
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 查看
+    Initiate(scope) {
+      this.$router.push(
+      //  {
+      //   name: 'judgedClues_add',
+      //   params: {
+      //     id: scope.row.clueId,
+      //     clewStates: scope.row.clewState
+      //   }
+      // }
+      )
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // 数字检查
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== '') {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (!commonPattern.number.test(value) && value !== '') {
+          callback(new Error('必须输入数值'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.getList()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.getList()
+    },
+    goAnalyze(scope) {
+      const searchData = {
+        pageName: this.$route.name,
+        pageInfo: this.pageInfo,
+        searchForm: this.form,
+        params: this.params
+      }
+      sessionStorage.setItem('searchData', JSON.stringify(searchData))
+      this.$router.push({ name: 'cueManage_autonomousAnalysisInfo', query: {
+        activeName: 'second',
+        index: scope.row.code,
+        triggerForm: '高级名单预警',
+        keyIndex: '2'
+      }})
+    },
+    showDetail(scope) {
+      const searchData = {
+        pageName: this.$route.name,
+        pageInfo: this.pageInfo,
+        searchForm: this.form,
+        params: this.params,
+        spreadType: this.toggleSearch
+      }
+      sessionStorage.setItem('searchData', JSON.stringify(searchData))
+      this.$router.push({ name: 'forewarningEnd_detail', query: { code: scope.row.code, taskId: scope.row.taskId, batchdt: scope.row.batchdt, ctnm: scope.row.ctnm, ctid: scope.row.ctid, ctac: scope.row.ctac }})
+    }
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchData')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+      if (searchData.pageName === this.$route.name && searchData.isReview) {
+        this.pageInfo = searchData.pageInfo
+        this.form = searchData.searchForm
+        this.params = searchData.params
+        this.toggleSearch = searchData.spreadType
+      }
+    }
+    sessionStorage.removeItem('searchData')
+    this.getDictionary('TOSC')
+    this.getDictionary('SCDT')
+    this.getsourceBusinessArr()
+    this.getList()
+  }
+}
+</script>
+<style lang="scss">
+.advancedList_handle {
+  .el-date-editor--daterange {
+    min-width: 100%;
+  }
+  .el-date-editor--daterange {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

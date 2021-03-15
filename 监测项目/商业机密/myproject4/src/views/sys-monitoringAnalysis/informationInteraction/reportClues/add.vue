@@ -1,0 +1,88 @@
+<template>
+  <div>
+    <el-card>
+      <div slot="header">
+        <span>人民银行分支机构对外报告的可疑交易线索要素表</span>
+        <div class="headerTip" style="float:right">
+          <!-- <span>分支行： ***分行</span>
+          <span>当前状态：编辑中</span> -->
+          <span>编号：{{clueNo?clueNo:'提交后自动显示'}}</span>
+        </div>
+      </div>
+      <clue-tep :clueData="clueData" :xtfInfo="xtfInfo"></clue-tep>
+      
+
+    </el-card>
+
+  </div>
+</template>
+
+<script>
+import { editClue } from '@/api/sys-monitoringAnalysis/report-clues/search.js'
+import clueTep from '@/views/sys-monitoringAnalysis/informationInteraction/reportClues/components/clueTep.vue'
+export default {
+  components: {
+    clueTep
+  },
+  props: {
+    nameListXTF: {
+      type: Object,
+      default: function() {
+        return {}
+      }
+    }
+  },
+  data() {
+    return {
+      clueNo: '',
+      clueData: null,
+      xtfInfo: ''
+    }
+  },
+  computed: {
+
+  },
+  created() {},
+  watch: {
+
+  },
+  mounted() {
+    if (this.nameListXTF.typeXTF === 'typeXTF') {
+      this.xtfInfo = 'xtf'
+      this.getCuleDataXTF()
+    }
+    if (this.$route.params.type === 'edit') {
+      this.getCuleData()
+    }
+  },
+  methods: {
+    // 徐腾飞加的请不要删掉谢谢
+    getCuleDataXTF() {
+      editClue(this.nameListXTF.id)
+        .then(res => {
+          if (res.code === 200) {
+            this.clueData = res.data[0]
+            // 线索编号
+            this.clueNo = `${this.clueData.clueNo}-${this.clueData.seq}`
+          }
+        })
+    },
+    // 编辑
+    getCuleData() {
+      editClue(this.$route.params.id)
+        .then(res => {
+          if (res.code === 200) {
+            this.clueData = res.data[0]
+            // 线索编号
+            this.clueNo = `${this.clueData.clueNo}-${this.clueData.seq}`
+          }
+        })
+    }
+
+  }
+}
+</script>
+
+<style lang="scss">
+
+</style>

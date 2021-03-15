@@ -1,0 +1,1559 @@
+<template>
+  <div class="dataModel">
+    <div slot="header" class="titlefix">
+      <span style="lineHeight:32px">数据模板管理</span>
+      <div style="float:right">
+        <el-button type="text" @click="newDataTemplate">新建数据模板</el-button>
+      </div>
+    </div>
+    <el-form ref="form" :model="form" :rules="formrules" label-width="170px">
+      <el-row>
+        <el-col :span="8">
+          <el-form-item label="数据模板名称：" prop="dataTemplateName">
+            <el-input  v-model.trim="form.dataTemplateName" maxlength="50" placeholder="内容长度不能超过50"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="数据落地时间：" prop="landingTime" >
+            <el-date-picker v-model="form.landingTime" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="数据类型：" prop="tName">
+            <el-input  v-model.trim="form.tName" maxlength="50" placeholder="内容长度不能超过50"></el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="8">
+          <el-form-item label="模板创建人：" prop="templateCreate">
+            <el-input  v-model.trim="form.templateCreate" maxlength="50" placeholder="内容长度不能超过50"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="更新时间：" prop="creationTime">
+            <el-date-picker v-model="form.creationTime" value-format="yyyy-MM-dd HH:mm:ss" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="['00:00:00', '23:59:59']"></el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="交易时间：" prop="tradingHours">
+            <el-date-picker v-model="form.tradingHours" value-format="yyyy-MM-dd HH:mm:ss" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="['00:00:00', '23:59:59']"></el-date-picker>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-form-item class="valable">
+        <el-button type="primary" @click="searchPag">查询</el-button>
+        <el-button @click="clearForm" type="primary" plain>清空</el-button>
+      </el-form-item>
+    </el-form>
+    <div slot="header" class="titlefixs">
+      <span style="lineHeight:32px;float:left">数据模板列表：</span>
+      <div style="float:left;margin:0 0 15px 15px">
+        <el-button type="primary" plain @click="batchLetGo">批量启动</el-button>
+        <el-button type="primary" plain @click="batchDelete">批量删除</el-button>
+      </div>
+    </div>
+    <el-table :data="tableData"
+       ref="rosterTable"
+       @selection-change="handleSelectionChange"
+       v-loading="loadingModel"
+       element-loading-text="拼命加载中"
+       element-loading-spinner="el-icon-loading"
+       element-loading-background="rgba(0, 0, 0, 0.1)"
+       style="width: 100%"
+       @sort-change="sortChange">
+      <el-table-column type="selection" fixed="left" width="50" :selectable='selectInit'></el-table-column>
+      <el-table-column type="index" label="序号" min-width="70"></el-table-column>
+      <el-table-column label="数据模板名称" min-width="460">
+        <template slot-scope="scope">
+          <el-popover trigger="hover" placement="top">
+            <p>{{scope.row.dataTemplateName}}</p>
+            <div slot="reference" class="name-wrapper">
+                <el-tag size="medium" style="width: 100%;overflow: hidden;">
+                     <el-button type="text" style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" @click="details(scope)">{{scope.row.dataTemplateName}}</el-button>
+                </el-tag>
+            </div>
+        </el-popover>
+
+        </template>
+      </el-table-column>
+      <el-table-column prop="createTime" label="数据落地时间" min-width="300" show-overflow-tooltip>
+        <template slot-scope="scope">
+          {{scope.row.dataTime}} ~ {{scope.row.dataStopTime}}
+        </template>
+      </el-table-column>
+      <el-table-column prop="sTime" label="交易时间" min-width="300" show-overflow-tooltip>
+        <template slot-scope="scope">
+          {{scope.row.stime}} ~ {{scope.row.etime}}
+        </template>
+      </el-table-column>
+      <el-table-column prop="tname" label="数据类型" min-width="130" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="templateCreate" label="模板创建人" width="130" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="templateCreateTime" label="更新时间"  min-width="300" show-overflow-tooltip></el-table-column>
+      <el-table-column fixed="right" label="操作" width="180">
+        <template slot-scope="scope">
+          {{scope.row.$index}}
+          <el-button type="text" :disabled="scope.row.startingItems == '已启动'||(ifRun&&scopeIndex==scope.$index)" size="medium" @click="letGo(scope,scope.$index)">启动</el-button>
+          <!-- <el-button type="text" :disabled="scope.row.startingItems == '已启动'" size="small" @click="editor(scope)">编辑</el-button> -->
+          <el-button type="text" size="medium"  @click="tableDelete(scope)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+      <el-row style="font-size: 12px; color:#F56C6C; margin-top: 10px;">提示：因系统资源有限，每次只能执行10条抽取任务!</el-row>
+    <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+    </el-pagination>
+
+    <!-- 新建数据模板 -->
+    <el-dialog title="新建数据模板" :visible.sync="disNewDataModel" class="personDialog" :close-on-click-modal="false" width="70%" @close="closeDialog">
+
+      <el-form ref="newDataModelsOne" :model="newDataModels" :rules="rulesNewData" label-width="120px">
+        <span style="color: red;height: 5px; position: absolute; margin-left: 25px; margin-top: 10px;">*</span>
+        <el-form-item label="数据类别：">
+          <template>
+            <el-radio-group v-model="newDataModels.radio1" v-for="(item, index) in newDataModels.dataType" :key="index">
+              <el-radio :label="item.tid" @change="getDataSort(item.tid,item)">{{item.tname}}</el-radio>
+            </el-radio-group>
+          </template>
+        </el-form-item>
+        <span style="color: red;height: 5px; position: absolute; margin-left: 25px; margin-top: 10px;"  v-if="newDataModels.classiFication.length>0">*</span>
+        <el-form-item label="数据分类：" v-if="newDataModels.classiFication.length>0">
+          <template>
+            <el-radio-group v-model="newDataModels.radio2" v-for="(item, index) in newDataModels.classiFication" :key="index" @change="getTableName(item.did, item)">
+              <el-radio :label="item.did">{{item.dataCategoryName}}</el-radio>
+            </el-radio-group>
+          </template>
+        </el-form-item>
+        <span style="color: red;height: 5px; position: absolute; margin-left: 25px; margin-top: 10px;" v-if="newDataModels.newTableName.length>0 && newDataModels.classiFication.length>0">*</span>
+        <el-form-item label="数据表名：" v-if="newDataModels.newTableName.length>0 && newDataModels.classiFication.length>0">
+          <template>
+            <span class="datTabNam">
+              <el-checkbox
+              class="allselect"
+              :indeterminate="isIndeterminate" v-model="tableCheckAll" @change="handleDtCheckAllChange">全选</el-checkbox>
+              <el-button type="text" @click="newTableFnc">新增表</el-button>
+              <el-checkbox-group v-model="checkedPersons" @change="handleCheckedTableNameChange">
+                <el-checkbox v-for="(item, index) in newDataModels.newTableName" :label="item.tid" :key="index" @change="getDataFiled(checkedPersons,item)">{{item.ctableName}}
+                  <i class="el-icon-close" v-if="item.status!==null" @click.stop.prevent="removeTable(item)"></i>
+                </el-checkbox>
+              </el-checkbox-group>
+            </span>
+          </template>
+        </el-form-item>
+        <el-form-item label="字段名称：" v-if="this.newDataModels.radio1 === '4' && checkedPersons.length>0" class="sizeName">
+          <!-- <div>
+            <el-checkbox :indeterminate="isSizeIndeterminate" v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
+          </div> -->
+          <el-checkbox-group v-model="checkedField" @change="handleCheckedCitiesChange" ref="sb123">
+            <el-form-item label-width="200px" :label="item.cTableNames+'：'" v-for="item in newDataModels.newDataFiled" :key="item.newDataFiledew">
+              <el-checkbox :label="ite" v-for="ite in item.fieIdNames" :key="ite.fieldId">{{ite.cfieldName}}</el-checkbox>
+            </el-form-item>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="数据落地时间：" class="dataUp" prop="landingTime">
+          <template>
+            <el-date-picker v-model="newDataModels.landingTime" :picker-options="pickerOptions0" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+          </template>
+        </el-form-item>
+        <el-form-item v-if="flagTrading" label="交易时间：" class="dataUp" prop="tradingHours">
+          <template>
+            <el-date-picker v-model="newDataModels.tradingHours" :picker-options="pickerOptions0" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+          </template>
+        </el-form-item>
+      </el-form>
+      <el-row v-if="this.newDataModels.radio1 === '4'">
+          <el-col :span="11">
+            <p class="tip_info" style="color:red">提示：主体账户数据字段过多，不建议全选表名和字段，建议每个表最多选择十个字段！</p>
+          </el-col>
+        </el-row>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" :loading="saveLoadingEvent" :disabled="this.btnSaveProtect" @click="assemblyData">保 存</el-button>
+        <el-button @click="cancelSaveEvent">取 消</el-button>
+      </span>
+    </el-dialog>
+    <!--保存-->
+    <el-dialog title="" :visible.sync="dialogStorageVisible" width="40%" class="personDialog" :close-on-click-modal="false">
+      <el-form ref="newDataModels" :model="newDataModels" :rules="newDataModelsRules" label-width="100px" style="border:none">
+        <el-form-item label="描述信息：" style="padding:10px" prop="descriptionInfo">
+          <template>
+            <el-input type="textarea" :autosize="{ minRows: 4, maxRows: 10}" placeholder="请输入内容" v-model="newDataModels.descriptionInfo"></el-input>
+          </template>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" :loading="trueLoadingBtn" @click="sendAssemblyData">确 定</el-button>
+        <el-button @click="cancelData">取 消</el-button>
+      </span>
+    </el-dialog>
+    <!-- 模板详情 -->
+    <el-dialog title="数据模板详情" :visible.sync="dialogVisible" width="60%" top="2vh">
+      <el-form ref="modelClassify" :model="modelClassify" label-width="120px">
+        <el-form-item label="数据类别：">
+          <template>
+            <span>{{modelClassify.tname}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="数据分类：">
+          <template>
+            <span>{{modelClassify.dataSort}}</span>
+          </template>
+        </el-form-item>
+
+        <el-form-item label="数据表名：">
+          <template>
+            <span>{{modelClassify.cmodelTable}}</span>
+          </template>
+        </el-form-item>
+
+        <!-- <el-form-item label="字段名称：">
+          <template>
+            <span>{{modelClassify.cfieldName}}</span>
+          </template>
+          <el-button type="text" style="margin-left:10px" @click="moreModel=!moreModel">更多<i class="el-icon-d-arrow-right"></i></el-button>
+        </el-form-item> -->
+        <el-form-item label="数据落地时间：">
+          <template>
+            <span>{{modelClassify.dataTime}} ~ {{modelClassify.dataStopTime}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="交易时间：">
+          <template>
+            <span>{{modelClassify.stime}} ~ {{modelClassify.etime}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="描述信息：">
+          <template>
+            <span>{{modelClassify.message}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item style="marginRight:20px;textAlign:right">
+          <el-button type="primary" @click="dialogVisible = false">确 定</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
+    <!-- 编辑 -->
+    <el-dialog title="编辑数据" :visible.sync="dialogEditorVisible" width="60%" top="2vh">
+      <el-form ref="editorData" :model="editorData" :rules="editDataModelsRules" label-width="120px">
+        <el-form-item label="数据类别：">
+          <template>
+            <span>{{editorData.tname}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="数据分类：">
+          <template>
+            <span>{{editorData.dataSort}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="数据表名：">
+          <template>
+            <span>{{editorData.cmodelTable}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="字段名称：">
+          <template>
+            <span style="overflow:auto;display: flex;">
+              <el-checkbox-group v-model="checkedEditorField" v-for="(item, index) in editorData.newDataFiled" :key="index" @change="handleCheckedEditorChange" style="margin:0 10px">
+                <el-checkbox :label="item.fieldId">{{item.cfieldName}}</el-checkbox>
+              </el-checkbox-group>
+            </span>
+          </template>
+        </el-form-item>
+        <el-form-item label="数据落地时间：" required >
+          <template>
+            <el-date-picker v-model="editTimeOther" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+          </template>
+        </el-form-item>
+        <el-form-item label="描述信息：" prop="message">
+          <template>
+            <el-input type="textarea" :autosize="{ minRows: 4, maxRows: 10}" placeholder="请输入内容" v-model.trim="editorData.message"></el-input>
+          </template>
+        </el-form-item>
+        <el-form-item style="marginRight:20px;textAlign:center">
+          <el-button type="primary" @click="toEditData">确 定</el-button>
+          <el-button type="primary" @click="dialogEditorVisible = false">取 消</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
+    <!-- 新增表 -->
+    <el-dialog title="新增表" :visible.sync="dialogFormVisible">
+      <el-form :model="tableForm" ref="tableForm" :rules="tableFormRules" label-width="100px">
+        <el-form-item label="数据库名称" prop="dataBase">
+          <el-input v-model="tableForm.dataBase" placeholder="请输入数据库名称"></el-input>
+        </el-form-item>
+        <el-form-item label="表名(英文)" prop="tableNameE">
+          <el-input v-model="tableForm.tableNameE" placeholder="请输入表名(英文)"></el-input>
+        </el-form-item>
+        <el-form-item label="表名(中文)" prop="tableNameC">
+          <el-input v-model="tableForm.tableNameC" placeholder="请输入表名(中文)"></el-input>
+        </el-form-item>
+        <el-form-item label="驱动" prop="createDrive">
+          <el-select v-model="tableForm.createDrive" placeholder="请选择">
+              <el-option  label="inceptor" value="hive2"></el-option>
+              <el-option  label="GBase8a" value="gbase"></el-option>
+              <!-- <el-option  label="db2jcc4" value="db2"></el-option>
+              <el-option  label="oracle6" value="oracle:thin"></el-option>
+              <el-option  label="sqlserver41" value="sqlserver"></el-option> -->
+          </el-select>
+        </el-form-item>
+        <el-form-item label="地址" prop="createIp">
+          <el-input v-model="tableForm.createIp" placeholder="请输入地址"></el-input>
+        </el-form-item>
+        <el-form-item label="端口" prop="createPort">
+          <el-input v-model="tableForm.createPort" placeholder="请输入端口"></el-input>
+        </el-form-item>
+        <el-form-item label="数据库链接" prop="createConn">
+          <el-input v-model="jdbcDbConnection" placeholder="请输入数据链接" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="用户名" prop="createUserName">
+          <el-input v-model="tableForm.createUserName" placeholder="请输入用户名"></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="createPassWord">
+          <el-input type="password" v-model="tableForm.createPassWord" placeholder="请输入密码"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogFormVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="btnCreatTab" @click="subCreatTab">确 定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import {
+  fuzzyQuery,
+  dataDelete,
+  batchDelete,
+  // start,
+  selectDetails,
+  newDataRow,
+  newDataRowTow,
+  newTableName,
+  newDataFiled,
+  sendAssembly,
+  batchStart,
+  toEdit,
+  sendToEditData,
+  createTableJK,
+  TableDelete
+} from '@/api/sys-monitoringAnalysis/dataControl/dataModel'
+import {
+  adminisValidInput,
+  isChinaNull,
+  commonPattern,
+  ValidQueryInput
+} from '@/utils/formValidate.js'
+export default {
+
+  data() {
+    // var changSpecial = (rule, value, callback) => {
+    //   if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+    //     callback(new Error('内容不能填写特殊字符'))
+    //   } else {
+    //     callback()
+    //   }
+    // }
+    var mainValidInput = (rule, value, callback) => {
+      const specialEng = /[`~!@#$%^&*()+<>?:"{},.\/;'[\]]/im
+      if (commonPattern.specialChar.test(value) || specialEng.test(value) || !commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能填写特殊字符与空格'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      tableForm: {
+        dataBase: '',
+        tableNameE: '',
+        tableNameC: '',
+        createDrive: '',
+        createIp: '',
+        createPort: '',
+        createConn: '',
+        createUserName: '',
+        createPassWord: ''
+      },
+      // 控制每个表都选择字段
+      arrayFiled: [],
+      dialogFormVisible: false,
+      scopeIndex: '',
+      trueLoadingBtn: false,
+      ifRun: false,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      loadingModel: false,
+      btnCreatTab: false,
+      total: null,
+      form: {
+        dataTemplateName: null,
+        // 数据落地时间
+        landingTime: null,
+        tName: null,
+        templateCreate: null,
+        // 数据创建时间
+        creationTime: [],
+        tradingHours: []
+      },
+      tableDeleData: [],
+      select_orderId: [], // 被选中的记录数据-----对应“批量删除”传的参数值
+      tableData: [],
+      formrules: {
+        dataTemplateName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '长度不能超过50', length: '50', trigger: 'blur' }
+        ],
+        tName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '长度不能超过50', length: '50', trigger: 'blur' }
+        ],
+        templateCreate: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '长度不能超过50', trigger: 'blur' }
+        ],
+        templateCreateTime: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '长度不能超过50', trigger: 'blur' }
+        ]
+      },
+      getTabNameId: '',
+      getTabNameData: [],
+      // 模板详情
+      modelClassify: {},
+      // 编辑
+      editorData: {},
+      editTimeOther: [],
+      makeArrTable: [],
+      // 新建显示数据
+      newDataModels: {
+        radio1: '', // 数据类型
+        radio2: '', // 数据分类
+        dataType: [], // 数据类型
+        classiFication: [], // 数据分类
+        newTableName: [], // 数据表名
+        newDataFiled: {}, // 数据字段
+        landingTime: null, // 落地时间
+        tradingHours: null,
+        descriptionInfo: '', // 描述信息
+        makeDataInfo: {
+          dataType: {}, // 数据类型
+          classiFication: {} // 数据分类
+        }
+      },
+      rulesNewData: {
+        landingTime: [
+          { required: true, message: '请选择数据落地时间', trigger: 'change' }
+        ],
+        tradingHours: [
+          { required: true, message: '请选择交易时间', trigger: 'change' }
+        ]
+      },
+      // 发送组装数据
+      sendDataModel: [],
+      // 表名全选按钮
+      isIndeterminate: true, // 数据库表全选状态
+      tableCheckAll: false,
+      // 字段全选按钮
+      isSizeIndeterminate: true,
+      checkAll: false,
+      // 选中的数据表名
+      checkedPersons: [],
+      // 选中的英文数据表名
+      checkedEnglishPersons: '',
+      // 选中的字段
+      checkedField: [],
+
+      // 编辑 数据字段的值
+      checkedEditorField: [],
+      editFieldData: {
+        cfieldName: [],
+        fieldName: []
+      },
+      persons: [],
+      // 表名字段加载出来后控制保存按钮
+      btnSaveProtect: false,
+      disNewDataModel: false,
+      dialogVisible: false,
+      dialogEditorVisible: false,
+      dialogDeleteVisible: false,
+      dialogdataVisible: false,
+      dialogStorageVisible: false,
+      moreModel: false,
+      // 启动按钮
+      dialogLetGoVisible: false,
+      tableFormRules: {
+        dataBase: [
+          // { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { validator: isChinaNull, trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        tableNameE: [
+          { validator: mainValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { validator: isChinaNull, trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        tableNameC: [
+          { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        createDrive: [
+          { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        createIp: [
+          // { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        createPort: [
+          { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        createConn: [
+          // { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 100, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        createUserName: [
+          { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ],
+        createPassWord: [
+          { validator: adminisValidInput, trigger: 'blur' },
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          { max: 50, message: '内容不能超过50', trigger: 'blur' }
+        ]
+      },
+      newDataModelsRules: {
+        descriptionInfo: [
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          // { validator: adminisValidInput, trigger: 'blur' },
+          { max: 200, message: '内容不能超过200', trigger: 'blur' }
+        ]
+      },
+      editDataModelsRules: {
+        message: [
+          { required: true, message: '请输入内容', trigger: 'blur' },
+          // { validator: adminisValidInput, trigger: 'blur' },
+          { max: 200, message: '内容不能超过200', trigger: 'blur' }
+        ]
+      },
+      sortVal: '',
+      sortName: '',
+      tidData: '',
+      saveLoadingEvent: false,
+      pickerOptions0: {
+        disabledDate(time) {
+          return time.getTime() > Date.now()
+        }
+      },
+      piliangQi: [],
+      flagTrading: false
+    }
+  },
+  computed: {
+    paramsObj: function() {
+      return {
+        PageSize: this.pageInfo.pageSize,
+        PageNum: this.pageInfo.pageNum,
+        dataTemplateName: this.form.dataTemplateName ? this.form.dataTemplateName : null,
+        dataTime: this.form.landingTime ? this.form.landingTime[0] : null,
+        dataStopTime: this.form.landingTime ? this.form.landingTime[1] : null,
+        stime: this.form.tradingHours ? this.form.tradingHours[0] : null,
+        etime: this.form.tradingHours ? this.form.tradingHours[1] : null,
+        tname: this.form.tName ? this.form.tName : null,
+        templateCreate: this.form.templateCreate ? this.form.templateCreate : null,
+        templateCreateTime: this.form.creationTime ? this.form.creationTime[0] : null,
+        templateStopTime: this.form.creationTime ? this.form.creationTime[1] : null,
+        sortVal: this.sortVal ? this.sortVal : null,
+        sortName: this.sortName ? this.sortName : null
+      }
+    },
+    // 组装新建数据
+    makeParamsObj() {
+      const obj = {
+        userName: '',
+        tName: '',
+        dataSort: '',
+        modelTable: '',
+        cModelTable: [],
+        dateStartTime: '',
+        dataStopTime: '',
+        stime: '',
+        etime: '',
+        message: '',
+        fMId: this.newDataModels.radio1,
+        tid: ''
+      }
+      obj.tName = this.newDataModels.makeDataInfo.dataType.tname
+      obj.dataSort = this.newDataModels.makeDataInfo.classiFication.dataCategoryName
+      if (this.newDataModels.landingTime[0]) {
+        obj.dateStartTime = this.newDataModels.landingTime[0] + ' 00:00:00'
+      } else {
+        obj.dateStartTime = null
+      }
+      if (this.newDataModels.landingTime[1]) {
+        obj.dataStopTime = this.newDataModels.landingTime[1] + ' 23:59:59'
+      } else {
+        obj.dataStopTime = null
+      }
+
+      if (this.newDataModels.tradingHours !== null && this.newDataModels.tradingHours.length > 0) {
+        obj.stime = this.newDataModels.tradingHours[0] + ' 00:00:00'
+        obj.etime = this.newDataModels.tradingHours[1] + ' 23:59:59'
+      } else {
+        obj.stime = null
+        obj.etime = null
+      }
+      // obj.dateStartTime = this.newDataModels.landingTime[0] ? this.newDataModels.landingTime[0] : null
+      // obj.dataStopTime = this.newDataModels.landingTime[1] ? this.newDataModels.landingTime[1] : null
+      obj.userName = this.$store.state.user.id
+      obj.modelTable = this.checkedEnglishPersons
+      obj.message = this.newDataModels.descriptionInfo
+      obj.cModelTable = this.makeArrTable
+      obj.tid = this.tidData
+      return obj
+    },
+    // 编辑拼接数据
+    editorDataObj() {
+      const paramObj = {
+        dataTemplateId: '',
+        cmodelTable: '',
+        modelTable: '',
+        cfieldName: '',
+        fieldName: '',
+        dataTime: '',
+        dataStopTime: '',
+        message: ''
+      }
+      paramObj.cfieldName = this.editFieldData.cfieldName.join(',')
+      paramObj.fieldName = this.editFieldData.fieldName.join(',')
+      paramObj.dataTemplateId = this.editorData.dataTemplateId
+      paramObj.modelTable = this.editorData.modelTable
+      paramObj.cmodelTable = this.editorData.cmodelTable
+      paramObj.dataTime = this.editTimeOther[0] ? this.editTimeOther[0] : null
+      paramObj.dataStopTime = this.editTimeOther[1] ? this.editTimeOther[1] : null
+      paramObj.message = this.editorData.message
+      return paramObj
+    },
+    jdbcDbConnection: function() {
+      this.tableForm.createConn = 'jdbc:' +
+      this.tableForm.createDrive + '://' + this.tableForm.createIp + ':' + this.tableForm.createPort + '/' + this.tableForm.dataBase
+      return this.tableForm.createConn
+    }
+  },
+
+  mounted() {
+    this.loadingModel = true
+    this.getDataList()
+    newDataRow().then(res => {
+      if (res.code === 200) {
+        this.newDataModels.dataType = res.data
+      }
+    })
+  },
+  methods: {
+    // 获取列表
+    getDataList() {
+      fuzzyQuery(this.paramsObj).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          this.loadingModel = false
+        } else {
+          this.loadingModel = false
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingModel = false
+        })
+    },
+    sortChange({ column, prop, order }) {
+      if (prop !== null) {
+        this.sortVal = order === 'ascending' ? 'asc' : 'desc'
+        this.sortName = prop
+      } else {
+        this.sortVal = null
+        this.sortName = null
+      }
+      this.getDataList()
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.loadingModel = true
+      this.getDataList()
+    },
+    subCreatTab() {
+      this.$refs.tableForm.validate((valid) => {
+        if (valid) {
+          this.btnCreatTab = true
+          const params = {
+            d_id: this.newDataModels.radio2,
+            dataBase: this.tableForm.dataBase,
+            tableNameC: this.tableForm.tableNameC,
+            tableNameE: this.tableForm.tableNameE,
+            createDrive: this.tableForm.createDrive,
+            createIp: this.tableForm.createIp,
+            createPort: this.tableForm.createIp,
+            createUserName: this.tableForm.createUserName,
+            createPassWord: this.tableForm.createPassWord,
+            createConn: this.tableForm.createConn
+          }
+          createTableJK(params).then(res => {
+            if (res.code === 200) {
+              this.dialogFormVisible = false
+              this.getTableName(this.getTabNameId, this.getTabNameData)
+            } else {
+              this.btnCreatTab = false
+              this.$message({
+                type: 'warning',
+                message: res.message,
+                duration: 6000,
+                showClose: true
+              })
+            }
+          }).catch(res => {
+            this.btnCreatTab = false
+          })
+        }
+      })
+    },
+    removeTable(item) {
+      const params = {
+        tId: item.tid
+      }
+      TableDelete(params).then(res => {
+        if (res.code === 200) {
+          this.getTableName(this.getTabNameId, this.getTabNameData)
+          this.$message({
+            type: 'success',
+            message: '删除成功',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+      return false
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.loadingModel = true
+      this.getDataList()
+    },
+    closeDialog() {
+      this.newDataModels.tradingHours = null
+      this.flagTrading = false
+    },
+    // 查询
+    searchPag() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.loadingModel = true
+          this.pageInfo.pageNum = 1
+          this.pageInfo.pageSize = 10
+          this.getDataList()
+        }
+      })
+    },
+    // 清空
+    clearForm() {
+      this.$refs.form.resetFields()
+      // this.loadingModel = true
+      // this.getDataList()
+    },
+    cancelData() {
+      this.dialogStorageVisible = false
+      this.newDataModels.descriptionInfo = ''
+      this.$refs.newDataModels.resetFields()
+      this.$refs.newDataModelsOne.resetFields()
+    },
+    newDataTemplate() {
+      this.disNewDataModel = true
+      this.checkedPersons = []
+      this.checkedField = []
+      this.newDataModels.radio1 = ''
+      this.newDataModels.radio2 = ''
+      this.newDataModels.classiFication = []
+      this.newDataModels.newTableName = []
+      this.newDataModels.newDataFiled = {}
+      this.newDataModels.descriptionInfo = ''
+      this.newDataModels.landingTime = null
+      this.$refs.newDataModelsOne.resetFields()
+      this.$refs.newDataModels.resetFields()
+    },
+    // 编辑
+    editor(scope) {
+      this.checkedEditorField = []
+      this.editTimeOther = []
+      var arr = []
+      arr.push(scope.row.dataTime, scope.row.dataStopTime)
+      toEdit(scope.row.modelTable).then(res => {
+        if (res.code === 200) {
+          this.editTimeOther = arr
+          this.editorData = scope.row
+          this.editorData.newDataFiled = res.data
+          this.dialogEditorVisible = true
+          const length = this.editorData.newDataFiled.length
+          if (length >= 1) {
+            for (var i = 0; i < length; i++) {
+              var str = this.editorData.cfieldName.split(',')
+              for (var j = 0; j < str.length; j++) {
+                if (this.editorData.newDataFiled[i].cfieldName === str[j]) {
+                  this.checkedEditorField.push(this.editorData.newDataFiled[i].fieldId)
+                }
+              }
+            }
+          }
+        }
+      }).catch(() => {
+      })
+    },
+    checkboxChange: function(value) {
+    },
+    // 编辑组装数据
+    handleCheckedEditorChange(val) {
+      this.editFieldData.cfieldName = []
+      this.editFieldData.fieldName = []
+      for (var i = 0; i < this.editorData.newDataFiled.length; i++) {
+        for (var j = 0; j < this.checkedEditorField.length; j++) {
+          if (this.editorData.newDataFiled[i].fieldId === this.checkedEditorField[j]) {
+            this.editFieldData.cfieldName.push(this.editorData.newDataFiled[i].cfieldName)
+            this.editFieldData.fieldName.push(this.editorData.newDataFiled[i].fieldName)
+          }
+        }
+      }
+    },
+    // 新增表
+    newTableFnc() {
+      this.btnCreatTab = false
+      this.dialogFormVisible = true
+      this.$refs.tableForm.resetFields()
+    },
+    toEditData() {
+      this.$refs.editorData.validate((valid) => {
+        if (valid) {
+          if (this.editTimeOther === null) {
+            this.$message({
+              message: '请选择数据落地时间',
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+            return false
+          }
+          if (this.editorDataObj.message === '') {
+            this.$message({
+              message: '请输入描述信息',
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+            return false
+          }
+          if (this.checkedEditorField.length === 0) {
+            this.$message({
+              message: '请选择字段名称',
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+            return false
+          }
+          sendToEditData(this.editorDataObj).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: '保存成功！',
+                duration: 6000,
+                showClose: true
+              })
+              this.getDataList()
+            } else {
+              this.$message({
+                type: 'success',
+                message: res.message,
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+          this.dialogEditorVisible = false
+        } else {
+          this.$message({
+            type: 'warning',
+            message: '请正确输入内容',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+
+    // 组装数据
+    assemblyData() {
+      this.$refs.newDataModelsOne.validate((valid) => {
+        if (valid) {
+          if (this.newDataModels.radio1.length > 0 && this.newDataModels.radio2.length > 0) {
+            if (this.checkedPersons.length > 0) {
+              if (this.newDataModels.radio1 === '4') {
+                this.arrayFiled = []
+                console.log(this.checkedPersons, this.newDataModels.newDataFiled, this.checkedField)
+                const arrold = []
+                for (let i = 0; i < this.checkedField.length; i++) {
+                  this.arrayFiled.push(this.checkedField[i].fieldId)
+                  arrold.push(this.checkedField[i].tableName)
+                }
+                const newArr = []
+                const len = arrold.length
+                for (var i = 0; i < len; i++) {
+                  if (newArr.indexOf(arrold[i]) === -1) {
+                    newArr.push(arrold[i])
+                  }
+                }
+                if (this.checkedPersons.length === newArr.length) {
+                  this.dialogStorageVisible = true
+                } else {
+                  this.$message({
+                    type: 'warning',
+                    message: '存在表没有勾选字段, 请勾选字段！',
+                    duration: 6000,
+                    showClose: true
+                  })
+                }
+              } else {
+                this.dialogStorageVisible = true
+              }
+            } else {
+              this.$message({
+                type: 'warning',
+                message: '请选择数据表名！',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          } else {
+            this.$message({
+              type: 'warning',
+              message: '请选择数据类别或分类！',
+              duration: 6000,
+              showClose: true
+            })
+          }
+        }
+      })
+    },
+    // 保存发送组装数据
+    sendAssemblyData() {
+      this.trueLoadingBtn = true
+      this.$refs.newDataModels.validate((valid) => {
+        if (valid) {
+          this.makeParams()
+          sendAssembly(this.makeParamsObj).then(res => {
+            if (res.code === 200) {
+              this.dialogStorageVisible = false
+              this.disNewDataModel = false
+              this.trueLoadingBtn = false
+              this.$message({
+                type: 'success',
+                message: '保存模板成功！',
+                duration: 6000,
+                showClose: true
+              })
+              this.getDataList()
+              this.newDataModels.tradingHours = null
+              this.flagTrading = false
+            } else {
+              this.trueLoadingBtn = false
+              this.dialogStorageVisible = false
+              this.disNewDataModel = false
+              this.newDataModels.tradingHours = null
+              this.flagTrading = false
+              this.$message({
+                type: 'error',
+                message: res.message,
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+            .catch(() => {
+              this.trueLoadingBtn = false
+              this.dialogStorageVisible = false
+              this.disNewDataModel = false
+            })
+        } else {
+          this.trueLoadingBtn = false
+          this.$message({
+            type: 'warning',
+            message: '请正确输入内容',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    // 获取 数据类别
+    getDataSort(id, data) {
+      this.checkedPersons = []
+      this.checkedField = []
+      this.newDataModels.radio2 = ''
+      this.newDataModels.classiFication = []
+      this.newDataModels.newTableName = []
+      this.newDataModels.newDataFiled = {}
+      this.newDataModels.makeDataInfo.dataType = data
+      this.flagTrading = false
+      this.newDataModels.tradingHours = null
+      newDataRowTow(id).then(res => {
+        if (res.code === 200) {
+          this.newDataModels.classiFication = res.data
+        }
+      })
+    },
+    // 动态获取表名
+    getTableName(id, data) {
+      this.getTabNameId = id
+      this.getTabNameData = data
+      this.checkedPersons = []
+      this.checkedField = []
+      this.newDataModels.newDataFiled = {}
+      this.newDataModels.makeDataInfo.classiFication = data
+      this.flagTrading = false
+      this.newDataModels.tradingHours = null
+      if (id) {
+        newTableName(id).then(res => {
+          if (res.code === 200) {
+            this.newDataModels.newTableName = res.data
+            this.tableCheckAll = false
+            this.checkedPersons = []
+            if (this.dialogFormVisible) {
+              this.dialogFormVisible = false
+            }
+          }
+        }).catch(res => {
+          console.log('获取表名失败！')
+        })
+      }
+    },
+    // 动态获取字段名
+    getDataFiled(ids, item) {
+      this.saveLoadingEvent = true
+      this.tidData = ids.join()
+      this.btnSaveProtect = true
+      var arr = []
+      var artificial = []
+      let objIds = []
+      let objArr = []
+      const fMId = this.newDataModels.radio1
+      const tableName = []
+      const obj = this.newDataModels.newTableName
+      for (let i = 0; i < obj.length; i++) {
+        for (let j = 0; j < this.checkedPersons.length; j++) {
+          if (obj[i].tid === this.checkedPersons[j]) {
+            tableName.push(obj[i].tableName)
+            arr.push(obj[i].ctableName)
+            artificial.push(obj[i].artificial)
+            objIds.push(obj[i].tid)
+          }
+        }
+      }
+      objArr = encodeURI(arr.join())
+      objIds = objIds.join()
+      if (ids.length === 0) {
+        objIds = null
+        objArr = null
+        artificial = null
+      }
+      if (ids) {
+        newDataFiled(objIds, objArr, tableName, artificial, fMId).then(res => {
+          if (res.code === 200) {
+            this.newDataModels.newDataFiled = res.data
+            this.btnSaveProtect = false
+            if (this.checkAll) {
+              const boolean = true
+              this.handleCheckAllChange(boolean)
+            }
+            this.saveLoadingEvent = false
+          } else {
+            this.saveLoadingEvent = false
+            this.$message({
+              type: 'error',
+              message: res.message,
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+          .catch(() => {
+            this.btnSaveProtect = false
+            this.saveLoadingEvent = false
+          })
+      }
+    },
+    // 删除名单
+    delRosterFn(params) {
+      batchDelete(params).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+            duration: 6000,
+            showClose: true
+          })
+          this.$refs.rosterTable.clearSelection()
+        }
+      })
+        .then(() => {
+          this.getDataList()
+        })
+        .catch(() => { })
+    },
+    // 批量删除
+    batchDelete() {
+      if (this.select_orderId.length > 0) {
+        this.$confirm('确定要删除选中的数据？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+          .then(() => {
+            this.delRosterFn(this.select_orderId.join())
+          })
+          .catch(() => {
+            this.$message({
+              message: '已取消删除',
+              type: 'info',
+              duration: 6000,
+              showClose: true
+            })
+          })
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请选择要删除的数据 ！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+    cancelSaveEvent() {
+      this.newDataModels.tradingHours = null
+      this.disNewDataModel = false
+      this.flagTrading = false
+    },
+    // 批量
+    handleSelectionChange(val) {
+      this.piliangQi = []
+      this.select_orderId = []
+      this.modelTable = []
+      this.cModelTable = []
+      this.fieldName = []
+      if (val) {
+        val.forEach(val => {
+          if (val.startingItems === '已启动') {
+            this.piliangQi.push(val.startingItems)
+          }
+          if (val) {
+            this.select_orderId.push(val.dataTemplateId)
+            this.modelTable.push(val.modelTable)
+            this.cModelTable.push(val.cmodelTable)
+            this.fieldName.push(val.fieldName)
+          }
+        })
+      }
+    },
+    // 启动
+    letGo(scope, index) {
+      this.ifRun = true
+      this.loadingModel = true
+      var cModelTable = encodeURI(scope.row.cmodelTable)
+      var dataTemplateId = scope.row.dataTemplateId
+      var modelTable = scope.row.modelTable
+      this.scopeIndex = index
+      batchStart(modelTable, dataTemplateId, cModelTable).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '启动成功',
+            duration: 6000,
+            showClose: true
+          })
+          this.ifRun = false
+          this.getDataList()
+        } else if (res.code === 599) {
+          this.loadingModel = false
+          this.ifRun = false
+          this.$message({
+            type: 'warning',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+          this.loadingModel = false
+          this.ifRun = false
+        }
+      }).catch(res => {
+        this.ifRun = false
+        this.loadingModel = false
+      })
+    },
+    // 批量启动
+    batchLetGo() {
+      if (this.piliangQi.length > 0) {
+        this.$message({
+          type: 'error',
+          message: '只能选择未启动的数据进行批量启动',
+          duration: 6000,
+          showClose: true
+        })
+        return false
+      }
+      if (this.select_orderId.length > 0) {
+        const str = this.cModelTable.join()
+        const cModelTable = encodeURI(str)
+        // this.loadingModel = true
+        batchStart(this.modelTable.join(), this.select_orderId.join(), cModelTable, this.fieldName.join()).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '批量启动成功！',
+              duration: 6000,
+              showClose: true
+            })
+            this.getDataList()
+          } else if (res.code === 599) {
+            this.$message({
+              type: 'warning',
+              message: res.message,
+              duration: 6000,
+              showClose: true
+            })
+          } else {
+            // this.loadingModel = false
+            this.$message({
+              type: 'error',
+              message: res.message,
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+          .then(() => {
+            // this.loadingModel = false
+            this.dialogLetGoVisible = true
+          })
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请选择要启动的数据 ！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+    // 模板详情
+    details(scope) {
+      this.dialogVisible = true
+      selectDetails(scope.row.dataTemplateId).then(res => {
+        if (res.code === 200) {
+          this.modelClassify = res.data
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    // 删除
+    tableDelete(scope) {
+      this.$confirm('是否删除当前选中的数据模板?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          dataDelete(scope.row.dataTemplateId).then(res => {
+            this.getDataList()
+          })
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+            duration: 6000,
+            showClose: true
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+            duration: 6000,
+            showClose: true
+          })
+        })
+    },
+    // 全选
+    handleDtCheckAllChange(val) {
+      const arr = []
+      const brr = []
+      var artificial = []
+      this.saveLoadingEvent = true
+      this.newDataModels.newTableName.map(item => {
+        arr.push(item.tid)
+        artificial.push(item.artificial)
+      })
+      this.checkedPersons = val ? arr : []
+      const Data = ['29', '62', '96', '81', '45', '115', '119', '135', '142', '147','156','129','133', '157']
+      const flag = this.checkedPersons.find(i => Data.includes(i))
+      this.newDataModels.tradingHours = null
+      if (flag) {
+        this.flagTrading = true
+      } else {
+        this.flagTrading = false
+        this.newDataModels.tradingHours = null
+      }
+      this.isIndeterminate = false
+      // 获取所有表名英文放入数组
+      for (let k = 0; k < this.newDataModels.newTableName.length; k++) {
+        brr.push(this.newDataModels.newTableName[k].ctableName)
+      }
+      const tableName = []
+      const obj = this.newDataModels.newTableName
+      for (let i = 0; i < obj.length; i++) {
+        tableName.push(obj[i].tableName)
+      }
+      const fMId = this.newDataModels.radio1
+      if (this.checkedPersons.length > 0) {
+        newDataFiled(this.checkedPersons.join(), encodeURI(brr.join()), tableName.join(), artificial, fMId).then(res => {
+          if (res.code === 200) {
+            this.newDataModels.newDataFiled = res.data
+            this.saveLoadingEvent = false
+          } else {
+            this.saveLoadingEvent = false
+            this.$message({
+              type: 'error',
+              message: res.message,
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+          .catch(() => {
+            this.saveLoadingEvent = false
+          })
+      }
+    },
+    // 字段全选
+    handleCheckAllChange(val) {
+      const arr = []
+      this.newDataModels.newDataFiled.forEach(item => {
+        for (var i = 0; i < item.fieIdNames.length; i++) {
+          arr.push(item.fieIdNames[i].fieldId)
+        }
+      })
+
+      this.checkedField = val ? arr : []
+      this.isSizeIndeterminate = false
+    },
+    // 数据字段
+    handleCheckedCitiesChange(value) {
+      // if (value.length >= 10) {
+      //   this.$message({
+      //     type: 'warning',
+      //     message: '主体账户数据表名最多只能够选10条！',
+      //     duration: 6000,
+      //     showClose: true
+      //   })
+      //   return
+      // } else {
+      this.checkedField = value
+      // }
+    },
+    // 组装数据
+    makeParams() {
+      const obj = {}
+      const arr = []
+      const brr = []
+      this.makeArrTable = []
+      this.checkedEnglishPersons = ''
+      for (let item = 0; item < this.newDataModels.newDataFiled.length; item++) {
+        obj[item] = {}
+        obj[item].cnName = []
+        obj[item].enName = []
+        obj[item].cnTablename = this.newDataModels.newDataFiled[item].cTableNames
+        arr.push(this.newDataModels.newDataFiled[item].cTableNames)
+        this.newDataModels.newDataFiled[item].fieIdNames.forEach((ite, index) => {
+          if (this.newDataModels.newDataFiled[item].fieIdNames[index].cfieldName === '') {
+            if (this.newDataModels.radio1 === '4') {
+              // 当他是主体账户时
+              if (this.arrayFiled.indexOf(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldId) !== -1) {
+                obj[item].cnName.push('当前表无备注信息！')
+                obj[item].enName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldName)
+              }
+            } else {
+              obj[item].cnName.push('当前表无备注信息！')
+              obj[item].enName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldName)
+            }
+          } else {
+            if (this.newDataModels.radio1 === '4') {
+              // 当他是主体账户时
+              if (this.arrayFiled.indexOf(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldId) !== -1) {
+                obj[item].cnName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].cfieldName)
+                obj[item].enName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldName)
+              }
+            } else {
+              obj[item].cnName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].cfieldName)
+              obj[item].enName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldName)
+            }
+          }
+          if (obj[item].cnName.indexOf('当前表无备注信息！') > -1) {
+            // 则包含该元素
+            obj[item].cnName = ['当前表无备注信息！']
+          }
+
+          // if (this.arrayFiled.indexOf(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldId) !== -1) {
+          //   obj[item].cnName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].cfieldName)
+          //   obj[item].enName.push(this.newDataModels.newDataFiled[item].fieIdNames[index].fieldName)
+          // }
+        })
+      }
+      for (var i in obj) {
+        this.makeArrTable.push(obj[i])
+      }
+      for (let k = 0; k < this.newDataModels.newTableName.length; k++) {
+        if (arr.indexOf(this.newDataModels.newTableName[k].ctableName) !== -1) {
+          brr.push(this.newDataModels.newTableName[k].tableName)
+        }
+      }
+      this.checkedEnglishPersons = brr.join()
+    },
+    // 数据表名
+    handleCheckedTableNameChange(val) {
+      const checkedCount = val.length
+      this.tableCheckAll = checkedCount === this.newDataModels.newTableName.length
+      this.isIndeterminate = checkedCount > 0 && checkedCount < this.newDataModels.newTableName.length
+      const Data = ['29', '62', '96', '81', '45', '115', '119', '135', '142', '147','156','129','133', '157']
+      const abcd = val.find(i => Data.includes(i))
+      this.newDataModels.tradingHours = null
+      if (abcd) {
+        this.flagTrading = true
+      } else {
+        this.flagTrading = false
+        this.newDataModels.tradingHours = null
+      }
+    },
+    onSubmit() {
+
+    },
+    selectInit(row, index) {
+      // if (row.startingItems === '已启动') {
+      //   return false // 不可勾选
+      // } else {
+      //   return true
+      // }
+      return true
+    }
+  }
+}
+</script>
+<style rel="stylesheet/scss" lang="scss">
+.dataModel {
+  background: #ffffff;
+  padding: 10px;
+  .titlefix {
+    margin: 5px;
+  }
+  .el-form {
+    margin-bottom: 14px;
+    padding-top: 10px;
+    border-radius: 10px;
+    border: 1px solid #f2f2f2;
+    .el-range-editor.el-input__inner {
+      width: 100% !important;
+    }
+    .valable {
+      width: 100%;
+      text-align: right;
+      .el-form-item__content button {
+        margin: 0 10px;
+      }
+    }
+  }
+  .line {
+    text-align: center;
+  }
+  .personDialog {
+  .el-dialog {
+    .el-dialog__body {
+      .el-form {
+        .el-form-item {
+          .el-form-item__content {
+            .datTabNam {
+                height:150px;
+                overflow:auto;
+                  .allselect {
+                     display: block;
+                    }
+              }
+            span div {
+              float: left;
+            }
+            .el-radio-group {
+              margin-right: 15px;
+            }
+          }
+        }
+        .sizeName {
+          padding: 5px;
+          .el-form-item__content {
+
+           .el-checkbox-group{
+                padding: 5px;
+                border-radius: 5px;
+                border: 1px solid #f2f2f2;
+                max-height: 300px;
+                overflow: auto;
+           }
+          }
+        }
+        .dataUp {
+          .el-form-item__content {
+            width: 400px;
+          }
+        }
+      }
+    }
+    .el-dialog__footer {
+      text-align: center;
+    }
+  }
+  .el-checkbox__label {
+    padding-right: 20px;
+  }
+  .el-checkbox + .el-checkbox {
+    margin-left: 0px;
+  }
+}
+}
+
+</style>

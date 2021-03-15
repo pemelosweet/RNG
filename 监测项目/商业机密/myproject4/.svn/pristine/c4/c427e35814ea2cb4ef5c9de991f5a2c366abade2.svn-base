@@ -1,0 +1,757 @@
+<template>
+  <div class="conjointAnalysisList"
+  v-loading="loading"
+  element-loading-text="查询中，请稍等......"
+  element-loading-spinner="el-icon-loading"
+  element-loading-background="rgba(0, 0, 0, 0.3)">
+    <el-card class="box-card">
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>监测分析结果导出</span>
+        <router-link
+          style="float:right"
+          :to="{name:'fenResultExportJian_add'}"
+        >
+          <el-button type="text">录入分析结果</el-button>
+        </router-link>
+      </div>
+      <div class="text item">
+
+        <el-form
+          :model="formInline"
+          ref="searchForm"
+          :rules="rulesSearch"
+          class="demo-form-inline"
+          label-width="120px"
+        >
+            <el-row class="toggle" :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="分支行名称："
+                  prop="organId"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.creBranch"
+                    filterable
+                    disabled
+                    placeholder="请选择分支行"
+                  >
+                    <el-option
+                      v-for="(item,index) in branchData"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    >
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="分析结果名称："
+                  prop="orCreName"
+                  label-width="120px"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.orCreName"
+                    placeholder="请输入分析结果名称，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="线索发送日期："
+                  class="organId"
+                  prop="ysTime"
+                >
+                  <el-date-picker
+                    value-format="yyyy-MM-dd"
+                    v-model="formInline.rangeDate"
+                    type="daterange"
+                    range-separator="至"
+                   
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="线索状态："
+                  prop="status"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.orState"
+                  >
+                  <el-option
+                      label="编辑中"
+                      value="0"
+                    ></el-option>
+                    <el-option
+                      label="查询中"
+                      value="1"
+                    ></el-option>
+                    <el-option
+                      label="已完成"
+                      value="2"
+                    ></el-option>
+                    
+                    <el-option
+                      label="已移送"
+                      value="3"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              
+            </el-row>
+            <!-- <preliminary-judgment :lableWidth="200" :labelName="'涉罪类型：'" ref="judgment"     judgmentOther="judgmentOther"></preliminary-judgment> -->
+            <div style="text-align:right;margin-bottom:10px">
+              <el-button
+                type="primary"
+                @click="onSubmit('searchForm')"
+              >查询</el-button>
+              <el-button
+                type="primary"
+                plain
+                @click="cleanUp"
+              >重置</el-button>
+
+            </div>
+
+
+        </el-form>
+        <el-row>
+          <el-col :span="24">
+            <el-button type="primary" @click="downloadList">下载列表</el-button>
+            <span style="color:red;font-size: 12px;">说明：查询结果仅保留30个工作日</span>
+          </el-col>
+        </el-row>
+        <el-table
+          style="width: 100%"
+          ref="multipleTable"
+          :data="tableData"
+           @selection-change="handleSelectionChange"
+        >
+          <el-table-column
+            type="selection"
+            width="55">
+          </el-table-column>
+          <el-table-column
+            type="index"
+            fixed
+            label="序号"
+            min-width="80"
+          ></el-table-column>
+          <el-table-column
+            prop="creBranch"
+            label="分支行名称"
+            min-width="110"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="submitTime"
+            label="提交时间"
+            min-width="110"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="orState"
+            label="线索状态"
+            min-width="120"
+          >
+            <template slot-scope="scope">
+              <div>
+                {{scope.row.orState ==='0'?'编辑中':scope.row.orState ==='1'?'查询中':scope.row.orState ==='2'?'已完成':'已移送'}}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="orCodeNum"
+            label="可疑交易线索表编号"
+            min-width="180"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+
+          <el-table-column
+            prop="orCreName"
+            label="分析结果名称"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="receiveDept"
+            label="线索接收单位"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="ysTime"
+            label="线索发送日期"
+            min-width="110"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="jub"
+            label="初步判断"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="triggerPoint"
+            label="监测分析触发点"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="involvedArea"
+            label="涉及地区"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="aboutSubNum"
+            label="涉及主体数"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="aboutAccNum"
+            label="涉及账户数"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="aboutTradeNum"
+            label="涉及交易笔数"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="sumMoneySum"
+            label="累计本币交易金额(人民币万元)"
+            min-width="200"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="sumDollarSum"
+            label="累计外币交易金额(折美元万元)"
+            min-width="200"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+
+
+          <el-table-column label="操作" width="300" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text"  @click="seeInfo(scope.row)">查看任务</el-button>
+              <el-button type="text" :disabled="scope.row.downStatus ==='0'  || (new Date().getTime() - new Date(scope.row.submitTime).getTime())/86400000 >= 30"   @click="downloadInfo(scope.row)">下载结果</el-button>
+              <el-button type="text" :disabled="scope.row.orState ==='1'  || (new Date().getTime() - new Date(scope.row.submitTime).getTime())/86400000 >= 30"  @click="deleteInfo(scope.row)">删除结果</el-button>
+              <el-button type="text"  :disabled="scope.row.orState ==='0' || scope.row.orState ==='1'" @click="addInfo(scope.row)">填写移送情况</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-size="pageInfo.pagesize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.total"
+          background
+        >
+        </el-pagination>
+      </div>
+    </el-card>
+  </div>
+</template>
+<script>
+import { mapGetters } from 'vuex'
+import { getToken } from '@/utils/auth'
+import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/preliminaryJudgment.vue'
+import { branch } from '@/api/sys-monitoringAnalysis/sendTaskInfo/list.js'
+import { deleteInfoById } from '@/api/sys-monitoringAnalysis/resultExportJian/index'
+import { getList, getListFor } from '@/api/sys-monitoringAnalysis/resultExportJian/index'
+import { canEdit4 } from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+import { commonPattern, ValidQueryInput } from '@/utils/formValidate'
+import {
+  canEdit1
+} from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+export default {
+  name: 'www',
+  components: {
+    preliminaryJudgment
+  },
+  data() {
+    return {
+      loading: false,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      isFxqjRole: true,
+      dialogJudgmentData: [],
+      formInline: {
+        orCreName: null,
+        orState: null,
+        rangeDate: [],
+        creBranch: null
+      },
+      rulesSearch: {
+        orCreName: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+          // { max: 50, message: '字符长度必须50位', trigger: 'blur' }
+        ]
+      },
+      token: getToken(),
+      sort: [],
+      typeId: [],
+      branchData: [
+      ],
+      timer: null,
+      statusList: true,
+      toggleSearch: true,
+      tableData: [],
+      multipleSelection: [],
+      currentPage: 1,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 5
+      }
+    }
+  },
+  // 列表查询参数
+  computed: {
+    // preliminaryJudgmeStr1() {
+    //   return this.$refs.judgment.searchParams.join()
+    // },
+    searchParams() {
+      const obj = Object.assign({}, this.formInline, this.pageInfo)
+      if (this.formInline.rangeDate) {
+        obj.selectSendTimeStart = this.formInline.rangeDate[0]
+        obj.selectSendTimeEnd = this.formInline.rangeDate[1]
+      }
+      delete obj.rangeDate
+      delete obj.total
+      return obj
+    },
+    ...mapGetters([
+      'businessFlag',
+      'permissions_routers',
+      'workFlow2business',
+      'user_riid',
+      'permissions_routers',
+      'institution'
+    ]),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    }
+  },
+  created() {
+    if (sessionStorage.getItem('conjointAnalysis')) {
+      const conjointAnalysis = JSON.parse(sessionStorage.getItem('conjointAnalysis'))
+      if (conjointAnalysis.pageName === this.$route.name && conjointAnalysis.ifReview) {
+        this.pageInfo = conjointAnalysis.pageInfo
+        this.formInline = conjointAnalysis.searchForm
+        this.toggleSearch = conjointAnalysis.toggleSearch
+      }
+    }
+  },
+  beforeDestroy() {
+    clearInterval(this.timer)
+  },
+  mounted() {
+    this.formInline.creBranch = this.user_riid
+    // this.isFxqj()
+    // this.getSort()
+    this.initList(this.searchParams)
+    this.getBranch()
+    if (this.timer) { // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.initListFor(this.searchParams)
+      }, 300000)
+    }
+    // this.judge()
+  },
+  methods: {
+    // 下载结果
+    downloadInfo(scope) {
+      window.location.href = '/monitor/outResult/exportResult2Zip/' + scope.orId + '?token=' + this.token
+    },
+    // 下载列表
+    downloadList() {
+      if (this.multipleSelection.length === 0) {
+        this.$message({
+          type: 'error',
+          message: '请先选择数据',
+          showClose: true,
+          duration: 6000
+        })
+      } else {
+        window.location.href = '/monitor/outResult/export2Excel?token=' + this.token + '&dataIds=' + this.multipleSelection.join(',')
+      }
+    },
+    // 全选
+    toggleSelection(rows) {
+      if (rows) {
+        rows.forEach(row => {
+          this.$refs.multipleTable.toggleRowSelection(row)
+        })
+      } else {
+        this.$refs.multipleTable.clearSelection()
+      }
+    },
+    // 单选
+    handleSelectionChange(val) {
+      this.multipleSelection = []
+      val.forEach(item => {
+        this.multipleSelection.push(item.orId)
+      })
+      console.log(this.multipleSelection)
+    },
+    // 涉及分支机构转换汉字
+    turnOrg(row) {
+      if (row.analyseTaskOrgkeyDos.length > 0) {
+        const arr = []
+        row.analyseTaskOrgkeyDos.forEach(item => {
+          this.branchData.forEach(item2 => {
+            if (item.orgKey === item2.codeId) {
+              arr.push(item2.codeName)
+            }
+          })
+        })
+        return arr.join(',')
+      } else {
+        return ''
+      }
+    },
+    // 填写移送情况
+    addInfo(scope) {
+      this.$router.push({
+        name: 'fenResultExportJian_send',
+        query: {
+          scope: scope
+        }
+      })
+    },
+    // 查看
+    seeInfo(scope) {
+      this.$router.push({
+        name: 'fenResultExportJian_add',
+        query: {
+          orId: scope.orId,
+          status: scope.orState
+        }
+      })
+    },
+    // 删除
+    deleteInfo(scope) {
+      this.$confirm('确定删除选中的记录?', '提示', {
+        distinguishCancelAndClose: true,
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteInfoById(scope.orId).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '删除成功',
+              showClose: true,
+              duration: 6000
+            })
+            this.initList(this.searchParams)
+          }
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'success',
+          message: '已取消删除',
+          showClose: true,
+          duration: 6000
+        })
+      })
+    },
+    // 判断是中心用户还是涉及分支机构用户
+    judge() {
+      canEdit1().then(response => {
+        if (response.code === 200) {
+          this.statusList = !response.data
+        }
+      })
+    },
+    // 反洗钱局没有新建联合分析权限
+    isFxqj() {
+      canEdit4().then(res => {
+        if (res.code === 200) {
+          if (res.data === true) {
+            this.isFxqjRole = false
+          }
+        }
+      })
+    },
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    validateAgentNum(rule, value, callback) {
+      if (value !== '') {
+        if (this.formInline.certificateType === '110001' || this.formInline.certificateType === '110003') {
+          if (value.length !== 15 && value.length !== 18) {
+            callback(new Error('身份证件格式标准为15及18位'))
+          } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+            callback(new Error('禁止输入特殊字符'))
+          } else if (this.blankSpace.test(value)) {
+            callback(new Error('禁止输入空格'))
+          } else if (this.chinaNull.test(value)) {
+            callback(new Error('禁止输入中文'))
+          } else {
+            callback()
+          }
+        } else {
+          if (value.length <= 5 || value.length >= 129) {
+            callback(new Error('内容应在6-128位之间'))
+          } else if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== '' && value !== null) {
+        if (value.length > 30) {
+          callback(new Error('内容应在30字符以内'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    NumberValidate(rule, value, callback) {
+      if (value !== null && value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (value !== '') {
+          if (commonPattern.number.test(value)) {
+            callback(new Error('不能输入数字'))
+          }
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    NumberValidate1(rule, value, callback) {
+      if (value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 获取证件类型
+    getSort() {
+      branch({ typeId: 'SFZJ' }).then(res => {
+        if (res.code === 200) {
+          this.sort = res.data.list
+        }
+      })
+    },
+    // 获取涉及分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.branchData = res.data.list
+        }
+      })
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.formInline.preJudmentDoList.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.formInline.preJudmentDoList.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 涉罪类型数据类型转换拼接
+    getPreliminaryJudgmeStr() {
+      const arr = []
+      this.formInline.preJudmentDoList.forEach(el => {
+        if (el === '1401') {
+          el = '1401-' + this.formInline.supplementOne
+          arr.push(el)
+        } else if (el === '1402') {
+          el = '1402-' + this.formInline.supplementTwo
+          arr.push(el)
+        } else {
+          arr.push(el)
+        }
+      })
+      this.formInline.preliminaryJudgmeStr = arr.join()
+    },
+    // 获取列表数据方法
+    initList(params) {
+      this.loading = true
+      getList(params).then(res => {
+        if (res.code === 200) {
+          this.pageInfo.total = res.data.total
+          const arry = res.data.list // 获取的数据
+          // const arr = []
+          // arry.forEach(el => {
+          //   const obj = {} // 新对象存我想要的四个字段
+          //   obj.jointAnalysisName = el.jointAnalysisName // 联合分析名称
+          //   obj.organName = el.organName
+          //   obj.jointId = el.jointId
+          //   obj.createUser = el.createUser
+          //   obj.state = el.state // 状态
+          //   const type = []
+          //   el.preJudmentDoList.forEach(item => {
+          //     var str = item.preliminaryJudgme
+          //     type.push(str)
+          //     obj.preliminaryJudgme = type.join()
+          //   })
+          //   const type1 = []
+          //   el.organDoList.forEach(item => {
+          //     var str = item.organId
+          //     type1.push(str)
+          //     obj.organId = type1.join()
+          //   })
+          //   arr.push(obj)
+          // })
+          this.tableData = arry
+          this.loading = false
+        } else {
+          this.loading = false
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    // 轮询获取列表数据方法
+    initListFor(params) {
+      this.loading = true
+      getListFor(params).then(res => {
+        if (res.code === 200) {
+          this.pageInfo.total = res.data.total
+          const arry = res.data.list // 获取的数据
+          this.tableData = arry
+          this.loading = false
+        } else {
+          this.loading = false
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    onSubmit(form) {
+      this.$refs[form].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.searchParams.pageNum = 1
+          this.pageInfo.pageNum = 1
+          getList(this.searchParams)
+            .then(res => {
+              if (res.code === 200) {
+                this.loading = false
+                this.pageInfo.total = res.data.total
+                this.tableData = res.data.list // 获取的数据
+              } else {
+                this.loading = false
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          return false
+        }
+      })
+    },
+    cleanUp() {
+      this.formInline.orCreName = null
+      this.formInline.orState = null
+      this.formInline.rangeDate = []
+      this.$refs.searchForm.resetFields()
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.initList(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initList(this.searchParams)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.conjointAnalysisList {
+  .el-select {
+    width: 100%;
+  }
+  .rangeData {
+    .el-date-editor--daterange {
+      min-width: 100%;
+    }
+  }
+}
+</style>

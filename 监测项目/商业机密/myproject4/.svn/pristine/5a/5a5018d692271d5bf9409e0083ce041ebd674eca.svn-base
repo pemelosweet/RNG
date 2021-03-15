@@ -1,0 +1,603 @@
+<template>
+  <div
+    class="administrationCollect-query"
+    v-loading="loadingBox"
+    element-loading-text="正在查询中，请稍侯……"
+    element-loading-background="rgba(0, 0, 0, 0.1)"
+  >
+    <el-card>
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>查询列表</span>
+        <router-link :to="{name:'administrationCollect_dataUpload'}">
+          <el-button
+            type="text"
+            v-if="show"
+            style="float:right"
+          > 数据上传</el-button>
+        </router-link>
+
+      </div>
+      <div>
+        <el-form
+          :model="form"
+          ref="form"
+          label-width="85px"
+          :rules="rules"
+        >
+          <template v-if="toggleSearch">
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="主体名称："
+                  prop="name"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="form.name"
+                    placeholder="请输入主体名称，最多输入100个字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="账号："
+                  prop="accountNum"
+                >
+                  <el-input
+                    maxlength="30"
+                    v-model="form.accountNum"
+                    placeholder="请输入账号，最多输入30个字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-button
+                  type="primary"
+                  :loading="isLoading"
+                  @click="searchData"
+                >查 询</el-button>
+                <el-button
+                  type="primary"
+                  plain
+                  @click="cleanUp('form')"
+                >清空</el-button>
+                <el-button
+                  type="text"
+                  icon="el-icon-arrow-down"
+                  @click="toggleSearch=false"
+                >展开</el-button>
+              </el-col>
+            </el-row>
+
+          </template>
+
+          <template v-else>
+            <el-row
+              :gutter="20"
+              class="toggle"
+            >
+              <el-col :span="8">
+                <el-form-item
+                  label="主体名称："
+                  prop="name"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="form.name"
+                    placeholder="请输入主体名称，最多输入100个字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="账号："
+                  prop="accountNum"
+                >
+                  <el-input
+                    maxlength="30"
+                    v-model="form.accountNum"
+                    placeholder="请输入账号，最多输入30个字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="证件类型："
+                  prop="certificateType"
+                >
+                  <el-select
+                    v-model="form.certificateType"
+                    clearable
+                    @change="certificate"
+                    placeholder="请选择"
+                    style="width:100%"
+                  >
+                    <el-option
+                      v-for="(item,index) in certificateTypeArr"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <!-- <el-form-item label="文号：" prop="admNum" :rules="[{validator: isValidInput, trigger: 'blur'}]"> -->
+                <el-form-item
+                  label="文号："
+                  prop="admNum"
+                >
+                  <el-input
+                    maxlength="20"
+                    v-model="form.admNum"
+                    placeholder="请输入文号，最多输入20个字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="分支机构："
+                  prop="branchBank"
+                >
+                  <el-select
+                    style="width:100%;"
+                    :disabled="disabled"
+                    clearable
+                    v-model="form.branchBank"
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="请选择分支机构"
+                  >
+                    <el-option
+                      v-for="(item,index) in branchData"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    >
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="上传时间："
+                  prop="date"
+                >
+                  <el-date-picker
+                    style="width:100%!important;"
+                    value-format="yyyy-MM-dd"
+                    v-model="form.date"
+                    type="daterange"
+                    range-separator="至"
+                   
+                    unlink-panels
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="证件号码："
+                  prop="certificateNum"
+                >
+                  <el-input
+                    maxlength="128"
+                    v-model="form.certificateNum"
+                    placeholder="请输入账户，最多输入128个字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <div style="text-align:right;margin-bottom:10px">
+              <el-button
+                type="primary"
+                :loading="isLoading"
+                @click="searchData"
+              >查 询</el-button>
+              <el-button
+                type="primary"
+                plain
+                @click="cleanUp('form')"
+              >清空</el-button>
+              <el-button
+                type="text"
+                icon="el-icon-arrow-up"
+                @click="toggleSearch=true"
+              >收起</el-button>
+            </div>
+
+          </template>
+
+        </el-form>
+        <el-table :data="tableData">
+          <el-table-column
+            label="序号"
+            type="index"
+          ></el-table-column>
+          <el-table-column
+            label="文号"
+            prop="admNum"
+          >
+            <template slot-scope="scope">
+              <router-link :to="{name:'administrationCollect_view', params:{id:scope.row.admId}}">
+                <el-button type="text">{{scope.row.admNum}}</el-button>
+              </router-link>
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="上传日期"
+            prop="uploadDt"
+          ></el-table-column>
+          <el-table-column
+            label="分支机构名称"
+            prop="branchBank"
+          ></el-table-column>
+          <el-table-column label="涉及主体数">
+            <template slot-scope="scope">
+              {{scope.row.mainDoList.length}}
+            </template>
+          </el-table-column>
+          <el-table-column label="涉及账户数">
+            <template slot-scope="scope">
+              {{scope.row.accountDoList.length}}
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-row>
+          <el-col :span="8">
+            <el-button
+              style="margin-top:8px"
+              type="primary"
+              plain
+              @click="exportData"
+            >全部导出</el-button>
+          </el-col>
+          <el-col :span="16">
+            <el-pagination
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+              :current-page="pageInfo.pageNum"
+              :page-size="pageInfo.pagesize"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="pageInfo.total"
+              background
+            >
+            </el-pagination>
+          </el-col>
+        </el-row>
+
+      </div>
+    </el-card>
+  </div>
+</template>
+<script>
+import { mapGetters } from 'vuex'
+import { getToken } from '@/utils/auth'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { getAdmInvestigation } from '@/api/sys-monitoringAnalysis/administration-collect/query.js'
+import { branch } from '@/api/sys-monitoringAnalysis/conjointAnalysis/list.js'
+import { commonPattern, ValidQueryInput, spaceBarAndSpecial } from '@/utils/formValidate'
+export default {
+  // certificateType certificateNum  uploadDt
+  data() {
+    return {
+      loadingBox: false,
+      isLoading: false,
+      show: true,
+      disabled: true,
+      toggleSearch: true,
+      form: {
+        name: '',
+        certificateType: '',
+        accountNum: '',
+        admNum: '',
+        branchBank: '',
+        date: '',
+        certificateNum: ''
+      },
+      branchData: [],
+      certificateTypeArr: '',
+      tableData: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      token: getToken(),
+      rules: {
+        name: [{ validator: spaceBarAndSpecial, trigger: 'blur' }],
+        accountNum: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        admNum: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        certificateNum: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    paramsObj() {
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.total
+      delete obj.date
+      delete obj.organId
+      if (this.form.date) {
+        obj.beginDate = this.form.date[0]
+        obj.endDate = this.form.date[1]
+      } else {
+        obj.beginDate = ''
+        obj.endDate = ''
+      }
+      return obj
+    },
+    ...mapGetters(['institution', 'user_riid']),
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    }
+
+  },
+  created() {
+    if (sessionStorage.getItem('administrationCollect')) {
+      const administrationCollect = JSON.parse(sessionStorage.getItem('administrationCollect'))
+      if (administrationCollect.pageName === this.$route.name && administrationCollect.ifReview) {
+        this.pageInfo = administrationCollect.pageInfo
+        this.form = administrationCollect.searchForm
+        this.toggleSearch = administrationCollect.toggleSearch
+      }
+    }
+  },
+  mounted() {
+    this.getDictionary('SFZJ')
+    this.fetchData()
+    this.judge()
+    this.getBranch()
+  },
+  methods: {
+    // 证件类型校验
+    certificate() {
+      switch (this.form.certificateType) {
+        case '110003':
+          this.rules.certificateNum = [
+            { message: '请填正确的身份证号码', trigger: 'blur' },
+            { pattern: /^[a-zA-Z0-9]{15}$|^[a-zA-Z0-9]{18}$/, message: '请输入正确的身份证号码,15或18位', trigger: 'blur' }
+          ]
+          break
+        case '110001':
+          this.rules.certificateNum = [
+            { message: '请填正确的身份证号码', trigger: 'blur' },
+            { pattern: /^[a-zA-Z0-9]{15}$|^[a-zA-Z0-9]{18}$/, message: '请输入正确的身份证号码,15或18位', trigger: 'blur' }
+          ]
+          break
+        case '':
+          this.rules.certificateNum = [{ required: false, validator: this.numberValidate, trigger: 'blur' }]
+          break
+        default:
+          this.rules.certificateNum = [{ required: false, validator: this.numberValidate, trigger: 'blur' }]
+          break
+      }
+    },
+    numberValidate(rule, value, callback) {
+      if (value !== '' && value !== null) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    numberValidate1(rule, value, callback) {
+      if (value !== '' && value !== null) {
+        if (value.length > 30) {
+          callback(new Error('内容应不超过30字符'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    mynoSpaceAndTs(rule, value, callback) {
+      var my = {
+        specialSignEng: /[`~!@#$%^&*_+<>?:"{}（）(),.\/;']/im,
+        specialSignChar: /[·！#￥——：；“”‘’、，|《。》？、]/im
+      }
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (my.specialSignChar.test(value) || my.specialSignEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    NumberValidate(rule, value, callback) {
+      if (value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (value !== '') {
+          if (commonPattern.number.test(value)) {
+            callback(new Error('不能输入数字'))
+          }
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+
+    // 获取分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          const arr = res.data.list
+          arr.forEach(el => {
+            if (el.codeId === 'A1000131000023') {
+              el.codeName = '上海总部'
+            }
+          })
+          this.branchData = arr
+        }
+      })
+    },
+    // 清空搜索
+    cleanUp(formName) {
+      this.form = {
+        name: '',
+        certificateType: '',
+        accountNum: '',
+        admNum: '',
+        branchBank: '',
+        date: '',
+        certificateNum: ''
+      }
+      // this.$refs.searchForm.resetFields()
+      this.$refs[formName].resetFields()
+    },
+    // 获取数据字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'SFZJ':
+              this.certificateTypeArr = res.data
+              break
+
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 判断是否为分支机构
+    judge() {
+      if (this.isBranch) {
+        this.show = true
+        this.disabled = true
+        this.form.branchBank = this.user_riid
+      } else {
+        this.show = false
+        this.disabled = false
+        this.form.branchBank = ''
+      }
+    },
+    searchData() {
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          this.fetchData('cx')
+        } else {
+          return false
+        }
+      })
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData()
+    },
+
+    // 请求数据
+    fetchData(cx) {
+      if (cx) {
+        this.paramsObj.pageNum = 1
+        this.pageInfo.pageNum = 1
+      }
+      this.isLoading = true
+      this.loadingBox = true
+      getAdmInvestigation(this.paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.isLoading = false
+            this.loadingBox = false
+            res.data.list.forEach(el => {
+              if (el.branchBank === '上海分中心') {
+                el.branchBank = '上海总部'
+              }
+            })
+            this.tableData = res.data.list
+            this.pageInfo.total = res.data.total
+            const administrationCollect = {
+              pageName: this.$route.name,
+              pageInfo: this.pageInfo,
+              searchForm: this.form,
+              toggleSearch: this.toggleSearch
+            }
+            sessionStorage.setItem('administrationCollect', JSON.stringify(administrationCollect))
+          } else {
+            this.isLoading = false
+            this.loadingBox = false
+          }
+        })
+        .catch(() => {
+          this.loadingBox = false
+          this.isLoading = false
+        })
+    },
+    //
+    exportData() {
+      const obj = JSON.parse(JSON.stringify(this.paramsObj))
+      delete obj.pageSize
+      delete obj.pageNum
+      var str = ''
+      for (var key in obj) {
+        str += `${key}=${obj[key]}&`
+      }
+      str = str.substring(0, str.length - 1)
+
+      location.href = `/monitor/admInvestigation/export?${str}&token=${this.token}`
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.administrationCollect-query {
+  .el-col-8 {
+    height: 55px;
+  }
+  @media screen and(max-width: 1400px) {
+    .toggle {
+      .el-col-8 {
+        width: 50%;
+      }
+    }
+  }
+}
+</style>
+
+

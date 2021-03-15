@@ -1,0 +1,662 @@
+<template>
+  <div class="uploader-common" v-loading.fullscreen.lock="uploadLoading"  :element-loading-text="`文件正在上传，请勿离开！已上传： ${fileDataLen-isOver}/${fileDataLen}`">
+    <div v-show="dragActive" id="dragAndDropArea" class="drop-active">
+    </div>
+    <el-form> 
+      <div class="button-group clearfix" :before-upload="handleBefore">
+        <el-form-item required label="附件：" label-width="180">
+          <el-button type="text" plain id="i_select_files" class="i_select_files" >选取文件</el-button>
+          <!-- <el-button type="primary" plain @click="startUpload">开始上传</el-button> -->
+          <!-- <el-button type="primary" plain @click="stopUpload" :disabled="isNine">停止上传</el-button> -->
+          <!-- <el-button type="primary" plain @click="cancelUpload">取消</el-button> -->
+        </el-form-item>
+      </div>
+    </el-form>
+    <el-table :data="fileData.slice((currentPage-1)*pagesize,currentPage*pagesize)" border tooltip-effect="dark">
+      <el-table-column type="index" label="序号" width="80"></el-table-column>
+      <el-table-column label="文件名称" prop="name" min-width="250">
+        <template slot-scope="scope">
+          <el-tooltip effect="dark" placement="top-start">
+            <div slot="content" style="margin:4px">{{scope.row.name}}</div>
+            <span class="tableCell">{{scope.row.name}}</span>
+          </el-tooltip>
+        </template>
+      </el-table-column>
+      <el-table-column label="文件大小" prop="formatSize"></el-table-column>
+      <!-- <el-table-column label="进度">
+        <template slot-scope="scope">
+          <div :id="scope.row.id">
+            <el-progress :percentage="scope.row.percent" :stroke-width="14" :text-inside="true" color="#8e71c7"></el-progress>
+          </div>
+        </template>
+      </el-table-column> -->
+      <!-- <el-table-column label="状态"></el-table-column> -->
+      <el-table-column label="操作">
+        <template slot-scope="scope">
+          <span v-if="scope.row.percent===100" type="text">成功</span>
+          <el-button v-else type="text" @click="cancelOne(scope)">取消</el-button>
+        </template>
+      </el-table-column>
+
+    </el-table>
+    <el-pagination 
+      background
+      :hide-on-single-page="true"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="currentPage"
+      :page-sizes="[10, 30, 50, 100, 300, 500]"
+      :page-size="pagesize"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="fileData.length">
+    </el-pagination>
+  </div>
+</template>
+
+<script>
+import Uploader from '@/utils/hbUploader.js'
+// import JsZip from 'jszip'
+// import { searchFile, validateSize, deleteFile, fileSend, deleteAllFile, noRepeatFileName } from '@/api/sys-monitoringAnalysis/fileTransfer/fileSend'
+export default {
+  data() {
+    return {
+      fileNum: 1,
+      isZero: 0,
+      labelPosition: 'right',
+      fileData: [],
+      fileAll: [],
+      gongYongId: '',
+      fileAllJson: [],
+      fileList: [],
+      currentPageFile: 1,
+      pagesizeFile: 10,
+      totalFile: 0,
+      temFile: [],
+      dragActive: false,
+      uploadLoading: false,
+      fileDataLen: null,
+      // 默认开始页码
+      currentPage: 1,
+      // 每页显示条数
+      pagesize: 10,
+      isNine: false,
+      total: '',
+      form: {
+        date: '',
+        fileName: ''
+      },
+      noRepeatFileName: [],
+      pageInfo: {
+        // 默认开始页码
+        pageNum: 1,
+        // 每页显示条数
+        pageSize: 10
+      },
+      fileSizeInfo: 0
+    }
+  },
+  props: {
+    // noteFileID: {
+    //   type: String,
+    //   default: ''
+    // },
+    fileId: {
+      type: Function,
+      default: ''
+    },
+    tokenURL: {
+      type: String,
+      default: ''
+    },
+    removeURL: {
+      type: String,
+      default: 'file-service/fileupload/remove'
+    },
+    uploadURL: {
+      type: String,
+      default: '' /** HTML5上传的URI */
+    },
+    onProgress: {
+      type: Function,
+      default() {
+        return function() {}
+      }
+    }
+  },
+  computed: {
+    isOver() {
+      return this.fileData.length
+    },
+    searchParams() {
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.date
+      if (this.form.date) {
+        obj.startDate = this.form.date[0]
+        obj.endDate = this.form.date[1]
+      }
+      return obj
+    }
+  },
+  watch: {
+    isOver(val) {
+    //   console.log(val)
+      // console.log(this.upload, 1)
+      // console.log(this.fileData)
+      if (val <= 0) {
+        this.uploadLoading = false
+        this.onProgress()
+      }
+      // for (var key in this.upload.uploadInfo) {
+      //   if (this.upload.uploadInfo[key].uploadComplete) {
+      //     delete this.upload.uploadInfo[key]
+      //   }
+      // }
+      // this.upload.onAddTask()
+    }
+  },
+  mounted() {
+    this.gongYongId = this.fileId()
+    console.log(this.gongYongId)
+    var _this = this
+    this.config = {
+      customered: true,
+      browseFileId: 'i_select_files' /** 选择文件的ID, 默认: i_select_files */,
+      browseFileBlockDisplay: 'inline-blcok',
+      browseFileBtn: '' /** 显示选择文件的样式, 默认: `<div>请选择文件</div>` */,
+      dragAndDropArea:
+        'dragAndDropArea' /** 拖拽上传区域，Id（字符类型"i_select_files"）或者DOM对象, 默认: `i_select_files` */,
+      dragAndDropTips:
+        '<h3>把文件拖拽到这里</h3>' /** 拖拽提示, 默认: `<span>把文件拖拽到这里</span>` */,
+      filesQueueId: 'i_stream_files_queue' /** 文件上传容器的ID, 默认: i_stream_files_queue */,
+      filesQueueHeight: 200 /** 文件上传容器的高度（px）, 默认: 450 */,
+      messagerId:
+        'i_stream_message_container' /** 消息显示容器的ID, 默认: i_stream_message_container */,
+      multipleFiles: true /** 多个文件一起上传, 默认: false */,
+      // onRepeatedFile: function(f) {
+      //   _this.$message('文件：' + f.name + ' 大小：' + f.size + ' 已存在于附件列表中。')
+      //   return false
+      // },
+      autoUploading: false /** 选择文件后是否自动上传, 默认: true */,
+      autoRemoveCompleted: false /** 是否自动删除容器中已上传完毕的文件, 默认: false */,
+      autoRemoveCancel: true /** 服务器端是否自动删除取消上传的文件 , , 默认: true*/,
+      minSize: '1',
+      maxSize: 10048576000, //, /** 单个文件的最大大小，默认:2G */
+      swfURL: 'swf/FlashUploader.swf' /** SWF文件的位置 */,
+      tokenURL: this.tokenURL,
+      removeURL: this.removeURL,
+      uploadURL: `/file-service/upload/upload?type=1&extend1=transmit` /** HTML5上传的URI */,
+      // uploadURL: `/upload/upload?type=1&extend1=transmit` /** HTML5上传的URI */,
+      simLimit: 500 /** 单次最大上传文件个数 */,
+      extFilters: [] /** 允许选择的文件扩展名, 默认: [] */,
+      // extFilters: ['.zip'] /** 允许选择的文件扩展名, 默认: [] */,
+      postVarsPerFile: {
+        noteId: _this.gongYongId,
+        // type: '1',
+        fileId: _this.gongYongId,
+        ownSys: 'international'
+      },
+      onSelect: function(file) {
+        // _this.fileSizeInfo = 0
+        // console.log(file)
+        // file.forEach(item => {
+        //   _this.fileSizeInfo += item.size
+        // })
+        // if (_this.fileSizeInfo > 1000000000) {
+        //   _this.fileData = []
+        //   _this.$message({
+        //     type: 'warning',
+        //     message: '附件不能大于1G'
+        //   })
+        //   file = []
+        //   return
+        // }
+        file.forEach(item => {
+          _this.noRepeatFileName.push(encodeURIComponent(item.name))
+        })
+
+        // 选择文件后的响应事件
+      },
+      onAddTask: function(file, dat) {
+        var testmsg = (file.name.substring(file.name.lastIndexOf('.') + 1)).toLowerCase()
+        const extension = testmsg === 'zip'
+        if (!extension) {
+          // this.$refs.upload.uploadFiles.splice(fileList.length - 1, 1)
+          _this.$message({
+            message: '只能上传.zip格式文件!',
+            duration: 6000,
+            type: 'error'
+          })
+          return false
+        } else if (file.size / 1024 / 1024 > 100) {
+          _this.$message({
+            type: 'warning',
+            message: '上传文件必须小于100M,请调整后再进行上传'
+          })
+          return false
+        } else if (file.size === 0) {
+          _this.$message({
+            type: 'warning',
+            message: '不允许上传0B的文件，请将其删除后在进行上传'
+          })
+          return false
+        } else {
+          _this.fileData.unshift(file)
+          _this.fileAll.unshift(file)
+          _this.fileDataLen = _this.fileData.length
+          _this.currentPage = Math.ceil((_this.fileData.length - _this.fileNum) / _this.pageInfo.pageSize) === 0 ? 1 : ((_this.fileData.length - _this.fileNum) % _this.pageInfo.pageSize === 0 ? Math.ceil(_this.fileData.length / _this.pageInfo.pageSize) : Math.ceil((_this.fileData.length - _this.fileNum) / _this.pageInfo.pageSize))
+          console.log(_this.currentPage)
+        }
+      },
+      dropFn: function(type) {
+        _this.dragActive = type
+      },
+      onUploadProgress: function(params) {
+        params.totalPercent = '100'
+        var fileIndex = null
+        _this.fileData.forEach((file, index) => {
+          if (params.id === file.id) {
+            if (file.percent !== 100) {
+              fileIndex = index
+            }
+          }
+        })
+        if (params.loaded === params.size) {
+          params.percent = 100
+          _this.currentPage = Math.ceil((_this.fileData.length - _this.fileNum) / _this.pageInfo.pageSize) === 0 ? 1 : Math.ceil((_this.fileData.length - _this.fileNum) / _this.pageInfo.pageSize)
+          _this.fileNum++
+          _this.$emit('yesNoFileNum', 1)
+          _this.$emit('uploadIn', true)
+        }
+        // _this.$set(_this.fileData[fileIndex], 'percent', params.percent)
+        // if (params.percent === 99.99) {
+        //   _this.isNine = true
+        //   params.percent = 100
+        // } else {
+        //   _this.isNine = false
+        // }
+        _this.$set(_this.fileData[fileIndex], 'percent', params.percent)
+      },
+      // onUploadProgress: function(params) {
+      //   params.totalPercent = '100'
+      //   var fileIndex = null
+      //   _this.fileData.forEach((file, index) => {
+      //     if (file.percent !== 100) {
+      //       if (params.id === file.id) {
+      //         if (file.percent !== 100) {
+      //           fileIndex = index
+      //         }
+      //       }
+      //     }
+      //   })
+      //   if (params.loaded === params.size) {
+      //     params.percent = 100
+      //     _this.currentPage = Math.ceil((_this.fileData.length - _this.fileNum) / _this.pagesize) === 0 ? 1 : Math.ceil((_this.fileData.length - _this.fileNum) / _this.pagesize)
+      //     _this.fileNum++
+      //     _this.$emit('yesNoFileNum', 1)
+      //     _this.$emit('uploadIn', true)
+      //   }
+      //   _this.$set(_this.fileData[fileIndex], 'percent', params.percent)
+      // },
+      onUploadError: function() {
+        console.log(111111)
+      },
+      // 单个文件上传成功的逻辑
+      onComplete: function(file) {
+        // _this.fileData.forEach((item, index) => {
+        //   if (item.id === file.id) {
+        //     _this.fileData.splice(index, 1)
+        //   }
+        // })
+        _this.fileAllJson.push({
+          'fileName': file.name,
+          'fileSize': file.size,
+          'transmitId': _this.config.postVarsPerFile.noteId
+        })
+        // ---------------一个noteId对应单个文件  每次上传成功切换noteId 反之则不切换
+        _this.config.postVarsPerFile.noteId = _this.fileId()
+        _this.config.postVarsPerFile.fileId = _this.fileId()
+        // syncTran().then(res => {
+        //   console.log(res)
+        // })
+        // _this.onProgress(file)
+      },
+      // 文件全部上传成功后的逻辑
+      onQueueComplete: function(queueData) {
+        _this.fileData = []
+        _this.isNine = false
+        _this.fileNum = 1
+        _this.$emit('submitData', _this.fileAllJson)
+        // var formData = new FormData()
+        // formData.append('listJson',JSON.stringify(_this.fileAllJson))
+        // fileSend(formData).then(res => {
+        //   if (res.code === 200) {
+        //     _this.query()
+        //     _this.fileAllJson = []-------------------------------------------------------------------------------------
+        //   }
+        // })
+        // _this.gongYongId = _this.fileId()
+        _this.noRepeatFileName = []
+      },
+      onCancel: function(file) {
+        _this.fileData.forEach((item, index) => {
+          if (item.id === file.id) {
+            _this.fileData.splice(index, 1)
+          }
+        })
+
+        _this.noRepeatFileName.forEach((item, index) => {
+          if (encodeURIComponent(file.name) === item) {
+            _this.noRepeatFileName.splice(index, 1)
+          }
+        })
+      }
+      //		onSelect: function(list) {alert('onSelect')}, /** 选择文件后的响应事件 */
+      //		onMaxSizeExceed: function(size, limited, name) {alert('onMaxSizeExceed')}, /** 文件大小超出的响应事件 */
+      //		onFileCountExceed: function(selected, limit) {alert('onFileCountExceed')}, /** 文件数量超出的响应事件 */
+      //		onExtNameMismatch: function(name, filters) {alert('onExtNameMismatch')}, /** 文件的扩展名不匹配的响应事件 */
+
+      //		onComplete: function(file) {alert('onComplete')}, /** 单个文件上传完毕的响应事件 */
+      //		onQueueComplete: function() {alert('onQueueComplete')}, /** 所以文件上传完毕的响应事件 */
+      //		onUploadError: function(status, msg) {alert('onUploadError')} /** 文件上传出错的响应事件 */
+      //		onDestroy: function() {alert('onDestroy')} /** 文件上传出错的响应事件 */
+    }
+    // window.addEventListener('dragenter', this.onDragenter, false)
+    this.upload = new Uploader(this.config)
+  },
+
+  methods: {
+    clearAll() {
+      this.form.date = ''
+      this.form.fileName = ''
+    },
+    getUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        return (c === 'x' ? (Math.random() * 16) | 0 : 'r&0x3' | '0x8').toString(16)
+      })
+    },
+    getNoteId() {
+      return 'xxxxxxxx-xxxx-4xxx-xxxx-xxxyxxxxxxxx'.replace(/[xy]/g, c => {
+        return (c === 'x' ? (Math.random() * 16) | 0 : 'r&0x3' | '0x8').toString(16)
+      })
+    },
+    getFileId() {
+      return 'xxxyxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxx'.replace(/[xy]/g, c => {
+        return (c === 'x' ? (Math.random() * 16) | 0 : 'r&0x3' | '0x8').toString(16)
+      })
+    },
+    // 计算附件大小
+    allfileSize() {
+      let sum = 0
+      this.fileData.forEach(item => {
+        const a = item.size
+        sum += a
+      })
+      return sum
+    },
+    // 文件大小格式化
+    formatBytes(size) {
+      if (size < 100) {
+        return size + ' B'
+      } else if (size < 102400) {
+        size = Math.round(100 * (size / 1024)) / 100
+        size = isNaN(size) ? 0 : parseFloat(size).toFixed(1)
+        return size + ' KB'
+      } else if (size < 1047527424) {
+        size = Math.round(100 * (size / 1048576)) / 100
+        size = isNaN(size) ? 0 : parseFloat(size).toFixed(1)
+        return size + ' MB'
+      }
+      size = Math.round(100 * (size / 1073741824)) / 100
+      size = isNaN(size) ? 0 : parseFloat(size).toFixed(1)
+      return size + ' G'
+    },
+    // onDragenter: function onDragenter(e) {
+    //   // e.preventDefault()
+    //   this.dragActive = true
+    // },
+    // openFileWindow() {
+    //   this.$refs.fileInput.click && this.$refs.fileInput.click()
+    // },
+    // handlePreview(file) {
+    //   console.log(file)
+    // },
+
+    // beforeUpload(file) {
+    //   console.log(document.getElementsByClassName('cell').value, file)
+    // },
+    // 开始上传
+    startUpload() {
+      this.fileSizeInfo = 0
+      this.isZero = 0
+      console.log(this.fileData)
+      this.fileData.forEach(res => {
+        if (res.size === 0) {
+          this.isZero++
+        }
+        this.fileSizeInfo += res.size
+      })
+      // noRepeatFileName(this.noRepeatFileName.join(',')).then(res => {
+      //   if (res.data === '0') {
+      //     this.$confirm(res.message, '提示', {
+      //       confirmButtonText: '确定',
+      //       cancelButtonText: '取消',
+      //       type: 'warning'
+      //     }).then(() => {
+      //       validateSize({ fileSize: this.allfileSize() }).then(res => {
+      //         if (this.isOver > 0) {
+      //           switch (res.data) {
+      //             case '0':
+      //               this.$message({
+      //                 message: res.message,
+      //                 type: 'info'
+      //               })
+      //               break
+      //             case '1':
+      this.upload.upload()
+      //             break
+      //           case '2':
+      //             this.upload.upload()
+      //             this.$message({
+      //               message: res.message,
+      //               type: 'warning'
+      //             })
+      //             break
+      //           default:
+      //             break
+      //         }
+      //       } else {
+      //         this.$message({
+      //           type: 'warning',
+      //           message: '请选择上传文件！'
+      //         })
+      //       }
+      //     })
+      //   })
+      // } else {
+      //   validateSize({ fileSize: this.allfileSize() }).then(res => {
+      //     if (this.isOver > 0) {
+      //       switch (res.data) {
+      //         case '0':
+      //           this.$message({
+      //             message: res.message,
+      //             type: 'info'
+      //           })
+      //           break
+      //         case '1':
+      //           this.upload.upload()
+      //           break
+      //         case '2':
+      //           this.upload.upload()
+      //           this.$message({
+      //             message: res.message,
+      //             type: 'warning'
+      //           })
+      //           break
+      //         default:
+      //           break
+      //       }
+      //     } else {
+      //       this.$message({
+      //         type: 'warning',
+      //         message: '请选择上传文件！'
+      //       })
+      //     }
+      //   })
+      // }
+      // })
+
+      // if (this.isOver > 0) {
+      //   this.upload.upload()
+      //   // this.uploadLoading = true
+      // } else {
+      //   this.$message({
+      //     type: 'warning',
+      //     message: '请选择上传文件！'
+      //   })
+      // }
+
+      //   const len = this.fileData.leng
+    },
+    stopUpload() {
+      this.upload.stop()
+    },
+    cancelUpload() {
+      this.upload.cancel()
+    },
+    cancelOne(scope) {
+      this.upload.cancelOne(scope.row.id)
+      if (this.currentPage !== 1 && this.fileData.length % 10 === 0 && this.pagesize === 10) {
+        this.currentPage = this.currentPage - 1
+      } else if (this.currentPage !== 1 && this.fileData.length % 30 === 0 && this.pagesize === 30) {
+        this.currentPage = this.currentPage - 1
+      } else if (this.currentPage !== 1 && this.fileData.length % 50 === 0 && this.pagesize === 50) {
+        this.currentPage = this.currentPage - 1
+      } else if (this.currentPage !== 1 && this.fileData.length % 100 === 0 && this.pagesize === 100) {
+        this.currentPage = this.currentPage - 1
+      } else if (this.currentPage !== 1 && this.fileData.length % 300 === 0 && this.pagesize === 300) {
+        this.currentPage = this.currentPage - 1
+      } else {
+        console.log(1111)
+        // this.currentPage = this.currentPage
+      }
+      // this.fileData.splice(scope.$index, 1)
+    },
+    // handleBefore() {
+    //   var new_zip = new JsZip(file)
+    //   console.log(new_zip)
+    //   new_zip.loadAsync(file)
+    //     .then(function(file) {
+    //       // you now have every files contained in the loaded zip
+    //       new_zip.file('testTXT.txt').async('string') // 此处是压缩包中的testTXT.txt文件，以string形式返回其内容，此时已经可以获取zip中的所有文件了
+    //         .then(function(content) {
+    //           // use content
+    //           alert(content)
+    //         })
+    //     })
+    // }
+    handleBefore() {
+      console.log(1)
+    },
+    indexFn(index) {
+      return index + (this.currentPage - 1) * this.pagesize + 1
+    },
+    // 切换分页条数
+    handleSizeChangeFile(size) {
+      this.pageInfo.pageSize = size
+      this.query()
+    },
+    // 点击切换分页
+    handleCurrentChangeFile(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.query()
+    },
+    handleSizeChange(size) {
+      this.pagesize = size
+      // console.log(`每页 ${size} 条`)
+    },
+    handleCurrentChange(currentPage) {
+      this.currentPage = currentPage
+      // console.log(`当前页: ${currentPage}`)
+    }
+    // 附件列表切换分页
+    // handleSizeChangeFile(size) {
+    //   this.pagesizeFile = size
+    //   this.getFileLists()
+    //   // console.log(`每页 ${size} 条`)
+    // },
+    // handleCurrentChangeFile(currentPage) {
+    //   this.currentPageFile = currentPage
+    //   this.getFileLists()
+    //   // console.log(`当前页: ${currentPage}`)
+    // }
+  }
+}
+</script>
+
+<style lang="scss">
+.uploader-common {
+  .drag-block {
+    position: relative;
+    min-height: 120px;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    border: 1px dashed #d9d9d9;
+  }
+  .initialize {
+    height: 200px;
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+    box-sizing: border-box;
+    height: 180px;
+    text-align: center;
+    width: 90%;
+    margin-left: 5%;
+    &:hover {
+      border-color: #409eff;
+    }
+  }
+
+  .el-icon-upload {
+    font-size: 48px;
+    color: #c0c4cc;
+    // margin: 40px 0 16px;
+    line-height: 50px;
+    &:before {
+      content: '\E60D';
+    }
+  }
+
+  .drop-active {
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    position: fixed;
+    z-index: 9999;
+    opacity: 0.6;
+    text-align: center;
+    background: #000;
+  }
+  .tableCell{
+    text-align: left; 
+    overflow:hidden; 
+    white-space: nowrap; 
+    text-overflow:ellipsis;
+  }
+  .drop-active h3 {
+    margin: -0.5em 0 0;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    -webkit-transform: translateY(-50%);
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+    font-size: 40px;
+    color: #fff;
+    padding: 0;
+  }
+}
+</style>
+

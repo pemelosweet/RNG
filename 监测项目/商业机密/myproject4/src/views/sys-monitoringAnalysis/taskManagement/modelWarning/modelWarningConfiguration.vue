@@ -1,0 +1,441 @@
+<template>
+  <div class="modelWarningConfiguration">
+    <el-card>
+      <div slot="header">
+        <span>模型预警配置</span>
+        <el-button type="text" style="float:right" @click="handleAdd">新建+</el-button>
+      </div>
+      <el-form :model="modelForm" :rules="rulesForm" ref="refForm" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="疑似涉罪类型：" prop="typeSuspectedCrime">
+              <!-- <el-select clearable v-model="modelForm.typeSuspectedCrime" placeholder="请选择">
+                <el-option
+                  v-for="(item,index) in crimesOptionsSusp"
+                  :key="index"
+                  :label="item"
+                  :value="item">
+                  </el-option>
+              </el-select> -->
+              <el-input
+                  placeholder="请输入疑似涉罪类型"
+                  v-model="modelForm.typeSuspectedCrime"
+                ></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="预警范围：" prop="warningRange">
+              <el-input  v-model="modelForm.warningRange" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="预警处室：" prop="thrproductlist">
+              <el-input  v-model="modelForm.thrproductlist" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="创建人：" prop="creator">
+              <el-input  v-model="modelForm.creator" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="创建时间：" prop="creationTime">
+              <el-date-picker unlink-panels clearable v-model="modelForm.creationTime" type="daterange" range-separator="至" start-placeholder="开始日期" value-format="yyyy-MM-dd" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="状态：" prop="status">
+              <el-select clearable v-model="modelForm.status" placeholder="请选择" class="w100">
+                <el-option label="启用" value="启用"></el-option>
+                <el-option label="停用" value="停用"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="更新人：" prop="updateOne">
+              <el-input  v-model="modelForm.updateOne" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="更新时间：" prop="updateTime">
+              <el-date-picker unlink-panels clearable v-model="modelForm.updateTime" type="daterange" range-separator="至" start-placeholder="开始日期" value-format="yyyy-MM-dd" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="模型名称：" prop="modelName">
+              <el-input  v-model="modelForm.modelName" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div style="text-align:right;margin-bottom:6px;">
+          <el-button type="primary" @click="handleSearch">查 询</el-button>
+          <el-button @click="handleClearForm" type="primary" plain>清 空</el-button>
+        </div>
+      </el-form>
+
+      <el-table :data="tableData"
+       tooltip-effect="dark"
+       v-loading="loadingModeWarning"
+        element-loading-text="拼命加载中"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column label="序号" type="index" width="50" fixed="left"></el-table-column>
+        <el-table-column label="模型名称" prop="modelName" min-width="220">
+           <template slot-scope="scope">
+              <el-popover trigger="hover" placement="top">
+                  <p>{{scope.row.modelName}}</p>
+                  <div slot="reference" class="name-wrapper">
+                      <el-tag size="medium" style="width: 100%;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">
+                          <el-button type="text" style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" @click="handleLook(scope)"  v-if="scope.row.status === '启用'">{{scope.row.modelName}}</el-button>
+                          <span style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" v-if="scope.row.status === '停用'">{{scope.row.modelName}}</span>
+                      </el-tag>
+                  </div>
+              </el-popover>
+          </template>
+        </el-table-column>
+        <el-table-column label="模型标识" min-width="200" prop="modelKey" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <el-popover trigger="hover" placement="top">
+              <p>{{ scope.row.modelKey }}</p>
+              <div slot="reference" class="name-wrapper">
+                <p style="white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">{{ scope.row.modelKey }}</p>
+              </div>
+            </el-popover>
+          </template>
+        </el-table-column>
+        <el-table-column label="疑似涉罪类型" prop="typeSuspectedCrime" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="预警范围" prop="warningRange" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="状态" prop="status" min-width="80" show-overflow-tooltip></el-table-column>
+        <el-table-column label="创建人" prop="creator" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="创建时间" prop="creationTime" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="更新人" prop="updateOne" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="更新时间" prop="updateTime" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" fixed="right" width="125">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleStop(scope)" :disabled="preventClicks || (userId !== scope.row.createId)" v-if="scope.row.status === '启用'">停用</el-button>
+            <el-button type="text" @click="handleStop(scope)" :disabled="preventClicks || (userId !== scope.row.createId)" v-if="scope.row.status === '停用'">启用</el-button>
+            <el-button type="text" @click="handleLook(scope)" v-if="scope.row.status === '启用'">查看</el-button>
+            <el-button type="text" @click="handleEdit(scope)" :disabled="userId !== scope.row.createId" v-if="scope.row.status === '停用'">编辑</el-button>
+            <el-button type="text" @click="handleDel(scope)" :disabled="userId !== scope.row.createId || scope.row.status === '启用'">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination v-if="this.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background>
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+<script>
+import { noSpaceAndTs, ValidQueryInput } from '@/utils/formValidate.js'
+import {
+  getIndexData,
+  startWarning,
+  // lookWarning,
+  deleteWarning
+
+} from '@/api/sys-monitoringAnalysis/taskManagement/modelWarning/modelWarning.js'
+import {
+  selectInfo
+} from '@/api/sys-monitoringAnalysis/modelInfoDataCR/submitExperiments'
+export default {
+  name: 'modelWarningConfiguration',
+  data() {
+    return {
+      modelForm: {
+        typeSuspectedCrime: null,
+        warningRange: null,
+        warningRoom: null,
+        creator: null,
+        creationTime: null,
+        thrproductlist: null,
+        status: null,
+        updateOne: null,
+        updateTime: null,
+        modelName: null
+      },
+      preventClicks: false,
+      userId: '',
+      tableData: [],
+      loadingModeWarning: false,
+      total: null,
+      pageSize: 10,
+      pageNum: 1,
+      crimesOptionsSusp: [],
+      rulesForm: {
+        warningRange: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        warningRoom: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        creator: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        thrproductlist: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        status: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        updateOne: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        modelName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    paramsObj: function() {
+      return {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum,
+        modelName: this.modelForm.modelName ? this.modelForm.modelName : null,
+        typeSuspectedCrime:	this.modelForm.typeSuspectedCrime !== null && this.modelForm.typeSuspectedCrime.length > 0 ? this.modelForm.typeSuspectedCrime : null,
+        warningRange:	this.modelForm.warningRange ? this.modelForm.warningRange : null,
+        status:	this.modelForm.status ? this.modelForm.status : null,
+        thrproductlist: this.modelForm.thrproductlist ? this.modelForm.thrproductlist : null,
+        creator:	this.modelForm.creator ? this.modelForm.creator : null,
+        updateOne:	this.modelForm.updateOne ? this.modelForm.updateOne : null,
+
+        time1: this.modelForm.creationTime ? this.modelForm.creationTime[0] : null,
+        time2: this.modelForm.creationTime ? this.modelForm.creationTime[1] : null,
+
+        time3: this.modelForm.updateTime ? this.modelForm.updateTime[0] : null,
+        time4: this.modelForm.updateTime ? this.modelForm.updateTime[1] : null
+      }
+    }
+  },
+  mounted() {
+    this.getSuspInvolved()
+    if (sessionStorage.getItem('searchDataModeRul')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchDataModeRul'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewModeRul) {
+        this.pageSize = searchData.pageInfo.pageSize
+        this.pageNum = searchData.pageInfo.pageNum
+        this.modelForm = searchData.searchForm
+      }
+      sessionStorage.removeItem('searchDataModeRul')
+    }
+    this.loadingModeWarning = true
+    this.getDataList(this.pageNum, this.pageSize, this.paramsObj)
+  },
+  methods: {
+    // 获取涉罪类型
+    getSuspInvolved() {
+      selectInfo().then(res => {
+        this.crimesOptionsSusp = res.data
+      })
+    },
+    // 获取列表信息
+    getDataList(num, size, params) {
+      getIndexData(num, size, params).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list[0]
+          this.userId = res.data.list[1].userID
+          this.total = res.data.total
+          this.loadingModeWarning = false
+        } else {
+          this.loadingModeWarning = false
+          this.$message({
+            type: 'error',
+            message: '获取列表失败！',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingModeWarning = false
+        })
+    },
+    // 查询
+    handleSearch() {
+      this.$refs.refForm.validate((valid) => {
+        if (valid) {
+          this.loadingModeWarning = true
+          this.getDataList(1, 10, this.paramsObj)
+        }
+      })
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.loadingModeWarning = true
+      this.getDataList(this.pageNum, this.pageSize, this.paramsObj)
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.loadingModeWarning = true
+      this.getDataList(this.pageNum, this.pageSize, this.paramsObj)
+    },
+    //   新建
+    handleAdd() {
+      this.$router.push({
+        name: 'new_modelWarningConfiguration',
+        query: {
+          type: '新建'
+        }
+      })
+    },
+    // 清空
+    handleClearForm() {
+      this.$refs.refForm.resetFields()
+    //   this.loadingModeWarning = true
+    //   this.getDataList(1, 10, this.paramsObj)
+    },
+
+    // 停用 启用
+    handleStop(scope) {
+      var obj = {}
+      if (scope.row.status === '启用') {
+        obj.status = '停用'
+      } else {
+        obj.status = '启用'
+      }
+      obj.mcid = scope.row.mcid
+      this.preventClicks = true
+      startWarning(obj).then(res => {
+        if (res.code === 200) {
+          this.loadingModeWarning = true
+          this.getDataList(this.pageNum, this.pageSize, this.paramsObj)
+          this.preventClicks = false
+        } else {
+          this.$message({
+            type: 'error',
+            message: '停用失败！',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.preventClicks = false
+        })
+    },
+
+    // 查看
+    handleLook(scope) {
+      if (scope.row.status === '启用') {
+        const pageInfo = {
+          pageSize: this.pageSize,
+          pageNum: this.pageNum
+        }
+        const searchDataModeRul = {
+          pageName: this.$route.name,
+          pageInfo: pageInfo,
+          searchForm: this.modelForm
+        }
+        sessionStorage.setItem('searchDataModeRul', JSON.stringify(searchDataModeRul))
+        var typeData = '查看'
+        this.$router.push({
+          path: 'newModelWarnConfigur',
+          query: {
+            type: typeData,
+            mcid: scope.row.mcid
+          }
+        })
+      } else {
+        this.$message({
+          type: 'error',
+          message: '查看数据错误！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+
+    // 编辑
+    handleEdit(scope) {
+      if (scope.row.status === '停用') {
+        const pageInfo = {
+          pageSize: this.pageSize,
+          pageNum: this.pageNum
+        }
+        const searchDataModeRul = {
+          pageName: this.$route.name,
+          pageInfo: pageInfo,
+          searchForm: this.modelForm
+        }
+        sessionStorage.setItem('searchDataModeRul', JSON.stringify(searchDataModeRul))
+        var typeData = '编辑'
+        this.$router.push({
+          path: 'newModelWarnConfigur',
+          query: {
+            type: typeData,
+            mcid: scope.row.mcid
+          }
+        })
+      } else {
+        this.$message({
+          type: 'error',
+          message: '编辑错误！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+
+    // 删除
+    handleDel(scope) {
+      this.$confirm('是否删除当前的数据?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          const modelName = encodeURI(scope.row.modelName)
+          deleteWarning(scope.row.mcid, modelName).then(res => {
+            if (res.code === 200) {
+              this.loadingModeWarning = true
+              this.getDataList(this.pageNum, this.pageSize, this.paramsObj)
+              this.$message({
+                message: '删除成功',
+                type: 'success',
+                duration: 6000,
+                showClose: true
+              })
+            } else {
+              this.$message({
+                message: res.message,
+                type: 'error',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+            duration: 6000,
+            showClose: true
+          })
+        })
+    }
+  }
+}
+</script>
+<style lang="scss">
+.modelWarningConfiguration {
+  .w100 {
+    width: 100%;
+  }
+  .el-date-editor--daterange {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>
+

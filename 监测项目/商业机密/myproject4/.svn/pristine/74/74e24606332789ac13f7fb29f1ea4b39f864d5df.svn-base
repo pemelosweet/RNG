@@ -1,0 +1,187 @@
+<template>
+  <div>
+    <el-card>
+      <div slot="header">抽样历史记录</div>
+      <el-row>
+        <el-form :model="searchForm" ref="searchForm" label-width="120px" :rules="dialogRules">
+          <el-row :span="24" :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="抽样任务名称：" prop="stName">
+                <el-input v-model="searchForm.stName" placeholder="最大长度为20位" maxlength="20"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="任务建立时间：" prop="creDate">
+                <el-date-picker style="width:100% !important;" v-model="searchForm.creDate" value-format="yyyy-MM-dd" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="状态：" prop="stTaskStatus">
+                <el-select style="width:100% !important;" v-model="searchForm.stTaskStatus" clearable>
+                  <el-option value="" label="全部"></el-option>
+                  <el-option value="0" label="未完成"></el-option>
+                  <el-option value="1" label="完成"></el-option>
+                  <el-option value="2" label="已删除"></el-option>
+                  <el-option value="3" label="执行中"></el-option>
+                  <el-option value="4" label="失败"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-col :span="24">
+            <el-col :span="24" style="text-align: right;">
+              <el-button type="primary" @click="handleQuery('searchForm')" :loading="loading">查 询</el-button>
+              <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+            </el-col>
+          </el-col>
+        </el-form>
+      </el-row>
+      <div style="margin: 0 10px;">历史任务查询列表：</div>
+      <el-table :data="list" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="stName" label="抽样任务名称"></el-table-column>
+        <el-table-column prop="stExtractionQuan" label="抽样笔数"></el-table-column>
+        <el-table-column prop="creDate" label="任务建立时间"></el-table-column>
+        <el-table-column prop="creUserName" label="操作员"></el-table-column>
+        <el-table-column prop="stTaskStatus" label="状态"></el-table-column>
+        <el-table-column label="操作">
+          <template slot-scope="scope">
+             <router-link :to="{ name: 'dataGovernance_dataSampling_common_createTask', query: { stId: scope.row.stId, disabled: '2' }}">
+                <el-button type="text">查看任务</el-button>
+              </router-link>
+            <router-link :to="{ name:'dataGovernance_dataSampling_common_dealList', query:{ stId: scope.row.stId, isShow: false, toggle: true}}">
+              <el-button type="text">查看交易</el-button>
+            </router-link>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40, 50]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getList } from '@/api/sys-monitoringAnalysis/dataGovernance/dataSampling/history'
+import { isValidInput } from '@/utils/formValidate.js'
+
+export default {
+  data() {
+    const isValidDate = (rule, value, callback) => {
+      if (Date.parse(value[0]) + 3600 * 1000 * 24 * 30 < Date.parse(value[1])) {
+        callback(new Error('时间跨度应为30天'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      loading: false,
+      listLoading: false,
+      title: '',
+      disabled: false, // 是否只读
+      dialogVisible: false,
+      searchForm: {
+        stName: '',
+        // creUser: '',
+        creDate: '',
+        stTaskStatus: ''
+      },
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      stId: '',
+      dialogRules: {
+        creDate: [
+          { required: false, validator: isValidDate, trigger: 'change' }
+          // { message: '内容不能为空', trigger: 'change' }
+        ],
+        stName: [
+          { max: 20, message: '最大长度为20位', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }
+        ]
+      }
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    getData() {
+      const paramsObj = {
+        sampleTaskName: this.searchForm.stName,
+        creDateStart: this.searchForm.creDate ? this.searchForm.creDate[0] : '',
+        creDateEnd: this.searchForm.creDate ? this.searchForm.creDate[1] : '',
+        status: this.searchForm.stTaskStatus,
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      this.listLoading = true
+      getList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.listLoading = false
+          this.loading = false
+          this.list = res.data.list
+          this.total = res.data.total
+          res.data.list.map(item => {
+            if (item.stTaskStatus !== null) {
+              const status = item.stTaskStatus
+              switch (status) {
+                case 0:
+                  item.stTaskStatus = '未完成'
+                  break
+                case 1:
+                  item.stTaskStatus = '完成'
+                  break
+                case 2:
+                  item.stTaskStatus = '已删除'
+                  break
+                case 3:
+                  item.stTaskStatus = '执行中'
+                  break
+                case 4:
+                  item.stTaskStatus = '失败'
+                  break
+                default:
+                  break
+              }
+            }
+          })
+        } else {
+          this.listLoading = false
+          this.loading = false
+        }
+      }).catch(() => {
+        this.listLoading = false
+        this.loading = false
+      })
+    },
+    handleQuery(searchForm) {
+      this.pageInfo.pageNum = 1
+      this.loading = true
+      this.getData()
+    },
+    getDialogVisible(val) {
+      this.dialogVisible = val
+      this.getData()
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    }
+  }
+}
+</script>
+
+<style>
+</style>

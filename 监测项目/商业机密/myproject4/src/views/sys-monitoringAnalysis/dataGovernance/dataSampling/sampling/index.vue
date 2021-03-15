@@ -1,0 +1,298 @@
+<template>
+  <div class="dataSampling">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>数据抽样</span>
+        <div style="float: right;">
+          <router-link :to="{ name: 'dataGovernance_dataSampling_common_createTask', query: { stId: '', disabled: '1' }}">
+            <el-button type="text" icon="el-icon-plus">建立抽样任务</el-button>  
+          </router-link>
+        </div>
+      </div>
+      <el-form :model="searchForm" ref="searchForm" :rules="rules" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="任务名称：" prop="stName">
+              <el-input v-model="searchForm.stName" placeholder="最大长度为20位" maxlength="20"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="任务执行情况：" prop="stTaskStatus">
+              <el-select v-model="searchForm.stTaskStatus" placeholder="请选择任务执行情况" clearable>
+                <el-option v-for="(item, index) in performList" :key="index" :label="item.label" :value="item.value"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+           <el-col :span="8">
+            <el-form-item label="是否有结果：" prop="whether">
+              <el-select v-model="searchForm.whether" placeholder="请选择结果" clearable>
+                <el-option v-for="(item, index) in whetherList" :key="index" :label="item.label" :value="item.value"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="建立时间：" prop="dateValue">
+              <el-date-picker v-model="searchForm.dateValue" type="daterange" range-separator="至" start-placeholder="开始日期" style="width:100%" end-placeholder="结束日期" value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="8">
+            <el-form-item label="交易日期：" prop="dateValue">
+              <el-date-picker v-model="searchForm.tradeDate" type="daterange" range-separator="至" start-placeholder="开始日期" style="width:100%" end-placeholder="结束日期" value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col> -->
+        </el-row>
+        <el-row style="text-align: right;">
+          <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+          <el-button type="primary" plain @click="resetForm">清 空</el-button>
+        </el-row>
+      </el-form>
+      <!-- 查询 -->
+      <div class="list">
+        <div style="marginBottom:10px; marginTop: 10px;">抽样任务列表：</div>
+        <el-table :data="list" style="width: 100%" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+          <el-table-column type="index" label="序号" width="55" fixed></el-table-column>
+          <el-table-column prop="stName" label="任务名称" min-width="140"></el-table-column>
+          <el-table-column prop="stExtractionQuan" label="抽取交易笔数" width="120"></el-table-column>
+          <el-table-column prop="creDate" label="建立时间" min-width="140"></el-table-column>
+          <el-table-column prop="creUserName" label="操作员" width="120"></el-table-column>
+          <el-table-column prop="stTaskStatus" label="任务执行情况" width="120"></el-table-column>
+          <el-table-column prop="whether" label="是否有结果" width="120">
+            <template slot-scope="scope">
+              {{ scope.row.whether === 0 ? '否' : '是'}}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="260" fixed="right">
+            <template slot-scope="scope">  
+              <router-link :to="{ name: 'dataGovernance_dataSampling_common_createTask', query: { stId: scope.row.stId, disabled: '2', stTaskStatus: scope.row.stTaskStatus}}">
+                <el-button type="text">查看任务</el-button>
+              </router-link>
+              <el-button type="text" @click="handleExecution(scope)" :disabled="scope.row.stTaskStatus==='执行完成' || scope.row.stTaskStatus==='执行中' || scope.row.stTaskStatus==='执行失败'">执行任务</el-button>
+              <router-link :to="{ name:'dataGovernance_dataSampling_common_dealList', query:{ stId:scope.row.stId, isShow: true, toggle: false}}">
+                <el-button type="text" :disabled="scope.row.stTaskStatus==='未完成'">查看交易</el-button>
+              </router-link>
+              <el-button type="text" @click="delRow(scope)">删除任务</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+         <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40, 50]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+          </el-pagination>
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getList, delSamplingList, executionTask } from '@/api/sys-monitoringAnalysis/dataGovernance/dataSampling/index'
+
+export default {
+  data() {
+    return {
+      searchForm: {
+        stName: '',
+        stTaskStatus: null,
+        whether: null,
+        dateValue: '',
+        tradeDate: ''
+      },
+      rules: {
+        stName: [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 20, message: '最大长度为20位', trigger: 'blur' }
+        ]
+      },
+      performList: [{
+        label: '未完成',
+        value: 0
+      }, {
+        label: '执行完成',
+        value: 1
+      }, {
+        label: '执行中',
+        value: 3
+      }, {
+        label: '执行失败',
+        value: 4
+      }],
+      whetherList: [{
+        label: '否',
+        value: 0
+      }, {
+        label: '是',
+        value: 1
+      }],
+      title: '',
+      disabled: false, // 是否只读
+      loading: false,
+      listLoading: false,
+      dialogVisible: false,
+      timer: null, // 定时任务
+      dialogFormVisible: false,
+      formLabelWidth: '120px',
+      list: [],
+      // 默认开始页码
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      total: 0,
+      stId: ''
+    }
+  },
+  mounted() {
+    this.getData()
+    if (this.timer) { // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.getData()
+      }, 180000)
+    }
+  },
+  methods: {
+    getData() {
+      this.listLoading = true
+      const obj = {
+        stName: this.searchForm.stName,
+        whether: this.searchForm.whether,
+        stTaskStatus: this.searchForm.stTaskStatus,
+        startDate: this.searchForm.dateValue ? this.searchForm.dateValue[0] : '',
+        endDate: this.searchForm.dateValue ? this.searchForm.dateValue[1] : '',
+        // stTstmStartTime: this.searchForm.tradeDate ? this.searchForm.tradeDate[0] : '',
+        // stTstmEndTime: this.searchForm.tradeDate ? this.searchForm.tradeDate[1] : '',
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(obj).then(res => {
+        if (res.code === 200) {
+          this.list = res.data.list
+          this.total = res.data.total
+          res.data.list.map(item => {
+            console.log(typeof item.stTaskStatus)
+            if (item.stTaskStatus !== null) {
+              const status = item.stTaskStatus
+              switch (status) {
+                case 0:
+                  item.stTaskStatus = '未完成'
+                  break
+                case 1:
+                  item.stTaskStatus = '执行完成'
+                  break
+                case 3:
+                  item.stTaskStatus = '执行中'
+                  break
+                case 4:
+                  item.stTaskStatus = '执行失败'
+                  break
+                default:
+                  break
+              }
+            }
+          })
+          this.$nextTick(function() {
+            this.listLoading = false
+            this.loading = false
+          })
+        } else {
+          this.$nextTick(function() {
+            this.listLoading = false
+            this.loading = false
+          })
+        }
+      }).catch(() => {
+        this.$nextTick(function() {
+          this.listLoading = false
+          this.loading = false
+        })
+      })
+    },
+    handleQuery() {
+      this.loading = true
+      this.getData()
+    },
+    resetForm() {
+      this.$refs.searchForm.resetFields()
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    delRow(scope) {
+      this.$confirm('是否删除？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          const id = scope.row.stId
+          console.log('stId', id)
+          delSamplingList(id).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                message: '删除成功',
+                type: 'success'
+              })
+              this.getData()
+            }
+          })
+        })
+        .catch(() => {})
+    },
+    handleExecution(scope) {
+      const id = scope.row.stId
+      executionTask(id).then(res => {
+        if (res.code === 200) {
+          this.getData()
+
+          this.$message({
+            type: 'warning',
+            message: '任务正在执行，需执行一段时间，请耐心等待！'
+          })
+        }
+      }).catch()
+    }
+  },
+  destoryed() {
+    clearInterval(this.timer)
+  }
+}
+</script>
+
+<style lang="scss">
+.dataSampling {
+  .el-select {
+    width: 100%;
+  }
+
+  .line_date {
+    .el-select {
+      width: 120px;
+    }
+    .el-form-item__label {
+      padding: 0;
+    }
+  }
+  .dateSelect {
+    .el-input__inner {
+      border-right: none;
+      border-bottom-right-radius: 0;
+      border-top-right-radius: 0;
+      background-color: #f5f7fa;
+    }
+    .el-date-editor {
+      border-bottom-left-radius: 0;
+      border-top-left-radius: 0;
+    }
+  }
+}
+</style>

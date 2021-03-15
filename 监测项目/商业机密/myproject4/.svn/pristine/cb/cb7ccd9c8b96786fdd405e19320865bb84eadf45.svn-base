@@ -1,0 +1,439 @@
+<template>
+  <div class="queryhistory">
+    <el-card>
+      <div slot="header">
+        <span>比对历史记录</span>    
+      </div>
+      <el-row>
+        <el-form :model="searchForm" ref="searchForm" label-width="120px" class="clearfix" :rules="dialogRules">
+          <el-col :span="8">
+            <el-form-item label="报告机构：" prop="ricd1">
+              <el-autocomplete v-model="searchForm.ricd1" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleReportFiccSelect"></el-autocomplete>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="对手机构：" prop="ricd2">
+              <el-autocomplete v-model="searchForm.ricd2" value-key="rinm" placeholder="对手机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRivalFiccSelect"></el-autocomplete>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="8">
+            <el-form-item label="比对结果：" prop="state">
+              <el-select v-model="searchForm.state" clearable>
+                <el-option label="正确" value="0"></el-option>
+                <el-option label="异常" value="1"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="比对时间段：" prop="dateValue">
+              <el-date-picker v-model="searchForm.dateValue" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable>
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" class="btnalign">
+            <el-button type="primary" @click="handleQuery('searchForm')" :loading="loading">查询</el-button>
+            <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+          </el-col>
+        </el-form>
+      </el-row>
+      <div style="margin-bottom: 10px;">历史比对数据列表：
+        <el-button type="primary" plain style="margin-left: 10px;" @click="handleAllExport">批量导出</el-button>
+      </div>
+      <el-table :data="list" style="width:100%" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" fixed></el-table-column>
+        <el-table-column type="index" label="序号" fixed></el-table-column>
+        <el-table-column prop="rinm1" label="报告机构" min-width="100px"></el-table-column>
+        <el-table-column prop="rinm2" label="对手机构" min-width="100px"></el-table-column>
+        <el-table-column prop="rpmn" label="交易匹配号" show-overflow-tooltip min-width="150"></el-table-column>
+        <el-table-column prop="state" label="比对结果">
+          <template slot-scope="scope">
+            {{scope.row.state=== '0'?'正确':'异常'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="factor" label="异常要素" min-width="120">
+           <template slot-scope="scope">
+            {{scope.row.factor ? scope.row.factor :'--'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="compTime" label="对比时间" min-width="120"></el-table-column>
+        <el-table-column prop="creUser" label="操作员"></el-table-column>
+        <el-table-column prop="cleanFlag" label="自动清理状态" min-width="130"></el-table-column>
+        <el-table-column prop="correctFlag" label="人工补正状态" min-width="130"></el-table-column>
+        <el-table-column label="操作" fixed="right" min-width="100px">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleResult(scope)">查看比对结果</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+      <!-- 查询对比结果 -->
+      <el-dialog title="查询对比结果详情" :visible.sync="dialogVisible" width="70%">
+        <div class="codemirror">
+          <div class="codeMirror-merge-left codeMirror-merge-pane">
+            <div class="codeMirror-left-wrapper" id="codeMainLeft" v-html="leftText"></div>
+          </div>
+          <div class="codeMirror-merge-gap"></div>
+          <div class="codeMirror-merge-right codeMirror-merge-pane">
+            <div class="codeMirror-right-wrapper" id="codeMainRight" v-html="rightText"></div>
+          </div>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="dialogVisible = false">取 消</el-button>
+        </span>
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import {
+  getList,
+  viewResultData
+} from '@/api/sys-monitoringAnalysis/dataGovernance/crossbodyAlignment/history'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  // components: { codemirror },
+  data() {
+    const isValidDate = (rule, value, callback) => {
+      if (Date.parse(value[0]) + 3600 * 1000 * 24 * 30 < Date.parse(value[1])) {
+        callback(new Error('时间跨度应为30天'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      listLoading: false,
+      loading: false,
+      searchForm: {
+        ricd1: '',
+        ricd2: '',
+        tradeType: '',
+        dateValue: '',
+        state: ''
+      },
+      rinmOptions: [],
+      multipleSelection: [],
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      dialogVisible: false, // 交易对比弹框参数
+      leftText: null,
+      rightText: null,
+      tempDiffArr: [],
+      dialogRules: {
+        dateValue: [{ validator: isValidDate, required: false, trigger: 'change' }],
+        ricd1: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        ricd2: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      reportFiccRicd: '',
+      rivalFiccRicd: '',
+      token: getToken()
+    }
+  },
+  mounted() {
+    this.getData()
+    this.getRinmData()
+  },
+  methods: {
+    getData() {
+      const paramsObj = {
+        ricd1: this.searchForm.ricd1 ? this.reportFiccRicd : '',
+        ricd2: this.searchForm.ricd2 ? this.rivalFiccRicd : '',
+        startDate: this.searchForm.dateValue ? this.searchForm.dateValue[0] : '',
+        endDate: this.searchForm.dateValue ? this.searchForm.dateValue[1] : '',
+        state: this.searchForm.state,
+        // operator: this.searchForm.creUser,
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      this.listLoading = true
+      getList(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.listLoading = false
+            this.list = res.data.list
+            this.total = res.data.total
+            res.data.list.forEach((item, index) => {
+              if (item.cleanFlag !== null) {
+                switch (item.cleanFlag) {
+                  case 0:
+                    item.cleanFlag = '未治理'
+                    break
+                  case 1:
+                    item.cleanFlag = '已治理'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (item.correctFlag !== null) {
+                switch (item.correctFlag) {
+                  case 0:
+                    item.correctFlag = '未补正'
+                    break
+                  case 1:
+                    item.correctFlag = '已补正'
+                    break
+                  case 2:
+                    item.correctFlag = '待补正'
+                    break
+                  default:
+                    break
+                }
+              }
+            })
+          } else {
+            this.loading = false
+            this.listLoading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+          this.listLoading = false
+        })
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          industry: 'B',
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    handleReportFiccSelect(val) {
+      if (val) {
+        this.reportFiccRicd = val.ricd
+      }
+    },
+    handleRivalFiccSelect(val) {
+      if (val) {
+        this.rivalFiccRicd = val.ricd
+      }
+    },
+    handleQuery(searchForm) {
+      this.$refs[searchForm].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.pageInfo.pageNum = 1
+          this.getData()
+        } else {
+          return false
+        }
+      })
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleResult(scope) {
+      this.tempDiffArr = []
+      const compId = scope.row.compId
+      viewResultData(compId)
+        .then(res => {
+          if (res.code === 200) {
+            this.dialogVisible = true
+            const dObj = res.data.diff ? res.data.diff : ''
+            for (const val in dObj) {
+              this.tempDiffArr.push(val)
+            }
+            console.log('this.tempDiffArr', this.tempDiffArr)
+            if (res.data.trade1.trade) {
+              const arr = []
+              for (var i in res.data.trade1.trade) {
+                if (res.data.trade1.trade[i]) {
+                  for (var j in res.data.trade1.trade[i]) {
+                    if (res.data.trade1.trade[i][j]) {
+                      const item = res.data.trade1.trade[i][j]
+                      arr.push(item)
+                    }
+                  }
+                }
+              }
+
+              if (arr.length !== 0) {
+                let temp = {}
+                if (arr.length !== 0) {
+                  temp = Object.assign(...arr)
+                }
+                const value = JSON.stringify(temp)
+                this.leftText = '<div>' + value.replace(/"/g, '').replace(/,/g, '\n').replace(/{/g, '').replace(/}/g, '').replace(/\n/g, '</div> <div>') + '</div>'
+              }
+            }
+            if (res.data.trade2.trade) {
+              const arr2 = []
+              for (var i2 in res.data.trade2.trade) {
+                if (res.data.trade2.trade[i2]) {
+                  for (var j2 in res.data.trade2.trade[i2]) {
+                    if (res.data.trade2.trade[i2][j2]) {
+                      const item = res.data.trade2.trade[i2][j2]
+                      arr2.push(item)
+                    }
+                  }
+                }
+              }
+
+              if (arr2.length !== 0) {
+                let temp2 = {}
+                if (arr2.length !== 0) {
+                  temp2 = Object.assign(...arr2)
+                }
+                const value2 = JSON.stringify(temp2)
+                this.rightText = '<div>' + value2.replace(/"/g, '').replace(/,/g, '\n').replace(/{/g, '').replace(/}/g, '').replace(/\n/g, '</div> <div>') + '</div>'
+              }
+            }
+          }
+        })
+        .catch()
+    },
+    replaceFn(s) {
+      var pattern = new RegExp('[`~!@#$^&*()=|{};,.<>?~！@#￥……&*（）——|{}【】‘；”“""。，、？↵\r]')
+      var rs = ''
+      for (var i = 0; i < s.length; i++) {
+        rs = rs + s.substr(i, 1).replace(pattern, '')
+      }
+      return rs
+    },
+    handleAllExport() {
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const ids = this.multipleSelection
+          .map(function(item) {
+            return item.compId
+          })
+          .toString()
+        if (ids) {
+          location.href = '/monitor/governance/interagency/task-history/' + ids + '?token=' + this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    handletoggle() {
+      this.isShow = true
+    },
+    routerBack() {
+      this.$router.go(-1)
+    }
+  },
+  updated() {
+    const obj = document.getElementById('codeMainLeft')
+    const divs = obj.getElementsByTagName('div')
+    if (divs.length > 0) {
+      for (let i = 0; i < divs.length; i++) {
+        this.tempDiffArr.forEach(item => {
+          if (divs[i].innerHTML.indexOf(item) !== -1) {
+            divs[i].style.background = '#ffffe0'
+            divs[i].style.borderTop = '1px solid #ee8'
+            divs[i].style.borderBottom = '1px solid #ee8'
+          }
+        })
+      }
+    }
+
+    const obj2 = document.getElementById('codeMainRight')
+    const divs2 = obj2.getElementsByTagName('div')
+    if (divs2.length > 0) {
+      for (let i = 0; i < divs2.length; i++) {
+        this.tempDiffArr.forEach(item => {
+          if (divs2[i].innerHTML.indexOf(item) !== -1) {
+            divs2[i].style.background = '#ffffe0'
+            divs2[i].style.borderTop = '1px solid #ee8'
+            divs2[i].style.borderBottom = '1px solid #ee8'
+          }
+        })
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.queryhistory {
+  .btnalign {
+    text-align: right;
+  }
+  .codemirror {
+    height: 350px;
+    // position: relative;
+    border: 1px solid #ddd;
+    white-space: pre;
+    overflow: hidden;
+  }
+  .codeMirror-merge-left {
+    width: 47%;
+    height: 100%;
+  }
+  .codeMirror-merge-gap {
+    width: 6%;
+    z-index: 2;
+    display: inline-block;
+    height: 100%;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    position: relative;
+    background: #f8f8f8;
+  }
+  .codeMirror-merge-pane {
+    display: inline-block;
+    vertical-align: top;
+  }
+  .codeMirror-merge-right {
+    width: 47%;
+    height: 100%;
+  }
+  .codeMirror-left-wrapper, .codeMirror-right-wrapper {
+    padding: 10px 0;
+    overflow-y: scroll !important;
+    overflow-x: hidden;
+    margin-bottom: -30px;
+    padding-bottom: 30px;
+    height: 100%;
+    outline: none;
+    position: relative;
+  }
+  #codeMainLeft > div, #codeMainRight > div{
+    padding: 2px 10px;
+    margin: 0;
+  }
+}
+</style>

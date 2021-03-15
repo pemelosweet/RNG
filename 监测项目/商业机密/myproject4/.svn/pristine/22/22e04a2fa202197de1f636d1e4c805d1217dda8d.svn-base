@@ -1,0 +1,1164 @@
+<template>
+  <div class="reportingManagement_fillReport" v-loading="wrapperLoading">
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-button type="primary" @click="printingClick" class="buttonSizes">打印举报处理单</el-button>
+          <el-button type="primary" @click="tabClick" class="buttonSizes">打印预处理情况</el-button>
+          <el-button type="primary" @click="reportClick" class="buttonSizes">打印举报正文</el-button>
+          <el-button type="primary" v-if="workflow.name === '分析处室办理'" @click="analysisPro" class="buttonSize">发起主动分析流程</el-button>
+          <!-- <el-button type="primary" @click="storageClick">保存</el-button>
+          <el-button type="primary" @click="topGo">返回</el-button> -->
+        </el-col>
+        <div class="print-box">
+
+        <div class="br-boxs"></div>
+        <div style="text-align:center;"><h1>中国反洗钱监测分析中心举报处理单</h1></div>
+        <br><br><br>
+        <el-col :span="24">
+          <span>当前部门：<div class="currDeptBox" style="width:200px;display:inline-block;">{{currDept}}</div></span>
+          <span>当前用户：<div class="currUserBox" style="width:200px;display:inline-block;">{{name}}</div></span>
+        </el-col>
+        <div class="br-boxs"></div>
+        <el-form :model="tabJson.report" :rules="rules" ref="ruleForm" class="demo-ruleForm" :disabled="$route.query.workitemName !== '发起举报处理流程'">
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;">
+          <tr>
+            <th class="tabc_th">受理编号：</th>
+            <td class="tabc">{{tabJson.report.reportNo}}</td>
+            <th class="tabc_th">受理时间：</th>
+            <td class="tabc">{{tabJson.report.createDate}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人名称：</th>
+            <td class="tabc">{{tabJson.report.reporterName}}</td>
+            <th class="tabc_th">被举报人名称（首个）：</th>
+            <td class="tabc">{{tabJson.report.reportedName}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人单位名称：</th>
+            <td class="tabc">{{tabJson.report.reporterCompany}}</td>
+            <th class="tabc_th">被举报人单位名称：</th>
+            <td class="tabc">{{tabJson.report.reportedCompany}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人职务/身份：</th>
+            <td class="tabc">{{tabJson.report.reporterPosition}}</td>
+            <th class="tabc_th">被举报人职务/身份：</th>
+            <td class="tabc">{{tabJson.report.reportedPosition}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人联系方式：</th>
+            <td class="tabc">{{tabJson.report.reporterTelNo}}</td>
+            <th class="tabc_th">被举报人联系方式：</th>
+            <td class="tabc">{{tabJson.report.reportedTelNo}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报事由（涉嫌类型）：</th>
+            <td class="tabc_center" colspan="3">{{tabJson.report.reporterReasonName}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">处理状态：</th>
+            <td class="tabc">
+              <el-form ref="approveForm" :model="tabJson.report" :disabled="$route.query.workitemName !== '送处内人员'">
+                <el-row>
+                  <el-col :span="24">
+                    <el-form-item prop="reportStatus" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.reportStatus" style="width:100%;" @change="reportStatusChange" clearable>
+                        <el-option label="新入库" value="2"></el-option>
+                        <el-option label="转送" value="3"></el-option>
+                        <el-option label="调查" value="4"></el-option>
+                        <el-option label="分析" value="5"></el-option>
+                        <el-option label="移送" value="6"></el-option>
+                        <el-option label="移送且反馈" value="7"></el-option>
+                        <el-option label="重复（关联）" value="8"></el-option>
+                        <el-option label="关注" value="9"></el-option>
+                        <el-option label="无效" value="10"></el-option>
+                        <el-option label="处理中" value="12"></el-option>
+                        <el-option label="已完成" value="11"></el-option>
+                        <el-option label="通报" value="13"></el-option>
+                        <el-option label="转其他单位" value="14"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '5'">
+                    <el-form-item prop="deptCode" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptCode" style="width:100%;" clearable @change="nameCodeTransformation(analysisOffice2)">
+                        <el-option v-for="(item, index) in analysisOffice2" :key="index" :label="item.text" :value="item.code"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '9'">
+                    <el-form-item prop="deptCode" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptCode" style="width:100%;" clearable @change="nameCodeTransformation(analysisOffice)">
+                        <el-option v-for="(item, index) in analysisOffice" :key="index" :label="item.text" :value="item.code"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '4'">
+                    <el-form-item prop="deptCode" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptCode" style="width:100%;" clearable @change="nameCodeTransformation(findBranchOptions)">
+                        <el-option v-for="(item, index) in findBranchOptions" :key="index" :label="item.text" :value="item.code"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '6'">
+                    <el-form-item prop="deptName" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptName" style="width:100%;" clearable @change="deptNameChange">
+                        <el-option label="移送公安部经侦局" value="移送公安部经侦局"></el-option>
+                        <el-option label="移送安全部反洗钱办公室" value="移送安全部反洗钱办公室"></el-option>
+                        <el-option label="移送海关总署缉私局" value="移送海关总署缉私局"></el-option>
+                        <el-option label="移送中央纪委国际监委案件监督管理室" value="移送中央纪委国际监委案件监督管理室"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '6'">
+                    <el-form-item prop="docNum" :rules="[{required: true, message: '此项不能为空', trigger: 'blur'}, { validator: isValidInputBuZheng, trigger: 'blur' }]">
+                      <el-input v-model="tabJson.report.docNum" placeholder="最多输入20位" maxlength="20"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '7'">
+                    <el-form-item prop="deptName" :rules="[{required: true, message: '此项不能为空', trigger: 'blur'}, { validator: isValidInputBuZheng, trigger: 'blur' }]">
+                      <el-input v-model="tabJson.report.deptName" placeholder="最多输入20位" maxlength="20"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '13'">
+                    <el-form-item prop="deptName" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptName" style="width:100%;" clearable @change="deptNameChange">
+                        <el-option label="通报公安部经侦局" value="通报公安部经侦局"></el-option>
+                        <el-option label="通报安全部反洗钱办公室" value="通报安全部反洗钱办公室"></el-option>
+                        <el-option label="通报海关总署缉私局" value="通报海关总署缉私局"></el-option>
+                        <el-option label="通报中央纪委国际监委案件监督管理室" value="通报中央纪委国际监委案件监督管理室"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '13'">
+                    <el-form-item prop="docNum" :rules="[{required: true, message: '此项不能为空', trigger: 'blur'}, { validator: isValidInputBuZheng, trigger: 'blur' }]">
+                      <el-input v-model="tabJson.report.docNum" placeholder="最多输入20位" maxlength="20"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '14'">
+                    <el-form-item prop="deptName" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptName" style="width:100%;" clearable @change="deptNameChange">
+                        <el-option label="转反洗钱局" value="转反洗钱局"></el-option>
+                        <el-option label="转其他单位" value="转其他单位"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '14' && tabJson.report.deptName === '转其他单位'">
+                    <el-form-item prop="docNum" :rules="[{required: true, message: '此项不能为空', trigger: 'blur'}, { validator: isValidInputBuZheng, trigger: 'blur' }]">
+                      <el-input v-model="tabJson.report.docNum" placeholder="最多输入20位" maxlength="20"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '10'">
+                    <el-form-item prop="deptName" :rules="[{required: true, message: '此项不能为空', trigger: 'change'}]">
+                      <el-select v-model="tabJson.report.deptName" style="width:100%;" clearable @change="deptNameChange">
+                        <el-option label="被分析某处列为无效举报" value="被分析某处列为无效举报"></el-option>
+                        <el-option label="被移送处列为无效举报" value="被移送处列为无效举报"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24" v-if="tabJson.report.reportStatus === '10' && tabJson.report.deptName === '被分析某处列为无效举报'">
+                    <el-form-item prop="docNum" :rules="[{required: true, message: '此项不能为空', trigger: 'blur'}, { validator: isValidInputBuZheng, trigger: 'blur' }]">
+                      <el-select v-model="tabJson.report.docNum" style="width:100%;" clearable @change="deptNameChange">
+                        <el-option label="协查一处" value="协查一处"></el-option>
+                        <el-option label="协查二处" value="协查二处"></el-option>
+                        <el-option label="分析一处" value="分析一处"></el-option>
+                        <el-option label="分析二处" value="分析二处"></el-option>
+                        <el-option label="分析三处" value="分析三处"></el-option>
+                        <el-option label="分析四处" value="分析四处"></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              <!-- <el-form-item>
+                <el-select v-model="tabJson.report.reportStatus" style="width:100%;">
+                  <el-option label="新入库" value="2"></el-option>
+                  <el-option label="转送" value="3"></el-option>
+                  <el-option label="调查" value="4"></el-option>
+                  <el-option label="分析" value="5"></el-option>
+                  <el-option label="移送" value="6"></el-option>
+                  <el-option label="移送且反馈" value="7"></el-option>
+                  <el-option label="重复（关联）" value="8"></el-option>
+                  <el-option label="关注" value="9"></el-option>
+                  <el-option label="无效" value="10"></el-option>
+                  <el-option label="已完成" value="11"></el-option>
+                  <el-option label="处理中" value="12"></el-option>
+                </el-select>
+              </el-form-item> -->
+          </el-form>
+            </td>
+            <th class="tabc_th">处理情况关联业务ID：</th>
+            <td class="tabc">{{tabJson.report.listSourceDocNum}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">标签：</th>
+            <td colspan="3" class="tabc_center">
+              <el-form-item prop="reporterMark">
+                <el-input
+                  autosize
+                  type="textarea"
+                  rows="1"
+                  placeholder="请输入内容"
+                  v-model="tabJson.report.reporterMark">
+                </el-input>
+              </el-form-item>
+            </td>
+          </tr>
+          <tr>
+            <th class="tabc_th yuright">
+              预处理情况：
+            </th>
+            <td colspan="3" class="tabc_biao yuleft">
+              <el-form ref="form" :disabled="$route.query.workitemName !== '发起举报处理流程'">
+                <el-form-item>
+                  <el-select v-model="isBuCo" style="width:300px;">
+                    <el-option label="请选择" value="0"></el-option>
+                    <el-option label="有交易有关联" value="1"></el-option>
+                    <el-option label="有交易无关联" value="2"></el-option>
+                    <el-option label="无交易无关联" value="3"></el-option>
+                    <el-option label="无交易有关联" value="4"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-form>
+            </td>
+          </tr>
+        </table>
+        <!-- <div class="tabBox"> -->
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;border-top:none;">
+          <tr>
+            <th class="tabb">序号</th>
+            <th class="tabb">主体名称</th>
+            <th class="tabb">证件号</th>
+            <th class="tabb">账号</th>
+            <th class="tabb">类别</th>
+            <th class="tabb">交易笔数</th>
+            <th class="tabb">可疑交易报告数</th>
+            <th class="tabb">关联业务类型</th>
+            <th class="tabb">关联业务主办部门</th>
+            <th class="tabb">与名单库关联情况</th>
+          </tr>
+          <tr class="straNumTr" v-for="(item, index) in tableData" :key="index">
+            <td class="tabb">{{index+1}}</td>
+            <td class="tabb">{{item.memberName}}</td>
+            <td class="tabb">{{item.memberCredNo}}</td>
+            <td class="tabb">{{item.accountNo}}</td>
+            <td class="tabb">{{item.memberTypeName}}</td>
+            <td class="tabb">
+              <input class="straNumInp" oninput="value=value.replace(/[^\d]/g,'')" style="width:100%;height:30px;outline:none;border:none;text-align:center;" type="text" v-model="item.straNum">
+            </td>
+            <td class="tabb">
+              <input oninput="value=value.replace(/[^\d]/g,'')" style="width:100%;height:30px;outline:none;border:none;text-align:center" type="text" v-model="item.sxmlNum">
+            </td>
+            <td class="tabb">
+              <input style="width:100%;height:30px;outline:none;border:none;text-align:center" type="text" v-model="item.sourceBusiness">
+            </td>
+            <td class="tabb">
+              <input style="width:100%;height:30px;outline:none;border:none;text-align:center" type="text" v-model="item.holdDept">
+            </td>
+            <td class="tabb">
+              <el-form ref="form">
+                <el-form-item>
+                  <el-select v-model="item.isConnection" style="width:100%;" :disabled="true">
+                    <el-option label="请选择" :value="Number(3)"></el-option>
+                    <el-option label="有关联" :value="Number(1)"></el-option>
+                    <el-option label="无关联" :value="Number(0)"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-form>
+            </td>
+          </tr>
+        </table>
+        
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;border-top:none;">
+          <tr>
+            <td colspan="4" class="tabtd">
+              <div>
+                
+              <h4 class="tab-box">线索移送处意见：</h4>
+              <el-form-item prop="clueRemark">
+                <el-input
+                  type="textarea"
+                  :rows="4"
+                  placeholder="最多输入100位"
+                  maxlength="100"
+                  v-model.trim="tabJson.report.clueRemark">
+                </el-input>
+              </el-form-item>
+              <!-- </div> -->
+              <div class="sign">
+                <div class="sign_handle">
+                  <span class="label_span">经办人：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.clueOperator">
+                </div>
+                <div class="sign_responsible">
+                  <span class="label_span">负责人：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.clueDuty">
+                </div>
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <span class="label_span">创建时间：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.clueOperatorTime" disabled>
+                </div>
+                <div class="sign_responsible">
+                  <span class="label_span">审批时间：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.clueDutyTime" disabled>
+                </div>
+              </div>
+            </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" class="tabtd">
+              <h4 class="tab-box">领导批示意见（局、中心）：</h4>
+              <el-form-item prop="leaderRemark">
+                <el-input
+                  type="textarea"
+                  :rows="4"
+                  placeholder="最多输入100位"
+                  maxlength="100"
+                  v-model.trim="tabJson.report.leaderRemark">
+                </el-input>
+              </el-form-item>
+              
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" class="tabtd">
+              <h4 class="tab-box">主办部门处理意见：</h4>
+              <el-form-item prop="deptRemark">
+                <el-input
+                  type="textarea"
+                  :rows="4"
+                  placeholder="最多输入100位"
+                  maxlength="100"
+                  v-model.trim="tabJson.report.deptRemark">
+                </el-input>
+              </el-form-item>
+              
+              <div class="sign">
+                <div class="sign_handle">
+                  <span class="label_span">经办人：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.deptOperator">
+                </div>
+                <div class="sign_responsible">
+                  <span class="label_span">负责人：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.deptDuty">
+                </div>
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <span class="label_span">审批时间：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.deptOperatorTime" disabled>
+                </div>
+                <div class="sign_responsible">
+                  <span class="label_span">审批时间：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.deptDutyTime" disabled>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" class="tabtd">
+              <h4 class="tab-box">最终处理结果：</h4>
+              <el-form-item prop="finRemark">
+                <el-input
+                type="textarea"
+                :rows="4"
+                placeholder="最多输入100位"
+                maxlength="100"
+                v-model.trim="tabJson.report.finRemark">
+              </el-input>
+              </el-form-item>
+              
+              <div class="sign">
+                <div class="sign_handle">
+                  <span class="label_span">经办人：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.finOperator">
+                </div>
+                <div class="sign_responsible">
+                  <span class="label_span">负责人：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.finDuty">
+                </div>
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <span class="label_span">审批时间：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.finOperatorTime" disabled>
+                </div>
+                <div class="sign_responsible">
+                  <span class="label_span">审批时间：</span>
+                  <input class="sign_inp" type="text" maxlength="10" v-model="tabJson.report.finDutyTime" disabled>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </table>
+        </el-form>
+        <el-col :span="24">
+          <p>1、“受理编号”为进入中心系统数据库自动生成的编号，前缀含义如下：01-信函 02-相关部委转来 03-洗钱线索举报受理平台</p>
+          <p>2、最终处理结果一般包括转送、调查、分析、移送、重复（关联）、关注、无效</p>
+        </el-col>
+        <div class="tabBox" style="display:none;">
+          <el-col :span="24" class="pre_blue">
+            <p>预处理情况：</p>
+          </el-col>
+          <div class="br-box" style="height:20px;"></div>
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;">
+          <tr>
+            <th class="tabb">序号</th>
+            <th class="tabb">主体名称</th>
+            <th class="tabb">证件号</th>
+            <th class="tabb">账号</th>
+            <th class="tabb">类别</th>
+            <th class="tabb">交易笔数</th>
+            <th class="tabb">可疑交易报告数</th>
+            <th class="tabb">关联业务类型</th>
+            <th class="tabb">关联业务主办部门</th>
+            <th class="tabb">与名单库关联情况</th>
+          </tr>
+          <tr v-for="(item, index) in tableData" :key="index">
+            <td class="tabb">{{index+1}}</td>
+            <td class="tabb">{{item.memberName}}</td>
+            <td class="tabb">{{item.memberCredNo}}</td>
+            <td class="tabb">{{item.accountNo}}</td>
+            <td class="tabb">{{item.memberTypeName}}</td>
+            <td class="tabb">{{item.straNum}}</td>
+            <td class="tabb">{{item.sxmlNum}}</td>
+            <td class="tabb">{{item.sourceBusiness}}</td>
+            <td class="tabb">{{item.holdDept}}</td>
+            <td class="tabb">
+              <div v-if="item.isConnection === null || item.isConnection === ''" class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;"></div>
+              <div v-if="item.isConnection === 0" class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">无关联</div>
+              <div v-if="item.isConnection === 1" class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">有关联</div>
+            </td>
+          </tr>
+        </table>
+        </div>
+        
+        <div class="reportBox" style="display:none;width:100%;height:auto;">
+          <el-form ref="form" :model="form" label-width="120px">
+          <el-col :span="24" class="pre_blue">
+            <p>举报详细信息：</p>
+          </el-col>
+          <div class="br-box" style="height:20px;"></div>
+          <el-col :span="24">
+            <el-form-item label="举报事由：">
+              {{form.reporterReasonName}}
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="10">
+            <el-form-item label="举报事由（其他）：">
+              {{form.reporterRemark}}
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="24">
+            <el-form-item label="举报正文：">
+              {{form.reporterText}}
+            </el-form-item>
+          </el-col>
+        </el-form>
+        </div>
+        
+
+
+        </div>
+        <div class="printx-box" style="display:none;">
+
+        <div class="br-boxs"></div>
+        <div style="text-align:center;"><h1>中国反洗钱监测分析中心举报处理单</h1></div>
+        <br><br><br>
+        <el-col :span="24">
+          <span>当前部门：<div class="currDeptBox" style="width:200px;display:inline-block;">{{currDept}}</div></span>
+          <span>当前用户：<div class="currUserBox" style="width:200px;display:inline-block;">{{name}}</div></span>
+        </el-col>
+        <div class="br-boxs"></div>
+        
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;">
+          <tr>
+            <th class="tabc_th">受理编号：</th>
+            <td class="tabc">{{tabJson.report.reportNo}}</td>
+            <th class="tabc_th">受理时间：</th>
+            <td class="tabc">{{tabJson.report.createDate}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人名称：</th>
+            <td class="tabc">{{tabJson.report.reporterName}}</td>
+            <th class="tabc_th">被举报人名称（首个）：</th>
+            <td class="tabc">{{tabJson.report.reportedName}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人单位名称：</th>
+            <td class="tabc">{{tabJson.report.reporterCompany}}</td>
+            <th class="tabc_th">被举报人单位名称：</th>
+            <td class="tabc">{{tabJson.report.reportedCompany}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人职务/身份：</th>
+            <td class="tabc">{{tabJson.report.reporterPosition}}</td>
+            <th class="tabc_th">被举报人职务/身份：</th>
+            <td class="tabc">{{tabJson.report.reportedPosition}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报人联系方式：</th>
+            <td class="tabc">{{tabJson.report.reporterTelNo}}</td>
+            <th class="tabc_th">被举报人联系方式：</th>
+            <td class="tabc">{{tabJson.report.reportedTelNo}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">举报事由（涉嫌类型）：</th>
+            <td class="tabc_center" colspan="3">{{tabJson.report.reporterReasonName}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">处理状态：</th>
+            
+            <td v-if="tabJson.report.reportStatus === '2'" class="tabc">
+              新入库
+            </td>
+            <td v-if="tabJson.report.reportStatus === '3'" class="tabc">
+              转送
+            </td>
+            <td v-if="tabJson.report.reportStatus === '4'" class="tabc">
+              调查 {{ tabJson.report.deptName }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '5'" class="tabc">
+              分析 {{ tabJson.report.deptName }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '6'" class="tabc">
+              移送 {{ tabJson.report.deptName + ' ' + tabJson.report.docNum }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '7'" class="tabc">
+              移送且反馈 {{ tabJson.report.deptName }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '8'" class="tabc">
+              重复（关联）
+            </td>
+            <td v-if="tabJson.report.reportStatus === '9'" class="tabc">
+              关注 {{ tabJson.report.deptName }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '10'" class="tabc">
+              无效 {{ tabJson.report.deptName + ' ' + tabJson.report.docNum }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '11'" class="tabc">
+              已完成
+            </td>
+            <td v-if="tabJson.report.reportStatus === '12'" class="tabc">
+              处理中
+            </td>
+            <td v-if="tabJson.report.reportStatus === '13'" class="tabc">
+              通报 {{ tabJson.report.deptName + ' ' + tabJson.report.docNum }}
+            </td>
+            <td v-if="tabJson.report.reportStatus === '14'" class="tabc">
+              转其他单位 {{ tabJson.report.deptName + ' ' + tabJson.report.docNum }}
+            </td>
+            <td v-else class="tabc">
+              
+            </td>
+            <th class="tabc_th">处理情况关联业务ID：</th>
+            <td class="tabc">{{tabJson.report.listSourceDocNum}}</td>
+          </tr>
+          <tr>
+            <th class="tabc_th">标签：</th>
+            <td colspan="3" class="tabc_center"><div class="reporterMarkBox" style="width:100%;height:100%;min-height:30px;">{{tabJson.report.reporterMark}}</div></td>
+          </tr>
+          <tr>
+            <th class="tabc_th yuright">预处理情况：</th>
+            <td v-if="tabJson.report.isBusinessName === null || tabJson.report.isConnectionName === null" colspan="3" class="tabc_center yuleft"></td>
+            <td v-else colspan="3" class="tabc_center yuleft">
+              {{tabJson.report.isBusinessName}}{{tabJson.report.isConnectionName}}
+            </td>
+          </tr>
+        </table>
+        <!-- <div class="tabBox"> -->
+          
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;border-top:none;">
+          <tr>
+            <th class="tabb">序号</th>
+            <th class="tabb">主体名称</th>
+            <th class="tabb">证件号</th>
+            <th class="tabb">账号</th>
+            <th class="tabb">类别</th>
+            <th class="tabb">交易笔数</th>
+            <th class="tabb">可疑交易报告数</th>
+            <th class="tabb">关联业务类型</th>
+            <th class="tabb">关联业务主办部门</th>
+            <th class="tabb">与名单库关联情况</th>
+          </tr>
+          <tr class="straNumTr" v-for="(item, index) in tableData.slice(0,5)" :key="index">
+            <td class="tabb">{{index+1}}</td>
+            <td class="tabb">{{item.memberName}}</td>
+            <td class="tabb">{{item.memberCredNo}}</td>
+            <td class="tabb">{{item.accountNo}}</td>
+            <td class="tabb">{{item.memberTypeName}}</td>
+            <td class="tabb">
+              <div class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">{{item.straNum}}</div>
+
+            </td>
+            <td class="tabb">
+              <div class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">{{item.sxmlNum}}</div>
+            </td>
+            <td class="tabb">
+              <div class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">{{item.sourceBusiness}}</div>
+            </td>
+            <td class="tabb">
+              <div class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">{{item.holdDept}}</div>
+            </td>
+            <td class="tabb">
+              <div v-if="item.isConnection === null || item.isConnection === ''" class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;"></div>
+              <div v-if="item.isConnection === 0" class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">无关联</div>
+              <div v-if="item.isConnection === 1" class="straNumBox" style="width:100%;min-height:30px;height:auto;word-break:normal|break-all|keep-all;">有关联</div>
+            </td>
+          </tr>
+        </table>
+        <!-- </div> -->
+        <table border="1" cellspacing="0" cellpadding="0" style="width:100%;border-top:none;">
+          <tr>
+            <td colspan="4" class="tabtd">
+              <div>
+              <h4 class="tab-box">线索移送处意见：</h4>
+              <div class="clueRemarkBox" style="width:100%;min-height:50px;height:auto;">
+                {{tabJson.report.clueRemark}}
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <div style="width:200px;height:30px;text-align:left;">经办人：{{tabJson.report.clueOperator}}</div>
+                </div>
+                <div class="sign_responsible">
+                  <div style="width:200px;height:30px;text-align:left;">负责人：{{tabJson.report.clueDuty}}</div>
+                </div>
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <div style="width:200px;height:30px;text-align:left;">创建时间：{{tabJson.report.clueOperatorTime}}</div>
+                </div>
+                <div class="sign_responsible">
+                  <div style="width:200px;height:30px;text-align:left;">审批时间：{{tabJson.report.clueDutyTime}}</div>
+                </div>
+              </div>
+            </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" class="tabtd">
+              <h4 class="tab-box">领导批示意见（局、中心）：</h4>
+              <div class="leaderRemarkBox" style="width:100%;min-height:50px;height:auto;">{{tabJson.report.leaderRemark}}</div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" class="tabtd">
+              <h4 class="tab-box">主办部门处理意见：</h4>
+              <div class="deptRemarkBox" style="width:100%;min-height:50px;height:auto;">{{tabJson.report.deptRemark}}</div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <div style="width:200px;height:30px;text-align:left;">经办人：{{tabJson.report.deptOperator}}</div>
+                </div>
+                <div class="sign_responsible">
+                  <div style="width:200px;height:30px;text-align:left;">负责人：{{tabJson.report.deptDuty}}</div>
+                </div>
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <div style="width:200px;height:30px;text-align:left;">审批时间：{{tabJson.report.deptOperatorTime}}</div>
+                </div>
+                <div class="sign_responsible">
+                  <div style="width:200px;height:30px;text-align:left;">审批时间：{{tabJson.report.deptDutyTime}}</div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" class="tabtd">
+              <h4 class="tab-box">最终处理结果：</h4>
+              <div class="finRemarkBox" style="width:100%;min-height:50px;height:auto;">{{tabJson.report.finRemark}}</div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <div style="width:200px;height:30px;text-align:left;">经办人：{{tabJson.report.finOperator}}</div>
+                </div>
+                <div class="sign_responsible">
+                  <div style="width:200px;height:30px;text-align:left;">负责人：{{tabJson.report.finDuty}}</div>
+                </div>
+              </div>
+              <div class="sign">
+                <div class="sign_handle">
+                  <div style="width:200px;height:30px;text-align:left;">审批时间：{{tabJson.report.finOperatorTime}}</div>
+                </div>
+                <div class="sign_responsible">
+                  <div style="width:200px;height:30px;text-align:left;">审批时间：{{tabJson.report.finDutyTime}}</div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </table>
+        <el-col :span="24">
+          <p>1、“受理编号”为进入中心系统数据库自动生成的编号，前缀含义如下：01-信函 02-相关部委转来 03-洗钱线索举报受理平台</p>
+          <p>2、最终处理结果一般包括转送、调查、分析、移送、重复（关联）、关注、无效</p>
+        </el-col>
+        </div>
+
+
+        
+      </el-row>
+  </div>
+</template>
+<script>
+import { workflowUpdate } from '@/api/sys-monitoringAnalysis/reportingManagement/queryInformation'
+import { mapGetters } from 'vuex'
+import { findDept } from '@/api/sys-monitoringAnalysis/reportingManagement/informationWorkflow'
+import { isValidInputBuZheng } from '@/utils/formValidate.js'
+import { initProcess } from '@/api/sys-monitoringAnalysis/reportingManagement/uploadAttachments'
+export default {
+  data() {
+    return {
+      isValidInputBuZheng: isValidInputBuZheng,
+      findBranchOptions: [],
+      wrapperLoading: false,
+      reportId: '',
+      straNumType: true,
+      sxmlNumType: true,
+      sourceBusinessType: true,
+      holdDeptType: true,
+      listSourceDocNumType: true,
+      tabs: [],
+      sourceBusinesss: '',
+      sourceBusinessTo: 'ddddd',
+      numType: true,
+      reportType: false,
+      tableData: [],
+      id: '',
+      isReportDealer: '',
+      tabJson: '',
+      form: {
+        status: ''
+      },
+      approve: {
+        charosterList: [],
+        currDept: '',
+        currUser: '',
+        clueRemark: '',
+        deptRemark: '',
+        finRemark: '',
+        leaderRemark: '',
+        reportId: '',
+        reportStatus: '',
+        reporterMark: '',
+        clueDuty: '',
+        clueOperator: '',
+        finDuty: '',
+        finOperator: '',
+        deptDuty: '',
+        deptOperator: '',
+        isBusiness: '',
+        isConnection: ''
+      },
+      analysisOffice: [
+        { text: '被协查一处列为关注', code: 'FXQ005' },
+        { text: '被协查二处列为关注', code: 'FXQ006' },
+        { text: '被分析一处关注', code: 'FXQ007' },
+        { text: '被分析二处关注', code: 'FXQ008' },
+        { text: '被分析三处关注', code: 'FXQ009' },
+        { text: '被分析四处关注', code: 'FXQ010' },
+        { text: '被国际交流处关注', code: 'FXQ014' }
+      ],
+      analysisOffice2: [
+        { text: '协查一处', code: 'FXQ005' },
+        { text: '协查二处', code: 'FXQ006' },
+        { text: '分析一处', code: 'FXQ007' },
+        { text: '分析二处', code: 'FXQ008' },
+        { text: '分析三处', code: 'FXQ009' },
+        { text: '分析四处', code: 'FXQ010' },
+        { text: '国际交流处', code: 'FXQ014' }
+      ],
+      charosterLists: [],
+      isBuCo: '',
+      rules: {
+        reporterMark: [
+          { max: 64, message: '最多填写64个字符', trigger: 'blur' }
+        ],
+        clueRemark: [
+          { max: 100, message: '最多填写100个字符', trigger: 'blur' }
+        ],
+        leaderRemark: [
+          { max: 100, message: '最多填写100个字符', trigger: 'blur' }
+        ],
+        deptRemark: [
+          { max: 100, message: '最多填写100个字符', trigger: 'blur' }
+        ],
+        finRemark: [
+          { max: 100, message: '最多填写100个字符', trigger: 'blur' }
+        ]
+      },
+      currDept: '',
+      workflow: {}
+    }
+  },
+  computed: {
+    ...mapGetters(['businessFlag', 'workFlow2business', 'formContent', 'roles', 'name'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    },
+    formContent: {
+      handler(newVal, oldVal) {
+        this.workflow = newVal.workflow
+        this.form = newVal.report
+        this.reportId = newVal.report.reportId
+        this.tabJson = newVal
+        this.tableData = newVal.reported
+        if (this.tabJson.report.isBusiness === 1 && this.tabJson.report.isConnection === 1) {
+          this.isBuCo = '1'
+        } else if (this.tabJson.report.isBusiness === 1 && this.tabJson.report.isConnection === 0) {
+          this.isBuCo = '2'
+        } else if (this.tabJson.report.isBusiness === 0 && this.tabJson.report.isConnection === 0) {
+          this.isBuCo = '3'
+        } else if (this.tabJson.report.isBusiness === 0 && this.tabJson.report.isConnection === 1) {
+          this.isBuCo = '4'
+        } else {
+          this.isBuCo = '0'
+        }
+        this.initData()
+        // if (newVal.workflow.nodeAttributes) {
+        //   if (newVal.workflow.nodeAttributes.length > 0) {
+        //     for (var o = 0; o < newVal.workflow.nodeAttributes.length; o++) {
+        //       if (newVal.workflow.nodeAttributes[o].extendKey === 'editFlag' && newVal.workflow.nodeAttributes[o].extendValue === 'Y') {
+        //         this.isDisabled = false
+        //       }
+        //       if (newVal.workflow.nodeAttributes[o].extendKey === 'uploadFlag' && newVal.workflow.nodeAttributes[o].extendValue === 'Y') {
+        //         this.uploadDisabled = false
+        //       }
+        //       if (newVal.workflow.nodeAttributes[o].extendKey === 'displayFlag' && newVal.workflow.nodeAttributes[o].extendValue === 'Y') {
+        //         this.displayFlagType = true
+        //       }
+        //     }
+        //   }
+        // }
+      },
+      deep: true
+    }
+  },
+  mounted() {
+    this.initData()
+    // this.reportType = false
+    // this.id = this.$route.query.id
+    // this.isReportDealer = this.$route.query.isReportDealer
+    // this.workflowFn()
+    // this.queryApiFn()
+  },
+  methods: {
+    analysisPro() {
+      initProcess(this.reportId, this.tabJson.report.reportNo).then(res => {
+        if (res.code === 200) {
+          this.$router.push({
+            name: 'cueManage_autonomousAnalysis'
+          })
+        }
+      })
+    },
+    initData() {
+      // findBranch().then(res => {
+      //   if (res.code === 200) {
+      //     this.findBranchOptions = res.data
+      //   }
+      // })
+      findDept().then(res => {
+        if (res.code === 200) {
+          this.currDept = res.data
+        }
+      })
+    },
+    nameCodeTransformation(data) {
+      if (this.tabJson.report.deptCode !== '' && data.length > 0) {
+        data.forEach(el => {
+          if (el.code === this.tabJson.report.deptCode) {
+            this.tabJson.report.deptName = el.text
+          }
+        })
+      }
+    },
+    reportStatusChange() {
+      this.tabJson.report.deptCode = ''
+      this.tabJson.report.deptName = ''
+      this.tabJson.report.docNum = ''
+      this.$refs.approveForm.clearValidate()
+    },
+    deptNameChange(val) {
+      this.tabJson.report.deptCode = ''
+    },
+    nextStep() {
+      this.$refs['ruleForm'].validate((valid) => {
+        if (valid) {
+          this.$refs['approveForm'].validate((valid) => {
+            if (valid) {
+              this.wrapperLoading = true
+              workflowUpdate(this.reportId, this.workFlow2business, this.getParamter()).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: '提交成功'
+                  })
+                  this.$router.go(-1)
+                }
+                this.wrapperLoading = false
+              }).catch(() => {
+                this.wrapperLoading = false
+              })
+            } else {
+              this.$message({
+                type: 'warning',
+                message: '请将表单填写完整'
+              })
+            }
+          })
+        } else {
+          this.$message({
+            type: 'warning',
+            message: '请将表单填写完整'
+          })
+        }
+      })
+    },
+    reportClick() {
+      document.getElementsByClassName('reportBox')[0].style.display = 'block'
+      var reportBoxHtml = document.getElementsByClassName('reportBox')[0].innerHTML
+      document.body.innerHTML = reportBoxHtml
+      window.print()
+      window.location.reload()
+    },
+    tabClick() {
+      document.getElementsByClassName('tabBox')[0].style.display = 'block'
+      var tabBoxHtml = document.getElementsByClassName('tabBox')[0].innerHTML
+      document.body.innerHTML = tabBoxHtml
+      window.print()
+      window.location.reload()
+    },
+    sourceBleave(val) {
+      val.row.sourceBusiness = document.getElementsByClassName('sourceB-box')[val.$index].innerHTML
+    },
+    // queryApiFn() {
+    //   queryApi(this.id).then(res => {
+    //     if (res.code === 200) {
+    //       this.form = res.data.report
+    //     }
+    //   })
+    // },
+    getParamter() {
+      const arr = []
+      this.tableData.forEach(el => {
+        const obj = {}
+        el.charoId === null ? obj.charoId = '' : obj.charoId = el.charoId
+        el.holdDept === null ? obj.holdDept = '' : obj.holdDept = el.holdDept
+        el.isConnection === null || el.isConnection === 3 ? obj.isConnection = '' : obj.isConnection = el.isConnection
+        el.memberId === null ? obj.memberId = '' : obj.memberId = el.memberId
+        el.sourceBusiness === null ? obj.sourceBusiness = '' : obj.sourceBusiness = el.sourceBusiness
+        // el.straNum === null ? obj.straNum = '' : obj.straNum = Number(el.straNum)
+        // el.sxmlNum === null ? obj.sxmlNum = '' : obj.sxmlNum = Number(el.sxmlNum)
+        obj.straNum = el.straNum === 0 ? '' : el.straNum
+        obj.sxmlNum = el.sxmlNum === 0 ? '' : el.sxmlNum
+        arr.push(obj)
+      })
+      // const obj = Object.assign({}, this.approve)
+
+      const newObj = {
+        charosterList: arr,
+        currDept: this.currDept,
+        currUser: this.name,
+        clueRemark: this.tabJson.report.clueRemark,
+        deptRemark: this.tabJson.report.deptRemark,
+        finRemark: this.tabJson.report.finRemark,
+        leaderRemark: this.tabJson.report.leaderRemark,
+        reportId: this.tabJson.report.reportId,
+        reportStatus: this.tabJson.report.reportStatus === null ? '' : this.tabJson.report.reportStatus,
+        reporterMark: this.tabJson.report.reporterMark,
+        clueDuty: this.tabJson.report.clueDuty === null ? '' : this.tabJson.report.clueDuty,
+        clueOperator: this.tabJson.report.clueOperator === null ? '' : this.tabJson.report.clueOperator,
+        finDuty: this.tabJson.report.finDuty === null ? '' : this.tabJson.report.finDuty,
+        finOperator: this.tabJson.report.finOperator === null ? '' : this.tabJson.report.finOperator,
+        deptDuty: this.tabJson.report.deptDuty === null ? '' : this.tabJson.report.deptDuty,
+        deptOperator: this.tabJson.report.deptOperator === null ? '' : this.tabJson.report.deptOperator,
+        isBusiness: this.isBuCo === '0' ? '' : this.isBuCo === '1' || this.isBuCo === '2' ? 1 : 0,
+        isConnection: this.isBuCo === '0' ? '' : this.isBuCo === '2' || this.isBuCo === '3' ? 0 : 1,
+        deptName: this.tabJson.report.deptName,
+        deptCode: this.tabJson.report.deptCode,
+        docNum: this.tabJson.report.docNum
+      }
+
+      return newObj
+    },
+    inpChange() {
+      this.numType = true
+    },
+    topGo() {
+      this.$router.go(-1)
+    },
+    // workflowFn() {
+    //   inWorkflow(this.id).then(res => {
+    //     if (res.code === 200) {
+    //       this.tabJson = res.data
+    //       this.tableData = res.data.reported
+    //       this.tableData.forEach(indNum => {
+    //         indNum.isConnection = indNum.isConnection === '' || indNum.isConnection === null ? 3 : indNum.isConnection
+    //       })
+    //       this.approve.reporterMark = this.tabJson.report.reporterRemark
+    //       this.approve.reportStatus = this.tabJson.report.reportStatus
+    //       this.approve.reportId = this.id
+    //       if (this.tabJson.report.isBusiness === 1 && this.tabJson.report.isConnection === 1) {
+    //         this.isBuCo = '1'
+    //       } else if (this.tabJson.report.isBusiness === 1 && this.tabJson.report.isConnection === 0) {
+    //         this.isBuCo = '2'
+    //       } else if (this.tabJson.report.isBusiness === 0 && this.tabJson.report.isConnection === 0) {
+    //         this.isBuCo = '3'
+    //       } else if (this.tabJson.report.isBusiness === 0 && this.tabJson.report.isConnection === 1) {
+    //         this.isBuCo = '4'
+    //       } else {
+    //         this.isBuCo = '0'
+    //       }
+    //     }
+    //   })
+    // },
+    // storageClick() {
+    //   this.$refs['ruleForm'].validate((valid) => {
+    //     if (valid) {
+    //       storageInformation(this.getParamter()).then(res => {
+    //         if (res.code === 200) {
+    //           this.$message({
+    //             message: '保存成功',
+    //             type: 'success'
+    //           })
+    //           this.$router.go(-1)
+    //         } else {
+    //           this.$message({
+    //             message: res.message,
+    //             type: 'error'
+    //           })
+    //         }
+    //       })
+    //     } else {
+    //       console.log('error submit!!')
+    //       return false
+    //     }
+    //   })
+    // },
+    printingClick() {
+      document.getElementsByClassName('printx-box')[0].style.display = 'block'
+      var newHtml = document.getElementsByClassName('printx-box')[0].innerHTML
+      document.body.innerHTML = newHtml
+      window.print()
+      window.location.reload()
+    }
+  }
+}
+</script>
+<style>
+.label_span {
+  display: inline-block;
+  width: 100px;
+  text-align: right;
+}
+.br-boxs {
+  width: 100%;
+  height: 30px;
+  float: left;
+}
+.tab-box {
+  width: 100%;
+  height: 50px;
+  padding: 10px 0 10px 0;
+  overflow: hidden;
+}
+.tab-border {
+  border:1px solid #000;
+  text-align:center;
+  line-height: 30px;
+  border-top:none;
+
+}
+.tab-border-left {
+  border:1px solid #000;
+  line-height: 30px;
+  border-left: none;
+  text-align:center;
+  border-top:none;
+}
+.inpc {
+  border: none;
+  outline: none;
+}
+.tabc {
+  width:30%;
+  text-align: center;
+  line-height:30px;
+  word-break:break-all;
+  padding: 10px;
+}
+.tabc_center {
+  width:30%;
+  text-align: left;
+  line-height:30px;
+  word-break:break-all;
+  padding: 5px;
+  text-indent: 20px;
+  overflow: hidden;
+}
+.tabc_biao {
+  width:30%;
+  text-align: left;
+  line-height:30px;
+  word-break:break-all;
+  padding: 5px;
+}
+.tabc_th {
+  width:20%;
+  text-align: center;
+  line-height:30px;
+  word-break:break-all;
+  padding: 5px;
+}
+.tabb {
+  width:10%;
+  text-align:center;
+  line-height:30px;
+  word-break:break-all;
+  padding: 5px;
+}
+.tabtd {
+  padding: 10px;
+}
+.yuright {
+  border-right:none;
+}
+.yuleft {
+  border-left: none;
+}
+.sign {
+  width: 100%;
+  height: auto;
+  padding: 10px;
+  overflow: hidden;
+  text-align: right;
+}
+.sign_responsible {
+  float: right;
+  width: auto;
+  height: auto;
+}
+.sign_handle {
+  float: right;
+  width:auto;
+  height: auto;
+}
+.sign_inp {
+  border:none;
+  width: 175px;
+  outline: none;
+}
+.buttonSizes {
+  width: 130px;
+}
+.sign_responsible_box {
+  width: 100px;
+  height: 30px;
+  display: inline-block;
+  overflow: hidden;
+}
+</style>
+

@@ -1,0 +1,360 @@
+<template>
+  <div class="acnotice">
+    <el-card>
+      <div slot="header">
+        <span>发送补正通知</span>
+      </div>
+      <el-form ref="searchForm" :model="searchForm" label-width="120px" class="clearfix">
+        <el-col :span="8">
+          <el-form-item label="报告机构：" prop="reportBody">
+            <el-autocomplete v-model="searchForm.reportBody" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;"></el-autocomplete>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="问题来源：" prop="problemSource">
+            <el-select v-model="searchForm.problemSource" clearable>
+              <el-option label="全部" value=""></el-option>
+              <el-option label="规则扫描" value="0"></el-option>
+              <el-option label="数据抽样" value="1"></el-option>
+              <el-option label="跨机构比对" value="2"></el-option>
+              <el-option label="定点监测" value="3"></el-option>
+              <el-option label="特定数据查询" value="4"></el-option>
+              <el-option label="分析员自主发起" value="5"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="补正类型：" prop="correctType">
+            <el-select v-model="searchForm.correctType" clearable>
+              <el-option label="全部" value=""></el-option>
+              <el-option label="大额信息更正" value="0"></el-option>
+              <el-option label="可疑信息更正" value="1"></el-option>
+              <el-option label="信息补充" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="数据状态：" prop="dataState">
+            <el-select v-model="searchForm.dataState" clearable>
+              <el-option label="全部" value=""></el-option>
+              <!-- <el-option label="待审批" value="0"></el-option> -->
+              <el-option label="审批中" value="1"></el-option>
+              <el-option label="审批通过" value="2"></el-option>
+              <el-option label="审批不通过" value="3"></el-option>
+              <el-option label="退回" value="4"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="发起时间：" prop="startAppTime">
+            <el-date-picker v-model="searchForm.startAppTime" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8" class="btnalign">
+          <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+          <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+        </el-col>
+      </el-form>
+      <div style="margin: 10px 0;">待人工补正数据列表：
+        <el-button type="primary" plain @click="handleSendNotice" :loading="sendLoading">一键发送通知</el-button>
+      </div>
+      <el-table :data="list" style="width: 100%;" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" :selectable="checkSelectable"></el-table-column>
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="reportBody" label="报告机构"></el-table-column>
+        <el-table-column prop="correctType" label="补正类型"></el-table-column>
+        <el-table-column prop="problemSource" label="问题来源"></el-table-column>
+        <el-table-column prop="dataState" label="数据状态"></el-table-column>
+        <el-table-column prop="startAppTime" label="发起时间"></el-table-column>
+        <el-table-column label="操作" width="100">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleView(scope)">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+    </el-card>
+
+    <!-- 人工补正弹框 -->
+    <el-dialog :title="correctionDialogTitle" :visible.sync="dialogVisible" width="90%">
+      <component :is="correctionComName" :correctParams="correctParams" @dialogState="closeDialog" :dialogVisible="dialogVisible"></component>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import {
+  getList,
+  sendNotice
+} from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/notice'
+import LargeSingle from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/largeSingle'
+import SuspiciousSingle from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/suspiciousSingle'
+import NoticeSingle from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/noticeSingle'
+
+export default {
+  components: {
+    LargeSingle,
+    SuspiciousSingle,
+    NoticeSingle
+  },
+  data() {
+    return {
+      loading: false,
+      sendLoading: false,
+      searchForm: {
+        reportBody: '',
+        problemSource: '',
+        startAppTime: '',
+        correctType: '',
+        dataState: ''
+      },
+      rinmOptions: [], // 报告机构列表
+      multipleSelection: [],
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      correctionComName: null,
+      correctionDialogTitle: null,
+      dialogVisible: false,
+      correctParams: {}
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    getData() {
+      const paramObj = {
+        reportBody: this.searchForm.reportBody,
+        problemSource: this.searchForm.problemSource,
+        startDate: this.searchForm.startAppTime ? this.searchForm.startAppTime[0] : '',
+        endDate: this.searchForm.startAppTime ? this.searchForm.startAppTime[1] : '',
+        correctType: this.searchForm.correctType,
+        dataState: this.searchForm.dataState,
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(paramObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.list = res.data.list
+            this.total = res.data.total
+            res.data.list.forEach(e => {
+              if (e.correctType !== null) {
+                switch (e.correctType) {
+                  case '0':
+                    e.correctType = '大额信息更正'
+                    break
+                  case '1':
+                    e.correctType = '可疑信息更正'
+                    break
+                  case '2':
+                    e.correctType = '信息补充'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.problemSource !== null) {
+                // 问题来源
+                switch (e.problemSource) {
+                  case '0':
+                    e.problemSource = '规则扫描'
+                    break
+                  case '1':
+                    e.problemSource = '数据抽样'
+                    break
+                  case '2':
+                    e.problemSource = '跨机构比对'
+                    break
+                  case '3':
+                    e.problemSource = '定点监测'
+                    break
+                  case '4':
+                    e.problemSource = '特定数据查询'
+                    break
+                  case '5':
+                    e.problemSource = '分析员自主发起'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.dataState !== null) {
+                // 数据状态
+                switch (e.dataState) {
+                  case '0':
+                    e.dataState = '待审批'
+                    break
+                  case '1':
+                    e.dataState = '审批中'
+                    break
+                  case '2':
+                    e.dataState = '审批通过'
+                    break
+                  case '3':
+                    e.dataState = '审批不通过'
+                    break
+                  case '4':
+                    e.dataState = '退回'
+                    break
+                  default:
+                    break
+                }
+              }
+            })
+          } else {
+            this.loading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    handleQuery() {
+      this.pageInfo.pageNum = 1
+      this.loading = true
+      this.getData()
+    },
+    checkSelectable(row) {
+      return row.dataState === '审批通过'
+    },
+    handleSendNotice() {
+      // 一键发送通知
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const arr = []
+        this.multipleSelection.map(function(item) {
+          if (item.dataState === '审批通过') {
+            arr.push(item.correctId)
+          } else {
+            // this.$message.error('审批通过才能发送一键通知')
+          }
+        })
+        const correctId = arr.join(',')
+
+        if (correctId) {
+          this.sendLoading = true
+          sendNotice(correctId)
+            .then(res => {
+              if (res.code === 200) {
+                this.sendLoading = false
+                this.$message({
+                  type: 'success',
+                  message: '一键发送通知成功！',
+                  showClose: true,
+                  duration: 6000
+                })
+                // setInterval(() => {
+                this.getData()
+                // }, 6)
+              } else {
+                this.sendLoading = false
+                this.$message({
+                  type: 'error',
+                  message: res.message,
+                  showClose: true,
+                  duration: 6000
+                })
+              }
+            })
+            .catch(() => {
+              this.sendLoading = false
+            })
+        } else {
+          this.$message.error('一键通知发送失败')
+        }
+      }
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.getData()
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    closeDialog(val) {
+      // 人工补正组件接收子组件弹框dialogVisible传值
+      this.dialogVisible = val
+    },
+    handleView(scope) {
+      const correctType = scope.row.correctType
+      this.dialogVisible = true
+
+      switch (correctType) {
+        case '大额信息更正':
+          this.correctionComName = 'LargeSingle'
+          this.correctionDialogTitle = '大额信息更正通知'
+          this.correctParams = {
+            correctId: scope.row.correctId
+          }
+          break
+        case '可疑信息更正':
+          this.correctionComName = 'SuspiciousSingle'
+          this.correctionDialogTitle = '可疑信息更正通知'
+          this.correctParams = {
+            correctId: scope.row.correctId
+          }
+          break
+        case '信息补充':
+          this.correctionComName = 'NoticeSingle'
+          this.correctionDialogTitle = '信息补充通知'
+          this.correctParams = {
+            correctId: scope.row.correctId
+          }
+          break
+        default:
+          break
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.acnotice {
+  .btnalign {
+    text-align: right;
+  }
+  .tradetime {
+    .el-date-editor--datetimerange.el-input__inner {
+      width: 200px;
+    }
+  }
+}
+</style>

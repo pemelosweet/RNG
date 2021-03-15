@@ -1,0 +1,481 @@
+<template>
+  <div class="reportLibrary">
+    <el-card>
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>查询</span>
+        <!-- <div style="float:right" v-if="roles === 'branch'"> -->
+        <div v-if="roles === 'branch'" style="float:right">
+          <el-button type="text" @click="goDetail('new')">手工导入</el-button>
+          <span class="itemline">|</span>
+          <router-link :to="{name:'reportEmphasisDoubtful_import',query:{type:'import'}}">
+            <el-button type="text">批量上传</el-button>
+          </router-link>
+        </div>
+      </div>
+      <!-- 填报历史 表单搜索条件模块 -->
+      <div class="historyBlock">
+        <div class="searchBlock">
+          <el-form :model="searchForm" label-width="120px" ref="searchForm"   :rules="rulesForm">
+              <el-row class="toggle" :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="上报时间：" prop="date">
+                    <el-date-picker
+                      v-model="searchForm.date"
+                      type="daterange"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      value-format="yyyy-MM-dd"
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="报文名：" prop="xmlName">
+                    <el-input v-model="searchForm.xmlName" placeholder="报文名"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="上报分支行：" prop="localBank">
+                    <!-- <el-input v-model="searchForm.localBank" :disabled="deptDisable" placeholder="上报分支行"></el-input> -->
+                    <el-select clearable :disabled="deptDisable" v-model="searchForm.localBank" filterable placeholder="请选择">
+                      <el-option v-for="item in localBankArr" :key="item.codeId" :label="item.codeName" :value="item.codeName">
+                    </el-option>
+                  </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="状态：" label-width="120px" prop="delFlag">
+                  <el-select v-model="searchForm.delFlag" clearable placeholder="请选择"> 
+                    <el-option value="0" label="有效"></el-option>
+                    <!-- <el-option value="1" label="已编辑"></el-option> -->
+                    <el-option value="2" label="已删除"></el-option>
+                  </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="库存情况：" label-width="120px" prop="stockFlag">
+                  <el-select v-model="searchForm.stockFlag" clearable placeholder="请选择">
+                    <el-option value="0" label="已存在"></el-option>
+                    <el-option value="1" label="不存在"></el-option>
+                  </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            
+              
+              <div style="textAlign:right;margin-bottom:10px;margin-top:10px">
+                <el-button
+                  type="primary"
+                  @click="searchList"
+                >查 询</el-button>
+                <el-button
+                  type=""
+                  @click="cleanUp"
+                >清 空</el-button>
+              </div>
+          </el-form>
+        </div>
+      </div>
+      <el-alert title type="primary" :closable="false">
+          <template>
+            <span>
+              <!-- <i class="el-icon-info" style="color:#1890ff"></i> -->
+              已选择
+              <a style="color:#1890ff">{{select_orderId.length}}</a> 项
+            </span>
+            <el-button type="text" style="margin-left:18px" @click="exportExcel">导出</el-button>
+            <el-button type="text" style="margin-left:18px" @click="tableVisible">库存校验</el-button>
+          </template>
+        </el-alert>
+      <div class="taleBlock">
+        <el-table
+          :data="tableData"
+          tooltip-effect="dark"
+          @selection-change="handelSelect"
+          :row-key="getRowkey"
+           v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)"
+        >
+          <el-table-column type="selection" width="60" fixed="left"></el-table-column>
+          <el-table-column type="index" label="序号" width="60" fixed="left"></el-table-column>
+          <el-table-column prop="xmlName" label="报文名">
+            <template slot-scope="scope">
+              <el-tooltip effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.xmlName}}</div>
+                <span class="tableCell">{{scope.row.xmlName}}</span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column prop="zipName" label="附件名">
+            <template slot-scope="scope">
+              <el-tooltip effect="dark" placement="top-start">
+                <div slot="content" style="margin:4px">{{scope.row.zipName}}</div>
+                <span class="tableCell">
+                  <el-button @click="downloadFile(scope.row)" type="text">{{scope.row.zipName}}</el-button>
+                </span>
+              </el-tooltip>
+            </template>
+            <!-- <template slot-scope="scope">
+              <el-button @click="downloadFile(scope.row)" type="text">{{scope.row.zipName}}</el-button>
+            </template> -->
+          </el-table-column>
+          <el-table-column prop="createDate" label="上报时间" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="localBank" label="上报分支行" min-width="80"></el-table-column>
+          <el-table-column prop="delFlag" min-width="50" label="状态">
+            <template slot-scope="scope">
+              {{scope.row.delFlag === '0' ? '有效': scope.row.delFlag === '1'? '已编辑' : '已删除'}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="stockFlag" min-width="100" label="库存情况">
+            <template slot-scope="scope">
+              {{scope.row.stockFlag === '0' ? '已存在' : '不存在'}}
+            </template>
+          </el-table-column>
+          <!-- <el-table-column prop="clueState" label="审批状态" min-width="150" show-overflow-tooltip></el-table-column> -->
+          <el-table-column label="操作" width="180" fixed="right">
+            <template slot-scope="scope">
+              <el-button v-if="roles === 'branch'" @click="goDetail('detail',scope.row)" :disabled="scope.row.delFlag==='2'" type="text">编辑</el-button>
+              <el-button v-if="roles === 'branch'" :disabled="scope.row.delFlag==='2'" type="text" @click="update(scope.row,'1')">删除</el-button>
+              <el-button :disabled="scope.row.stockFlag === '1'" type="text" @click="getReortBaseData(scope.row)">查看库存报告</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="tradeDetailVisible" top="3vh" class="exportwrapper">
+        <component :is="treadeComName" :tradeDetailVisible="tradeDetailVisible" :disabled="disabled" :tradeDetailInfo="tradeDetailInfo" @setTradeDetailVisible="getTradeDetailVisible"></component>
+      </el-dialog>
+      <el-pagination
+        v-if="pageInfo.total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pageInfo.pageNum"
+        :page-size="pageInfo.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pageInfo.total"
+        background
+      >
+      </el-pagination>
+
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getToken } from '@/utils/auth'
+// import { commonPattern } from '@/utils/formValidate'
+import { getDeptName } from '@/api/sys-monitoringAnalysis/report-clues/search.js'
+import reportDetail from '@/views/sys-monitoringAnalysis/dataQuery/dataType/reportDetail'
+import { branch } from '@/api/sys-monitoringAnalysis/conjointAnalysis/list.js'
+import { query, update, validate, getFile, tableVisible } from '@/api/sys-monitoringAnalysis/reportEmphasisDoubtful/index.js'
+import { getAttachmentList } from '@/api/sys-monitoringAnalysis/dataQuery/dataType'
+// getEdit
+import { mapGetters } from 'vuex'
+export default {
+  components: {
+    reportDetail
+  },
+  data() {
+    return {
+      tableDataLoading: false,
+      // chinaNull: /[\u4e00-\u9fa5]/, // 校验中文
+      // specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      // sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      // englishNull: /[abcdefghijklmnopqrstuvwxyz]/im, // 校验英文
+      // englishNullx: /[abcdefghijklmnopqrstuvwyz]/im, // 校验英文
+      // numberNull: /[1234567890]/im, // 校验数字
+      // blankSpace: /[ ]/im, // 校验空格
+      token: getToken(),
+      searchForm: {
+        date: [],
+        xmlName: '',
+        localBank: '',
+        delFlag: '',
+        stockFlag: '',
+        type: ''
+      },
+      rulesForm: {
+        xmlName: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      treadeComName: '',
+      params: {},
+      tradeDetailVisible: false,
+      tradeDialogTitle: '',
+      deptDisable: false,
+      disabled: false,
+      tradeDetailInfo: {},
+      getRowkey(row) {
+        return row.clueId
+      },
+      tableData: [],
+      select_orderId: [],
+      select_row: [],
+      localBankArr: []
+    }
+  },
+  computed: {
+    ...mapGetters(['roles']),
+    paramsObj() {
+      const obj = Object.assign({}, this.searchForm)
+      delete obj.date
+      if (this.searchForm.date) {
+        obj.startRedt = this.searchForm.date[0]
+        obj.endRedt = this.searchForm.date[1]
+      }
+
+      return obj
+    }
+  },
+  methods: {
+    goDetail(val, row) {
+      this.$router.push({
+        name: 'reportEmphasisDoubtful_add',
+        query: {
+          type: val,
+          data: JSON.stringify(row) || ''
+        }
+      })
+    },
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.localBankArr = res.data.list
+        }
+      })
+    },
+    downloadFile(row) {
+      getFile(row.noteId).then(res => {
+        if (res.code === 200) {
+          const fileList = res.data
+          if (fileList.length !== 0) {
+            location.href = `file-service/upload/download/${fileList[0].attachId}?moduleName=${encodeURI('上报重点可疑交易报告')}`
+          }
+        }
+      })
+    },
+    getDeptName() {
+      getDeptName().then(res => {
+        if (res.code === 200) {
+          this.searchForm.localBank = res.data
+        }
+      })
+    },
+    exportExcel() {
+      const len = this.select_orderId.length
+      if (len > 0) {
+        location.href = `monitor/message/export?ids=${this.select_orderId.join()}&token=${
+          this.token
+        }`
+      } else {
+        this.$message({
+          message: '请至少选择一条报文',
+          type: 'warning'
+        })
+      }
+    },
+    tableVisible() {
+      const len = this.select_row.length
+      if (len > 0) {
+        var params = JSON.parse(JSON.stringify(this.select_row))
+        const fd = new FormData()
+        fd.append('listJSON', JSON.stringify(params))
+        tableVisible(fd).then(res => {
+          if (res.code === 200) {
+            this.fetchData()
+          }
+        })
+      } else {
+        this.$message({
+          message: '请至少选择一条报文',
+          type: 'warning'
+        })
+      }
+    },
+    getTradeDetailVisible(val) {
+      this.tradeDetailVisible = val
+    },
+    getReortBaseData(row) {
+      const obj = {
+        xmlId: row.xmlId,
+        tableName: row.tableName,
+        suspiciousId: row.suspiciousId
+      }
+      validate(obj).then(res => {
+        if (res.code === 200) {
+          this.treadeComName = 'reportDetail'
+          this.tradeDialogTitle = '报告详情'
+          this.tradeDetailInfo = {
+            id: row.xmlId,
+            tableId: row.tableId,
+            newDate: false
+          }
+          this.tradeDetailVisible = true
+        }
+      })
+    },
+    getDownList(row) {
+      const obj = {
+        tableId: row.tableId,
+        newDate: false,
+        id: row.xmlId
+      }
+      this.downList = []
+      getAttachmentList(obj).then(res => {
+        if (res.code === 200) {
+          this.fLoading = false
+          if (res.data) {
+            const obj = Object.assign({}, res.data)
+            obj.file = obj.file === null || obj.file === '' ? '附件.ZIP' : obj.file
+            this.downList.push(obj)
+          } else {
+            this.fLoading = false
+            this.downList = []
+          }
+        }
+      }).catch(() => {
+        this.fLoading = false
+        this.downList = []
+      })
+    },
+    // 清空搜索条件
+    cleanUp() {
+      this.searchForm = {
+        date: [],
+        xmlName: '',
+        creBranch: '',
+        delFlag: '',
+        stockFlag: '',
+        localBank: this.searchForm.localBank
+      }
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData()
+    },
+    // 请求数据
+    fetchData() {
+      this.tableDataLoading = true
+      this.params = Object.assign({}, this.params, this.pageInfo)
+      query(this.params).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.pageInfo.total = res.data.total
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.tableDataLoading = false
+      })
+    },
+    // 查寻
+    searchList() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.params = Object.assign({}, this.paramsObj, this.pageInfo)
+          this.fetchData()
+        } else {
+          return false
+        }
+      })
+    },
+    update(row, type) {
+      const obj = {
+        type: type,
+        id: row.suspiciousId
+      }
+      this.$confirm('确定要删除吗?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          update(obj).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                message: '删除成功',
+                type: 'success',
+                duration: 6000
+              })
+              this.fetchData()
+            }
+          })
+        })
+    },
+    // 获取选中的数据
+    handelSelect(rows) {
+      this.select_row = rows
+      this.select_orderId = []
+      if (rows) {
+        rows.forEach(row => {
+          if (row) {
+            // this.select_row.push(row)
+            this.select_orderId.push(row.suspiciousId)
+          }
+        })
+      }
+    }
+  },
+  mounted() {
+    this.fetchData()
+    this.getBranch()
+    if (this.roles === 'branch') {
+      this.getDeptName()
+      this.deptDisable = true
+    }
+  }
+}
+</script>
+
+<style  lang="scss">
+@mixin padding($t, $l) {
+  padding: $t $l;
+}
+.reportLibrary {
+  .historyBlock {
+    .searchBlock {
+      .el-input--small {
+        font-size: 14px;
+      }
+      .el-range-editor {
+        min-width: 100%;
+      }
+      // .el-form-item__label {
+      //   line-height: 24px;
+      // }
+      .el-date-editor--daterange {
+        width: 100%;
+      }
+      .el-select {
+        width: 100%;
+      }
+    }
+  }
+  .itemline {
+    font-size: 16px;
+    color: #409eff;
+    padding: 0 4px 0 8px;
+  }
+  .tableCell{
+    text-align: left; 
+    overflow:hidden; 
+    white-space: nowrap; 
+    text-overflow:ellipsis;
+  }
+}
+</style>

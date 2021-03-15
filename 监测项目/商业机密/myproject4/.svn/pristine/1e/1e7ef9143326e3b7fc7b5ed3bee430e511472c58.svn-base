@@ -1,0 +1,355 @@
+<template>
+  <div class="waringPro">
+    <el-card>
+      <div slot="header">
+        <span>模型预警处理：</span>
+      </div>
+      <el-form ref="form" :model="form" :rules="formrules" label-width="120px">
+            <el-row>
+                <el-col :span="8">
+                <el-form-item label="名称：" prop="name">
+                    <el-input  v-model="form.name" placeholder="内容长度不超过50" maxlength="50"></el-input>
+                </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="疑似涉罪类型：" prop="suspectedCrimes">
+                        <el-select clearable v-model="form.suspectedCrimes" filterable  placeholder="请选择疑似涉罪类型">
+                            <el-option
+                            v-for="(item,index) in options"
+                            :key="index"
+                            :label="item"
+                            :value="item">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="预警日期：" prop="warningTime">
+                        <el-date-picker v-model="form.warningTime" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row>
+                <el-col :span="8">
+                    <!-- <el-form-item label="预警数：" prop="numberWarning">
+                        <el-input  v-model="form.numberWarning" placeholder="内容长度不超过50" maxlength="50"></el-input>
+                    </el-form-item> -->
+                    <el-row :span="10">
+                      <el-col :span="14">
+                        <el-form-item label="预警数：" prop="numberWarningOne">
+                            <el-input  v-model="form.numberWarningOne" placeholder="内容长度不超过50" maxlength="50"></el-input>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="2">
+                        <span style="text-align: center;width: 100%;display: inline-block;"> ~ </span>
+                      </el-col>
+                      <el-col :span="8">
+                        <el-form-item prop="numberWarningTwo" label-width="0px">
+                          <el-input  v-model="form.numberWarningTwo" placeholder="内容长度不超过50" maxlength="50"></el-input>
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                </el-col>
+            </el-row>
+            <el-form-item class="valable">
+                <el-button type="primary" @click="searchPag">查询</el-button>
+                <el-button @click="clearForm" type="primary" plain>清空</el-button>
+            </el-form-item>
+      </el-form>
+      <div class="titlefix">
+        <span style="lineHeight:32px">预警结果列表：</span>
+      </div>
+      <div class="searchBlock">
+        <div class="listBlock">
+          <el-table :data="tableData"
+           tooltip-effect="dark"
+           v-loading="loadingWarning"
+           element-loading-text="拼命加载中"
+           element-loading-spinner="el-icon-loading"
+           element-loading-background="rgba(0, 0, 0, 0.1)"
+           >
+            <el-table-column type="selection" fixed="left" width="30"></el-table-column>
+            <el-table-column label="序号" type="index" width="50"></el-table-column>
+            <!-- <el-table-column label="执行ID" prop="ID" min-width="80"> </el-table-column> -->
+            <el-table-column label="名称" show-overflow-tooltip min-width="180" prop="name">
+              <!--<template slot-scope="scope">
+                <router-link :to="{path: 'warningProcessing/view',query: {
+                   time: scope.row.warningTime,warningId: scope.row.warningId}}">
+                  <el-button type="text">{{scope.row.name}}</el-button>
+                </router-link>
+              </template>-->
+            </el-table-column>
+            <el-table-column label="疑似涉罪类型" prop="suspiciousWadecrimeTypes" min-width="80" show-overflow-tooltip> </el-table-column>
+            <el-table-column label="预警日期" prop="warningTime" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column label="预警数" min-width="80" prop="numberWarning" show-overflow-tooltip>
+              <template slot-scope="scope">
+                <!-- <router-link to="warningProcessing/view"> -->
+                    <el-button type="text">{{scope.row.numberWarning}}</el-button>
+                <!-- </router-link> -->
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" width="160">
+              <template slot-scope="scope">
+                <el-button type="text" @click="toView(scope)">预警结果</el-button>
+                <!-- <el-button type="text" @click="tableDelete(scope)">删除</el-button> -->
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-pagination v-if="this.total" background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[5, 10, 15, 20]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+         </el-pagination>
+        </div>
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import {
+  warmSearch,
+  warmDataDelete
+} from '@/api/sys-monitoringAnalysis/warningProcessing/index'
+import { adminisValidInput, noSpaceAndTsModelCL } from '@/utils/formValidate.js'
+import {
+  selectInfo
+} from '@/api/sys-monitoringAnalysis/modelInfoData/submitExperiments'
+export default {
+  data() {
+    return {
+      pageInfo: {
+        pageSize: 10,
+        pageNum: 1
+      },
+      total: null,
+      options: [],
+      loadingWarning: false,
+      formrules: {
+        name: [
+          { validator: noSpaceAndTsModelCL, trigger: 'blur' },
+          { max: 50, message: '内容长度不能超50', trigger: 'blur' }
+        ],
+        suspectedCrimes: [
+          { validator: adminisValidInput, trigger: 'change' },
+          { max: 50, message: '内容长度不能超50', trigger: 'blur' }
+        ],
+        numberWarningTwo: [
+          { validator: adminisValidInput, trigger: 'change' },
+          { max: 50, message: '内容长度不能超50', trigger: 'blur' }
+        ],
+        numberWarningOne: [
+          { validator: adminisValidInput, trigger: 'change' },
+          { max: 50, message: '内容长度不能超50', trigger: 'blur' }
+        ],
+        warningTime: null
+      },
+      form: {
+        name: null,
+        suspectedCrimes: null,
+        warningTime: null,
+        numberWarning: null,
+        numberWarningTwo: null,
+        numberWarningOne: null
+      },
+      tableData: [],
+      dialogdataVisible: false,
+      checkAll: false,
+      checkedPersons: [],
+      isIndeterminate: true,
+      searchBlock: {
+        name: '',
+        ID: '',
+        No: '',
+        state: '',
+        result: '',
+        result2: ''
+      }
+    }
+  },
+  computed: {
+    paramsObj: function() {
+      return {
+        pageSize: this.pageInfo.pageSize,
+        pageNum: this.pageInfo.pageNum,
+        name: this.form.name ? this.form.name : null,
+        suspiciousWadecrimeTypes: this.form.suspectedCrimes ? this.form.suspectedCrimes : null,
+        numStart: this.form.numberWarningOne ? this.form.numberWarningOne : null,
+        numEnd: this.form.numberWarningTwo ? this.form.numberWarningTwo : null,
+        time1: this.form.warningTime ? this.form.warningTime[0] : null,
+        time2: this.form.warningTime ? this.form.warningTime[1] : null
+      }
+    }
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchDataWarningPro')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchDataWarningPro'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewWarningPro) {
+        this.pageInfo = searchData.pageInfo
+        this.form = searchData.searchForm
+      }
+      sessionStorage.removeItem('searchDataWarningPro')
+    }
+    this.loadingWarning = true
+    this.getDataList(this.pageInfo.pageSize, this.pageInfo.pageNum, this.paramsObj)
+    this.getSelectInfo()
+  },
+  methods: {
+    // 获取列表信息
+    getDataList(size, num, params) {
+      warmSearch(size, num, params).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          this.loadingWarning = false
+          const searchDataWarningPro = {
+            pageName: this.$route.name,
+            pageInfo: this.pageInfo,
+            searchForm: this.form
+          }
+          sessionStorage.setItem('searchDataWarningPro', JSON.stringify(searchDataWarningPro))
+        } else {
+          this.loadingWarning = false
+          this.$message({
+            type: 'error',
+            message: '获取列表失败！',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingWarning = false
+        })
+    },
+    // 查询
+    searchPag() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.loadingWarning = true
+          this.getDataList(10, 1, this.paramsObj)
+        }
+      })
+    },
+    toView(scope) {
+      this.$router.push({
+        path: 'warningProcessing/view',
+        query: {
+          time1: scope.row.warningTime,
+          table: scope.row.tableName,
+          modelName: scope.row.name,
+          modelKey: scope.row.modelKey
+        }
+      })
+    },
+    // 获取下拉框值
+    getSelectInfo() {
+      selectInfo().then(res => {
+        this.options = res.data
+      })
+    },
+    // 清空
+    clearForm() {
+      this.$refs.form.resetFields()
+    //   this.loadingWarning = true
+    //   this.getDataList(10, 1, this.paramsObj)
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.loadingWarning = true
+      this.getDataList(this.pageInfo.pageSize, this.pageInfo.pageNum, this.paramsObj)
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.loadingWarning = true
+      this.getDataList(this.pageInfo.pageSize, this.pageInfo.pageNum, this.paramsObj)
+    },
+    // 删除
+    tableDelete(scope) {
+      this.$confirm('是否删除当前选中的数据模板?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          warmDataDelete(scope.row.warningId).then(res => {
+            this.loadingWarning = true
+            this.getDataList()
+          })
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+            duration: 6000,
+            showClose: true
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+            duration: 6000,
+            showClose: true
+          })
+        })
+    },
+    deletedata(scope) {
+      // 删除结果
+    }
+  }
+}
+</script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+    .waringPro {
+    background: #ffffff;
+    padding: 10px;
+    .titlefix{
+        margin: 5px;
+    }
+    .el-form {
+        margin-bottom: 14px;
+        padding-top:10px;
+        border-radius: 10px;
+        border: 1px solid #f2f2f2;
+        .el-row{
+            .el-col{
+                .el-form-item{
+                    .el-form-item__content{
+                        .el-input{
+                            width:100%
+                        }
+                        .el-select{
+                            width: 100%;
+                            display: flex;
+                            justify-items: auto
+                        }
+
+                    }
+                }
+            }
+        }
+        .el-date-editor--daterange {
+            width: 100% !important;
+            }
+         .valable{
+                  width:100%;
+                  text-align:right;
+                  .el-form-item__content button {
+                      margin:0 10px;
+                  }
+              }
+    }
+  .line {
+    text-align: center;
+  }
+  .upload-demo{
+      padding: 10px 0;
+      .el-upload{
+          width: 100%;
+          padding: 0 10px;
+          .el-upload-dragger{
+              width: 100%;
+          }
+      }
+  }
+}
+</style>

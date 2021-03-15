@@ -1,0 +1,620 @@
+<template>
+  <div class="rosterManageanalyst-index">
+    <el-card>
+      <div slot="header" class=" clearfix">
+        <span>名单查询</span>
+        <div style="float:right;">
+          <router-link :to="{name: 'rosterManageanalyst_batchImport'}">
+            <el-button type="text">批量导入</el-button>
+          </router-link>
+           <span class="itemline">|</span>
+          <router-link :to="{name: 'rosterManageanalyst_handleImport',params:{type:'new'}}">
+            <el-button type="text">手工录入</el-button>
+          </router-link>
+          <!-- <span class="itemline">|</span>
+          <router-link :to="{name: 'rosterManage_comparison', query:{name: 'rosterWarning_rosterManageanalyst'}}">
+            <el-button type="text">名单比对</el-button>
+          </router-link> -->
+        </div>
+      </div>
+
+      <el-form :model="form" label-width="100px" ref="searchForm" :rules="rules">
+        <template v-if="toggleSearch">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="主体名称" prop="subjectName">
+                <el-input v-model="form.subjectName" placeholder="最长512字符数" maxlength="512" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="触发点" prop="triggerPointeger">
+                <el-select placeholder="请选择" v-model="form.triggerPointeger" filterable clearable>
+                  <el-option v-for="(item,index) in triggerPointegerArr" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-button :loading="loadingA" type="primary" @click="searchFn('cx')">查询</el-button>
+              <el-button type="primary" plain @click="cleanUp">清空</el-button>
+              <el-button type="text" icon="el-icon-arrow-down" @click="toggleSearch = false">展开</el-button>
+            </el-col>
+
+          </el-row>
+        </template>
+        <template v-else>
+          <el-row class="toggle">
+            <el-col :span="8">
+              <el-form-item label="主体名称" prop="subjectName">
+                <el-input v-model="form.subjectName" placeholder="最长512字符数" maxlength="512" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="触发点" prop="triggerPointeger">
+                <el-select placeholder="请选择" v-model="form.triggerPointeger" filterable clearable>
+                  <el-option v-for="(item,index) in triggerPointegerArr" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="分析员" prop="creUser">
+                <el-input v-model="form.creUser" placeholder="最长128字符数" maxlength="128" ></el-input>
+              </el-form-item>
+            </el-col>
+             <el-col :span="8">
+              <el-form-item label="证件类型" prop="certificateType">
+                <el-select v-model="form.certificateType" placeholder="请选择" filterable @change="certificate" clearable>
+                  <el-option v-for="(item,index) in certificateTypeArr" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="证件号码" prop="certificateNum">
+                <el-input v-model="form.certificateNum" placeholder="最长128字符数" maxlength="128" ></el-input>
+              </el-form-item>
+            </el-col>
+             <el-col :span="8">
+              <el-form-item label="可疑账户" prop="suspiciousAccout">
+                <el-input v-model="form.suspiciousAccout" placeholder="最长64字符数" maxlength="64" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="标注状态" prop="markState">
+                <!-- <el-input v-model="form.markState" placeholder="最长128字符数" maxlength="128" ></el-input> -->
+                <el-select v-model="form.markState" placeholder="请选择" filterable clearable>
+                <el-option v-for="(item,index) in noteStatus" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+              </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="初次标注" prop="firstMarkDate">
+                <el-date-picker v-model="form.firstMarkDate" value-format="yyyy-MM-dd" placeholder="选择日期" clearable></el-date-picker>
+              </el-form-item>
+            </el-col>
+
+           
+            <el-col :span="8">
+              <el-form-item label="可疑类型" prop="suspiciousType">
+                <el-select v-model="form.suspiciousType" placeholder="请选择" filterable clearable>
+                  <el-option v-for="(item,index) in suspiciousTypeArr" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="可疑程度" prop="suspiciousDegree">
+                <el-select v-model="form.suspiciousDegree" placeholder="请选择" filterable clearable>
+                  <el-option v-for="(item,index) in suspiciousDegreeArr" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="移送状态" prop="transferState">
+                <el-input v-model="form.transferState" maxlength="128" placeholder="最长128字符数" ></el-input>
+              </el-form-item>
+            </el-col>
+            <!-- <el-col :span="8">
+              <el-form-item label="密级" prop="dense">
+                <el-input v-model="form.dense" placeholder=""></el-input>
+              </el-form-item>
+            </el-col> -->
+            <el-col :span="8">
+              <el-form-item label="移送编码" prop="transferNum">
+                <el-input v-model="form.transferNum" maxlength="128" placeholder="最长128字符数" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="操作类型" prop="validData">
+                <el-select v-model="form.validData" placeholder="请选择" filterable clearable>
+                  <el-option value="0" label="生效"></el-option>
+                  <el-option value="1" label="删除"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <div class="btnalign">
+            <el-button :loading="loadingA" type="primary" @click="searchFn('cx')">查询</el-button>
+            <el-button type="primary" plain @click="cleanUp">清空</el-button>
+            <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch = true">收起</el-button>
+          </div>
+        </template>
+
+      </el-form>
+
+      <el-alert title="" type="primary" :closable="false">
+        <template>
+          <!-- <i class="el-icon-info" style="color:#1890ff"></i>
+          <el-button type="text">机构{{organization}}</el-button>
+          <el-button type="text">个人{{individual}}</el-button> -->
+          <el-button type="text" @click="exportExcel">批量导出</el-button>
+          <el-button type="text" @click="allowmassprune">批量删除</el-button>
+        </template>
+      </el-alert>
+
+      <el-table 
+      v-loading="loadingA"
+      element-loading-text="拼命加载中"
+      element-loading-spinner="el-icon-loading"
+      element-loading-background="rgba(0, 0, 0, 0.1)"
+      ref="rosterTable" 
+      :data="tabledata" 
+      @selection-change="handleSelectionChange" 
+      :row-key="getRowKey" 
+      style="width: 100%"
+      >
+        <el-table-column reserve-selection type="selection" min-width="60" fixed></el-table-column>
+        <el-table-column label="序号" type="index" fixed width="80"> </el-table-column>
+        <el-table-column prop="subjectName" label="主体名称" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="triggerPointeger" label="触发点" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="certificateType" label="证件类型" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="certificateNum" label="证件号码" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="suspiciousAccout" label="可疑账户" min-width="150" show-overflow-tooltip></el-table-column>
+        <!-- :formatter="nationality" -->
+        <el-table-column prop="nationality" label="国籍/地区" min-width="150" :formatter="nationality" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="markState" label="标注状态" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="firstMarkDate" label="初次标注" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="lastMarkDate" label="最后标注" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="suspiciousType" label="可疑类型" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="suspiciousDegree" label="可疑程度" min-width="100" :formatter="suspiciousDegree"></el-table-column>
+        <el-table-column prop="transferState" label="移送状态" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="transferNum" label="移送编码" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="creUser" label="分析员" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="delFlag" label="操作类型" min-width="100" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{scope.row.delFlag === '0'?'新增': scope.row.delFlag === '1'?'删除':'更新'}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="150">
+          <template slot-scope="scope">
+            <router-link v-if="scope.row.delFlag!=='1'" :to="{name:'rosterManageanalyst_handleImport',params:{type:'edit',id:scope.row.laId}}">
+              <el-button :disabled="scope.row.creUser !== name" type="text">编辑</el-button>
+            </router-link>
+            <router-link :to="{name:'rosterManageanalyst_detail',params:{id:scope.row.laId}}">
+              <el-button  type="text">查看</el-button>
+            </router-link>
+            <el-button v-if="scope.row.delFlag!=='1'" :disabled="scope.row.creUser !== name" type="text" @click="delItem(scope)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-row>
+        <!-- <el-col :span="8">
+          <el-button type="primary" plain style="margin-top:10px" @click="exportExcel">批量导出</el-button>
+          <el-button type="primary" plain @click="allowmassprune">批量删除</el-button>
+        </el-col> -->
+        <el-col :span="24">
+          <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background>
+          </el-pagination>
+        </el-col>
+      </el-row>
+
+    </el-card>
+
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { mapGetters } from 'vuex'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+// import { ValidQueryInput, delDataValidInput, commonPattern } from '@/utils/formValidate'
+import { ValidQueryInput, commonPattern } from '@/utils/formValidate'
+import { getTable, delRoster } from '@/api/sys-monitoringAnalysis/roster-warning/roster-analyze.js'
+export default {
+  data() {
+    return {
+      getRowKey(row) {
+        return row.laId
+      },
+      toggleSearch: true,
+      loadingA: true,
+      form: {
+        validData: '',
+        subjectName: '',
+        triggerPointeger: '',
+        creUser: '',
+        certificateNum: '',
+        markState: '',
+        firstMarkDate: '',
+        certificateType: '',
+        suspiciousType: '',
+        suspiciousAccout: '',
+        suspiciousDegree: '',
+        transferState: '',
+        transferNum: ''
+      },
+      nationalityArr: [], // 国籍
+      noteStatus: [], // 标注状态
+      triggerPointegerArr: [], // 触发点
+      certificateTypeArr: [], // 证件类型
+      suspiciousTypeArr: [], // 可疑类型
+      suspiciousDegreeArr: [], // 可疑程度
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      tabledata: [],
+      select_orderId: [],
+      delete_order: [],
+      token: getToken(),
+      rules: {
+        // 非必填
+        creUser: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        suspiciousAccout: [{ validator: this.onlyNumberValidate1, trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }],
+        subjectName: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        // markState: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        certificateNum: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        subjectINum: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        transferState: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        transferNum: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    ...mapGetters(['name']),
+    // 列表查询参数
+    searchParams() {
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      obj.validData = this.form.validData === '1' ? this.form.validData : '0'
+      delete obj.total
+      return obj
+    }
+    //  删除名select_orderId单参数
+  },
+  created() {
+    this.getDictionary('COUNTRY')
+    this.getDictionary('TPOINT')
+    this.getDictionary('SFZJ')
+    this.getDictionary('SUSTYPE')
+    this.getDictionary('DBDE')
+    this.getDictionary('TAGGS')
+    if (sessionStorage.getItem('searchData')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+      if (searchData.pageName === this.$route.name && searchData.ifReview) {
+        this.pageInfo = searchData.pageInfo
+        this.form = searchData.searchForm
+        this.toggleSearch = searchData.toggleSearch
+      }
+    }
+  },
+  mounted() {
+    this.fetchData()
+  },
+  methods: {
+    certificate() {
+      switch (this.form.certificateType) {
+        case '110003':
+          this.rules.certificateNum = [
+            { pattern: /^[a-zA-Z0-9]{15}$|^[a-zA-Z0-9]{18}$/, message: '请输入正确的身份证号码,15或18位', trigger: 'blur' }
+          ]
+          break
+        case '110001':
+          this.rules.certificateNum = [
+            { pattern: /^[a-zA-Z0-9]{15}$|^[a-zA-Z0-9]{18}$/, message: '请输入正确的身份证号码,15或18位', trigger: 'blur' }
+          ]
+          break
+        case '':
+          this.rules.certificateNum = [{ validator: this.onlyNumberValidate, trigger: 'blur' }]
+          break
+        default:
+          this.rules.certificateNum = [{ validator: this.onlyNumberValidate, trigger: 'blur' }]
+          break
+      }
+    },
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 国际转码
+    nationality(row, column, cellValue) {
+      const data = this.nationalityArr
+      const arr = {}
+      for (let i = 0; i < data.length; i++) {
+        arr[data[i].numCode] = data[i].chSName
+      }
+      return arr[cellValue]
+    },
+    // 可疑程度
+    suspiciousDegree(row, column, cellValue) {
+      const data = this.suspiciousDegreeArr
+      const arr = {}
+      for (let i = 0; i < data.length; i++) {
+        arr[data[i].codeId] = data[i].codeName
+      }
+      return arr[cellValue]
+    },
+    // 获取数据字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'TAGGS':
+              this.noteStatus = res.data
+              break
+            case 'COUNTRY':
+              this.nationalityArr = res.data
+              break
+            case 'TPOINT':
+              this.triggerPointegerArr = res.data
+              break
+            case 'SFZJ':
+              this.certificateTypeArr = res.data
+              break
+            case 'SUSTYPE':
+              this.suspiciousTypeArr = res.data
+              break
+            case 'DBDE':
+              this.suspiciousDegreeArr = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+
+    // 批量导出
+    exportExcel() {
+      if (this.select_orderId.length > 0) {
+        location.href = `/monitor/listwarn/analyst/${this.select_orderId.join()}/export?token=${this.token}`
+        // const ww = `/monitor/listwarn/analyst/${this.select_orderId.join()}/export?token=${this.token}`
+        // console.log(this.token, 111)
+        // console.log(this.select_orderId.join(), 222)
+        // console.log(ww, 3333)
+      } else {
+        this.$message({
+          message: '请选择要导出名单',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 查询条件清空
+    cleanUp() {
+      this.form.subjectName = ''
+      this.form.triggerPointeger = ''
+      this.form.validData = ''
+      this.form.creUser = ''
+      this.form.certificateNum = ''
+      this.form.markState = ''
+      this.form.firstMarkDate = ''
+      this.form.certificateType = ''
+      this.form.suspiciousType = ''
+      this.form.suspiciousAccout = ''
+      this.form.suspiciousDegree = ''
+      this.form.transferState = ''
+      this.form.transferNum = ''
+      this.$refs.searchForm.clearValidate()
+    },
+    // 获取列表数据方法
+    fetchData(obj) {
+      this.$refs.searchForm.validate(val => {
+        if (val) {
+          this.loadingA = true
+          if (obj === 'cx') {
+            this.pageInfo.pageNum = 1
+          }
+          getTable(this.searchParams).then(res => {
+            if (res.code === 200) {
+              this.loadingA = false
+              this.tabledata = res.data.list
+              this.pageInfo.total = res.data.total
+              const searchData = {
+                pageName: this.$route.name,
+                pageInfo: this.pageInfo,
+                searchForm: this.form,
+                toggleSearch: this.toggleSearch
+              }
+              sessionStorage.setItem('searchData', JSON.stringify(searchData))
+            }
+          }).catch(() => {
+            this.loadingA = false
+          })
+        }
+      })
+    },
+    // 点击查询
+    searchFn(obj) {
+      this.fetchData(obj)
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData()
+      // console.log(`每页 ${size} 条`)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData()
+      // console.log(`当前页: ${currentPage}`)
+    },
+
+    // 点击删除名单方法
+    delRosterFn(params) {
+      delRoster(params)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '删除成功!',
+              duration: 6000
+            })
+            this.$refs.rosterTable.clearSelection()
+          }
+        })
+        .then(() => {
+          this.fetchData()
+        })
+        .catch(() => {})
+    },
+    // 删除单条名单
+    delItem(scope) {
+      // const index = scope.$index
+      this.$confirm('是否要删除本条的数据？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.delRosterFn(scope.row.laId)
+        })
+        .catch(() => {
+          this.$message({
+            message: '已取消删除',
+            type: 'info',
+            duration: 6000
+          })
+        })
+    },
+    // 批量删除
+    allowmassprune() {
+      if (this.searchParams.validData === '1') {
+        if (this.select_orderId.length === 0) {
+          this.$message({
+            type: 'warning',
+            message: '请选择要删除的数据 ！',
+            duration: 6000
+          })
+        } else {
+          this.$message({
+            message: '不可再次删除',
+            type: 'warning',
+            duration: 6000
+          })
+        }
+      } else {
+        if (this.delete_order.length > 0) {
+          var flag = true
+          this.delete_order.forEach(res => {
+            if (res.creUser !== this.name) {
+              flag = false
+            }
+          })
+          if (flag) {
+            this.$confirm('确定要删除选中的数据？', '提示', {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            })
+              .then(() => {
+                const arr = []
+                this.delete_order.forEach(res => {
+                  arr.push(res.laId)
+                })
+                this.delRosterFn(arr.join())
+              })
+              .catch(() => {
+                this.$message({
+                  message: '已取消删除',
+                  type: 'info',
+                  duration: 6000
+                })
+              })
+          } else {
+            this.$message({
+              message: '只能删除自己创建的名单',
+              type: 'warning',
+              duration: 6000
+            })
+          // this.delete_order = []
+          }
+        } else {
+          this.$message({
+            type: 'warning',
+            message: '请选择要删除的数据 ！',
+            duration: 6000
+          })
+        }
+      }
+    },
+    handleSelectionChange(rows) {
+      this.select_orderId = []
+      this.delete_order = []
+      if (rows) {
+        rows.forEach(row => {
+          if (row) {
+            this.delete_order.push(row)
+            this.select_orderId.push(row.laId)
+          }
+        })
+      }
+      // console.log(this.select_orderId)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.rosterManageanalyst-index {
+  .el-select {
+    width: 100%;
+  }
+  .addtitle {
+    font-size: 1em;
+    padding-bottom: 15px;
+  }
+  .el-col {
+    height: 51px;
+  }
+  .itemline {
+    font-size: 16px;
+    color: #409eff;
+    padding: 0 4px 0 8px;
+  }
+  .btnalign {
+    text-align: right;
+    margin-bottom: 18px;
+  }
+   .el-date-editor {
+    min-width: 100%;
+  }
+
+  @media screen and (max-width: 1400px) {
+    .toggle {
+      .el-col-8 {
+        width: 50%;
+      }
+    }
+  }
+}
+</style>

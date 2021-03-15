@@ -1,0 +1,697 @@
+<template>
+  <div class="extractadd" ref="extractaddRef">
+    <el-card>
+      <div slot="header">
+        <span>新建任务</span>
+      </div>
+      <el-steps direction="vertical" :active="activeNum">
+        <el-step title="选择接收方" class="step">
+          <el-form :model="form" ref="form" :rules="rules" slot="description" :inline="true">
+            <el-form-item label="报告机构：" prop="receiver"> 
+               <el-autocomplete v-model="form.receiver" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmChange" clearable @blur="blurFn"></el-autocomplete>
+            </el-form-item>
+          </el-form>
+        </el-step>
+     
+        <el-step title="抽取监测数据" class="step">
+          <div slot="description">
+            <el-button type="primary" style="margin: 10px 0" @click="handleAdd">新增监测数据</el-button>
+          </div>
+        </el-step>
+      </el-steps>
+      <div class="description">
+        <!-- <el-button type="primary" plain @click="delAll">批量删除</el-button> -->
+        <el-table :data="list" @selection-change="handleSelectionChange">
+          <el-table-column type="selection"></el-table-column>
+          <el-table-column type="index" label="序号"></el-table-column>
+          <el-table-column prop="rinm" label="报告机构"></el-table-column>
+          <el-table-column prop="tradeNo" label="交易笔数"></el-table-column>
+          <el-table-column prop="redt" label="落地时间"></el-table-column>
+          <el-table-column label="操作">
+            <template slot-scope="scope">
+              <el-button type="text" @click="delRow(scope)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination background :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+        </el-pagination>
+      </div>
+      <div class="btnalign">
+        <el-button type="primary" @click="saveForm('form')" :loading="saveLoading">保存</el-button>
+        <router-link :to="{ name: 'dataGovernance_fixedPoint_extract'}">
+          <el-button type="default">取消</el-button>
+        </router-link>
+      </div>
+    </el-card>
+
+    <el-dialog title="新增监测数据" :visible.sync="dialogVisible" width="80%">
+      <div>
+        <el-row>
+          <el-form :model="dialogForm" ref="dialogForm" :rules="dialogRule" label-width="136px">
+            <el-col :span="12">
+              <el-form-item label="落地时间：" prop="redt">
+                <el-date-picker v-model="dialogForm.redt" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width:100% !important;">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="交易发生日期：" prop="tradeDate">
+                <el-date-picker v-model="dialogForm.tradeDate" type="daterange" range-separator="至" start-placeholder="开始日期" style="width:100%" end-placeholder="结束日期" value-format="yyyy-MM-dd">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="交易发生地：" prop="country">
+                <el-select v-model="dialogForm.country" @change="handleInterRegionChange" style="width: 40%;" clearable>
+                  <el-option label="中国" value="CHN"></el-option>
+                  <el-option label="大陆地区保税区" value="Z01"></el-option>
+                  <el-option label="大陆地区加工区" value="Z02"></el-option>
+                  <el-option label="大陆地区加工区钻石交易所" value="Z03"></el-option>
+                  <el-option label="国际" value="NAT"></el-option>
+                </el-select>
+                <el-cascader v-if="dialogForm.country !== 'NAT'" style="width: 58%;" :props="props" expand-trigger="hover" :options="cityListOptions" v-model="dialogForm.trcd" clearable>
+                </el-cascader>
+
+                <el-select v-if="dialogForm.country === 'NAT'" style="width: 58%;" v-model="dialogForm.trcd" clearable>
+                  <el-option v-for="(country, cIndex) in countryData" :key="cIndex" :label="country.chSName" :value="country.pkMc"></el-option>
+                </el-select>
+                <!-- <el-cascader v-model="dialogForm.trcd" @change="handleRegionChange" placeholder="交易发生地" :options="cityListOptions" filterable change-on-select></el-cascader> -->
+              </el-form-item>
+            </el-col>
+            <!-- <el-col :span="12">
+              <el-form-item label="交易笔数：" prop="tradeNo">
+                <el-input type="number" v-model.number="dialogForm.tradeNo" label="交易笔数" style="width:100%;"></el-input>
+              </el-form-item>
+            </el-col> -->
+            <el-col :span="12">
+              <el-form-item label="交易方式：" prop="tstp">
+                <el-select v-model="dialogForm.tstp" style="width:100% !important;" clearable>
+                  <el-option v-for="(item,index) in tradeWayOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            
+            <el-col :span="12">
+              <el-form-item label="交易ID：" prop="tradeId">
+                <el-input v-model="dialogForm.tradeId"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="大额特征：" prop="crcd">
+                <el-select v-model="dialogForm.crcd" multiple @visible-change="setTagTitle" style="width:100%;">
+                  <el-option v-for="(item,index) in largeOptions" :key="index" :label="item.codeName" :value="item.codeId" style="width:100% !important;"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <!-- <el-col :span="24">
+              <el-form-item>
+                <span style="color:red;font-size: 14px;">提示：建议交易日期的开始日期与落地日期的开始日期保持一致，交易日期的结束日期比落地日期的结束日期缩短一个月</span>
+              </el-form-item>
+            </el-col> -->
+          </el-form>
+        </el-row>
+        <div class="btnalign">
+          <el-button type="primary" @click="handleQuery">查询</el-button>
+          <el-button type="primary" plain @click="resetForm('dialogForm')">清空</el-button>
+        </div>
+        <div>
+          <span class="title">筛选出的数据列表</span>
+          <el-button type="primary" plain @click="handleAllExtract">批量抽取</el-button>
+          <el-button type="primary" plain @click="handleAllExtractAll" :loading="extractAllLoading">全部抽取</el-button>
+        </div>
+        <el-table :data="dialogList" ref="multipleTable" v-loading="tabLoading" @selection-change="handleDialogSelectionChange">
+          <el-table-column type="selection"></el-table-column>
+          <el-table-column type="index" label="序号"></el-table-column>
+          <el-table-column prop="tradeId" label="交易ID" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="ctnm" label="主体名称" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="ctid" label="证件号码" min-width="100" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="tstm" label="交易发生日期" min-width="150" show-overflow-tooltip>
+          </el-table-column>
+          <!-- <el-table-column prop="ticd" label="业务标识号" min-width="100" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="state" label="标注状态" show-overflow-tooltip></el-table-column> -->
+          <el-table-column prop="tstp" label="交易方式" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{transformation(scope.row)}}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作">
+            <template slot-scope="scope">
+              <!-- <router-link :to="{name:'dataGovernance_tradeDetail_tradeDetail',  params: {tradeId: scope.row.tradeId, type: scope.row.type }}"> -->
+                <el-button type="text" @click="handleView(scope)">查看</el-button>
+              <!-- </router-link>    -->
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" background :current-page="dialogPageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="dialogPageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="dialogTotal">
+        </el-pagination>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取消</el-button>
+      </span>
+    </el-dialog>
+
+     <!--交易详情--> 
+    <el-dialog title="交易详情" width="96%" :visible.sync="tradeDetailVisible">
+      <TradeDetail :tradeDetailVisible="tradeDetailVisible" :tradeId="tradeId" :detailOptions="detailOptions" @setTradeDetailVisible="getTradeDetailVisible" :type="type"></TradeDetail>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import TradeDetail from '@/views/sys-monitoringAnalysis/dataGovernance/common/tradeDetail/components/tradeDetail_dialog.vue'
+import { getRinmList } from '@/api/common/industry'
+import { getArea, country } from '@/api/common/citys'
+// import { getTradeDatas } from '@/api/sys-monitoringAnalysis/dataGovernance/fixedPoint/index.js'
+import {
+  saveTaskData,
+  dataTask,
+  addGetList,
+  extractAll
+} from '@/api/sys-monitoringAnalysis/dataGovernance/fixedPoint/index'
+export default {
+  components: {
+    TradeDetail
+  },
+  data() {
+    const isValidDate = (rule, value, callback) => {
+      if (Date.parse(value[0]) + 3600 * 1000 * 24 * 183 < Date.parse(value[1])) {
+        callback(new Error('落地日期时间跨度应在半年以内'))
+      } else {
+        callback()
+      }
+    }
+    const isValidMaxNum = (rule, value, callback) => {
+      const numb = /^\d+(\.{0,1}\d+){0,1}$/
+
+      if (value !== null) {
+        if (value > 100) {
+          callback(new Error('最大数值为100'))
+        } else if (!numb.test(value) && value) {
+          callback(new Error('必须为非负数'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    }
+    return {
+      props: { checkStrictly: true },
+      type: '',
+      detailOptions: {},
+      saveLoading: false,
+      extractAllLoading: false,
+      selectedStatus: {},
+      selectedArr: [],
+      tabLoading: false,
+      tradeId: '',
+      ricdName: '',
+      activeNum: 1, // 步骤num
+      dialogVisible: false,
+      tradeDetailVisible: false,
+      multipleSelection: [],
+      multipleDialogSelection: [],
+      rinmOptions: [],
+      cityListOptions: [],
+      tradeWayOptions: [], // 交易方式
+      largeOptions: [], // 大额交易
+      form: {
+        receiver: ''
+      },
+      rules: {
+        receiver: { required: true, message: '请选择任务接收方', trigger: 'change' }
+      },
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      dialogForm: {
+        redt: [],
+        trcd: [],
+        country: '',
+        tradeNo: '',
+        tradeDate: '',
+        tstp: '',
+        crcd: [],
+        tradeId: ''
+      },
+      dialogRule: {
+        redt: [{ required: true, message: '请选择时间', trigger: 'change' },
+          { required: true, validator: isValidDate, trigger: 'change' }],
+        tradeNo: [{ validator: isValidMaxNum, trigger: 'blur' }],
+        tradeId: [{ max: 50, message: '最大长度为50位', trigger: 'blur' }]
+      },
+      dialogList: [],
+      dialogTotal: 0,
+      dialogPageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      count: 0,
+      tradeIds: [],
+      countryData: []
+    }
+  },
+  created() {
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val === false) {
+        this.$refs.dialogForm.resetFields()
+        this.dialogList = []
+        this.dialogTotal = 0
+      }
+    }
+  },
+  methods: {
+    transformation(row) {
+      let str = ''
+      this.tradeWayOptions.forEach(el => {
+        if (row.tstp === el.codeId) {
+          str = el.codeName
+          return false
+        }
+      })
+      return str
+    },
+    setTagTitle() {
+      var tagTextList = this.$refs.extractaddRef.querySelectorAll('.el-select__tags-text')
+      tagTextList.forEach((item) => {
+        item.setAttribute('title', item.innerText)
+      })
+    },
+    aaaa(row, index) {
+      console.log(row, 1111111111111111111111111)
+    },
+    getTradeDetailVisible(val) {
+      this.tradeDetailVisible = val
+    },
+    getList() {
+      this.tabLoading = true
+      const obj = Object.assign({}, this.dialogForm)
+      if (obj.crcd.length !== 0) {
+        obj.crcd = obj.crcd.join(',')
+      } else {
+        obj.crcd = ''
+      }
+
+      if (obj.trcd.length > 0) {
+        obj.trcd = obj.country + obj.trcd[obj.trcd.length - 1].toString()
+      } else {
+        obj.trcd = obj.country
+      }
+
+      const paramsObj = {
+        tradeId: obj.tradeId,
+        ricd: this.ricdName,
+        startRedt: obj.redt[0],
+        endRedt: obj.redt[1],
+        stTstmStartTime: obj.tradeDate ? obj.tradeDate[0] : '',
+        stTstmEndTime: obj.tradeDate ? obj.tradeDate[1] : '',
+        tstp: obj.tstp,
+        trcd: obj.trcd,
+        crcd: obj.crcd,
+        pageNum: this.dialogPageInfo.pageNum,
+        pageSize: this.dialogPageInfo.pageSize
+      }
+      this.taskInfo = paramsObj
+      addGetList(paramsObj)
+        .then(res => {
+          if (res) {
+            this.tabLoading = false
+            if (res.code === 200) {
+              if (res.data === null) {
+                this.dialogList = []
+                this.dialogTotal = 0
+                this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+              } else {
+                this.dialogList = res.data.list
+                if (this.dialogForm.tradeNo) {
+                  this.dialogTotal = this.dialogForm.tradeNo
+                } else {
+                  this.dialogTotal = res.data.total
+                }
+              }
+            }
+          } else {
+            this.tabLoading = false
+          }
+        })
+        .catch()
+    },
+    handleRinmChange(item) {
+      this.selectedArr = item
+      this.activeNum = 2
+      if (item) {
+        this.ricdName = item.ricd
+        this.type = item.ficp + 'H'
+      }
+    },
+    handleQuery() {
+      this.$refs['dialogForm'].validate(valid => {
+        if (valid) {
+          this.getList()
+        } else {
+          return false
+        }
+      })
+    },
+    blurFn() {
+      if (this.selectedArr.length === 0) {
+        this.form.receiver = ''
+      }
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        this.selectedArr = []
+        const paramsObj = {
+          industry: 'B,S,I',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    resetForm(formName) {
+      // 清空
+      this.$refs[formName].resetFields()
+      this.dialogForm.country = ''
+    },
+    handleView(scope) {
+      this.tradeId = scope.row.tradeId
+      this.tradeDetailVisible = true
+      // getTradeDatas(this.tradeId, this.type)
+      //   .then(res => {
+      //     if (res.code === 200) {
+      //       this.detailOptions = res.data.trade
+      //     }
+      //   })
+      //   .catch()
+    },
+    handleAdd() {
+      // 新增监测数据按钮
+      if (this.form.receiver !== '') {
+        this.dialogVisible = true
+        // if (this.$refs.dialogForm) {
+        //   this.$refs.dialogForm.re
+        // }
+        getArea()
+          .then(res => {
+            if (res.code === 200) {
+              this.cityListOptions = res.data
+            }
+          })
+          .catch(() => {})
+
+        const typeId4 = 'TSTP_H'
+        dataTask(typeId4)
+          .then(res => {
+            // 交易方式
+            if (res.code === 200) {
+              this.tradeWayOptions = res.data
+            }
+          })
+          .catch()
+        const largeId = 'CRCD'
+        dataTask(largeId)
+          .then(res => {
+            // 大额交易
+            if (res.code === 200) {
+              this.largeOptions = res.data
+            }
+          })
+          .catch()
+      } else {
+        this.$confirm('请先选择报告机构', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      }
+    },
+    handleAllExtractAll() {
+      if (this.dialogList.length > 0) {
+        this.extractAllLoading = true
+        const obj = Object.assign({}, this.dialogForm)
+        if (obj.crcd.length !== 0) {
+          obj.crcd = obj.crcd.join(',')
+        } else {
+          obj.crcd = ''
+        }
+
+        if (obj.trcd.length > 0) {
+          obj.trcd = obj.country + obj.trcd[obj.trcd.length - 1].toString()
+        } else {
+          obj.trcd = obj.country
+        }
+
+        const paramsObj = {
+          tradeId: obj.tradeId,
+          ricd: this.ricdName,
+          startRedt: obj.redt[0],
+          endRedt: obj.redt[1],
+          stTstmStartTime: obj.tradeDate ? obj.tradeDate[0] : '',
+          stTstmEndTime: obj.tradeDate ? obj.tradeDate[1] : '',
+          tstp: obj.tstp,
+          trcd: obj.trcd,
+          crcd: obj.crcd
+        }
+        extractAll(paramsObj).then(res => {
+          if (res.code === 200) {
+            this.extractAllLoading = false
+            this.tradeIds = res.data
+            this.$message({
+              type: 'success',
+              message: '抽取完成！'
+            })
+            const arr = [
+              {
+                redt: this.dialogForm.redt[0] + '~~' + this.dialogForm.redt[1],
+                rinm: this.dialogList[0].rinm,
+                tradeNo: res.data.length
+              }
+            ]
+            this.list = arr
+            this.dialogVisible = false
+          }
+        })
+        // this.dialogVisible = false
+        // this.multipleDialogSelection.map(e => {
+        //   this.tradeIds.push(e.tradeId)
+        // })
+        // const arr = [
+        //   {
+        //     redt: this.dialogForm.redt[0] + '~~' + this.dialogForm.redt[1],
+        //     rinm: this.dialogList[0].rinm,
+        //     tradeNo: this.multipleDialogSelection.length
+        //   }
+        // ]
+        // this.list = arr
+      } else {
+        this.$confirm('无数据，请先查询', '提示', { showCancelButton: false, type: 'warning' })
+      }
+    },
+    handleAllExtract() {
+      // 抽取按钮
+      if (this.multipleDialogSelection.length > 0) {
+        this.$message({
+          type: 'success',
+          message: '抽取完成！'
+        })
+        this.multipleDialogSelection.map(e => {
+          this.tradeIds.push(e.tradeId)
+        })
+        const arr = [
+          {
+            redt: this.dialogForm.redt[0] + '~~' + this.dialogForm.redt[1],
+            rinm: this.dialogList[0].rinm,
+            tradeNo: this.multipleDialogSelection.length
+          }
+        ]
+        this.list = arr
+        this.dialogVisible = false
+      } else {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+      }
+    },
+    saveForm(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          if (this.tradeIds.length === 0) {
+            this.$confirm('请抽取数据', '提示', { showCancelButton: false, type: 'warning' }).then(() => {
+              // 向请求服务端删除
+            }).catch(() => {})
+          } else {
+            this.saveLoading = true
+            const paramsObj = {
+              receiver: this.ricdName,
+              tradeNo: this.multipleDialogSelection.length,
+              // startDate: this.dialogForm.redt[0],
+              // endDate: this.dialogForm.redt[1],
+              tradeIds: this.tradeIds,
+              tradePlace: this.taskInfo.trcd, //
+              payType: this.taskInfo.tstp, // this.taskInfo.tstp
+              crcd: this.taskInfo.crcd,
+              redt: this.list[0].redt
+            }
+
+            saveTaskData(paramsObj)
+              .then(res => {
+                this.saveLoading = false
+                if (res.code === 200) {
+                  this.$router.push({ name: 'dataGovernance_fixedPoint_extract' })
+                  this.$message.success('保存成功！')
+                }
+              })
+              .catch()
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleDialogSelectionChange(val) {
+      this.multipleDialogSelection = val
+      // this.selectedData[this.pageInfo.pageNum][] = val
+    },
+    toggleRowSelectionFn(row, selected) {
+      console.log(row, 111111111111111111111)
+      console.log(selected, 222222222222222222222)
+    },
+    // 确定删除
+    delRow(scope) {
+      const index = scope.$index
+      this.$confirm('确定要删除该评价任务吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.list.splice(index, 1)
+          this.tradeIds = []
+          this.$message({
+            type: 'success',
+            message: '删除成功!'
+          })
+        })
+        .catch(() => {})
+    },
+    delAll() {
+      // 批量删除
+      const length = this.multipleSelection.length
+      this.list = this.list.concat(this.multipleSelection)
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        for (let i = 0; i < length; i++) {
+          this.list.pop(this.multipleSelection)
+        }
+        this.$message.success('删除成功！')
+      }
+      this.multipleSelection = []
+    },
+    // 交易发生地
+    getArea() {
+      getArea() // 获取交易地址
+        .then(res => {
+          if (res.code === 200) {
+            this.cityListOptions = []
+            if (this.dialogForm.country === 'CHN') {
+              this.cityListOptions = res.data
+            } else {
+              res.data.forEach(item => {
+                if (item.value !== '710000' && item.value !== '810000' && item.value !== '820000') {
+                  this.cityListOptions.push(item)
+                }
+              })
+            }
+          } else {
+            this.$confirm(res.message, '提示', {
+              showCancelButton: false,
+              type: 'error'
+            }).then()
+              .catch()
+          }
+        })
+        .catch()
+    },
+    // 获取省份
+    getCountry() {
+      country().then(res => {
+        if (res.code === 200) {
+          this.countryData = []
+          res.data.list.forEach(res => {
+            if (res.numCode !== '156' && res.numCode !== '344' && res.numCode !== '446' && res.numCode !== '158') {
+              this.countryData.push(res)
+            }
+          })
+        }
+      })
+    },
+    // 国家或者省市
+    handleInterRegionChange(val) {
+    // 交易发生地
+      if (val !== 'NAT') {
+        this.getArea()
+      } else if (val === 'NAT') {
+        this.getCountry()
+      }
+
+      this.dialogForm.trcd = []
+    },
+    handleSizeChange(val) {
+      this.dialogPageInfo.pageNum = 1
+      this.dialogPageInfo.pageSize = val
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.dialogPageInfo.pageNum = val
+      this.getList()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.extractadd {
+  .el-select__tags {
+    overflow: hidden;
+  }
+  .el-step__title,
+  .step .el-step__description {
+    display: inline-block;
+  }
+  .el-step__title {
+    width: 120px;
+  }
+  .btnalign {
+    text-align: right;
+  }
+  .change_length {
+    .el-select__tags >span {
+      display: block!important;
+      width: 100%;
+    } 
+    .el-form-item__content {
+      margin-left: 0!important;
+    }
+  }
+  .el-steps--vertical {
+    height: 100px;
+  }
+}
+</style>

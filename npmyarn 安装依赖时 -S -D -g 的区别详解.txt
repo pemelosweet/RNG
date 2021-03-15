@@ -1,0 +1,13 @@
+npm/yarn 安装依赖时 -S -D -g 的区别详解
+一, -S,-D,-g的解释
+npm install module_name -S    即  npm install module_name --save写入dependencies  //生成环境
+npm install module_name -D    即  npm install module_name --save-dev 写入devDependencies   //  开发环境
+
+ 
+npm install module_name -g 全局安装(命令行使用)  
+
+npm install module_name -s 本地安装(将安装包放在 ./node_modules 下)
+
+
+--save：将保存配置信息到pacjage.json的dependencies节点中。       //生成环境
+--save-dev：将保存配置信息到pacjage.json的devDependencies节点中。   //  开发环境

@@ -1,0 +1,288 @@
+<template>
+  <div class="extractwrap">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>抽取监测任务</span>
+        <router-link :to="{ name: 'dataGovernance_fixedPoint_extract_add'}">
+          <el-button type="text" style="float:right;" class="el-icon-plus">新建任务</el-button>
+        </router-link>
+      </div>
+      <el-form ref="searchForm" :model="searchForm" :rules="rules" label-width="90px" class="clearfix">
+        <el-col :span="8">
+          <el-form-item label="报告机构：" prop="receiver">
+            <!-- <el-select v-model="searchForm.receiver" filterable allow-create clearable>
+              <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd"></el-option>
+            </el-select> -->
+            <el-autocomplete v-model="searchForm.receiver" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmChange"></el-autocomplete>
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="8">
+          <el-form-item label="状态：" prop="status">
+            <el-select v-model="searchForm.status" clearable style="width:100%;">
+              <el-option label="保存" value="0"></el-option>
+              <el-option label="待审批" value="1"></el-option>
+              <el-option label="审批通过" value="2"></el-option>
+              <el-option label="审批不通过" value="3"></el-option>
+              <el-option label="待反馈" value="4"></el-option>
+              <el-option label="已反馈" value="5"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <!-- 第二行 -->
+        <el-col :span="8">
+          <el-form-item label="核对结果：" prop="checkResult">
+            <el-select v-model="searchForm.checkResult" clearable style="width:100%;">
+              <el-option label="一致" value="一致"></el-option>
+              <el-option label="不一致" value="不一致"></el-option>
+              <el-option label="数据缺失" value="数据缺失"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <!-- <el-col :span="8">
+          <el-form-item label="落地时间：" prop="dateValue">
+              <el-date-picker type="daterange" v-model="searchForm.dateValue" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width:100% !important;">
+              </el-date-picker>
+          </el-form-item>
+        </el-col> -->
+        <el-col :span="24" class="btnalign">
+          <el-button type="primary" @click="handleQuery">查询</el-button>
+          <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+        </el-col>
+      </el-form>
+
+      <el-table :data="list" style="width:100%;">
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="dataFrom" label="报告机构"></el-table-column>
+        <el-table-column prop="tradeNo" label="交易笔数"></el-table-column>
+        <el-table-column prop="redt" label="落地时间"></el-table-column>
+        <el-table-column prop="status" label="状态">
+          <template slot-scope="scope">
+            {{scope.row.status === '0' ? '保存' : scope.row.status === '1' ? '待审批' : scope.row.status === '2' ? '审批通过' : scope.row.status === '3' ? '审批不通过' : scope.row.status === '4' ? '待反馈' : '已反馈'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkResult" label="核对结果"></el-table-column>
+        <el-table-column label="操作" min-width="100">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleDownload(scope)">下载任务</el-button>
+            <router-link :to="{ name: 'dataGovernance_fixedPoint_extract_result', query:{ id: scope.row.id, isShow: true, moduleFlag: '0'}}">
+              <el-button type="text" v-if="scope.row.status === '5'">查看反馈</el-button>
+            </router-link>
+            <el-button type="text" v-if="scope.row.status === '0'" @click="callWorkFlow(scope)">提交审批</el-button>
+            <el-button type="text" :disabled="scope.row.status !== '2'" :loading="scope.row.loading" @click="handleSend(scope)">发送</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+
+      <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { mapGetters } from 'vuex'
+import { getRinmList } from '@/api/common/industry'
+import {
+  getList,
+  approvalStaus,
+  sendData
+} from '@/api/sys-monitoringAnalysis/dataGovernance/fixedPoint/index'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  data() {
+    return {
+      dataFormType: '',
+      ricdName: '',
+      searchForm: {
+        receiver: '',
+        dateValue: '',
+        status: '',
+        checkResult: ''
+      },
+      rules: {
+        // scanDate: [{ required: false, validator: isValidDate, trigger: 'change' }]
+        receiver: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      taskId: '',
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      token: getToken()
+    }
+  },
+  computed: {
+    ...mapGetters(['roles', 'businessFlag', 'workFlow2business'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    callWorkFlow(scope) {
+      this.taskId = scope.row.id
+      setTimeout(() => {
+        this.$store.dispatch('workFlow', { configCode: 'point' })
+        this.$store.dispatch('openWorkFlow', true)
+      }, 500)
+    },
+    getData() {
+      this.$refs['searchForm'].validate(valid => {
+        if (valid) {
+          const pramaObj = {
+            dataFrom: this.searchForm.receiver,
+            startDate: this.searchForm.dateValue ? this.searchForm.dateValue[0] : '',
+            endDate: this.searchForm.dateValue ? this.searchForm.dateValue[1] : '',
+            status: this.searchForm.status,
+            checkResult: this.searchForm.checkResult,
+            pageNum: this.pageInfo.pageNum,
+            pageSize: this.pageInfo.pageSize
+          }
+
+          getList(pramaObj).then(res => {
+            if (res.code === 200) {
+              this.list = res.data.list
+              this.total = res.data.total
+            }
+          })
+        }
+      })
+    },
+    handleQuery() {
+      this.getData()
+    },
+    nextStep() {
+      approvalStaus(this.taskId, this.workFlow2business)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '提交成功！'
+            })
+            this.$store.dispatch('changeFlag', false)
+            this.getData()
+          } else {
+            this.$confirm(res.message, '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+          }
+        })
+        .catch()
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handleDownload(scope) {
+      const id = scope.row.id
+      if (id) {
+        location.href = '/monitor/governance/monitor/c-task/export/sync8a?id=' + id + '&token=' + this.token
+      } else {
+        this.$confirm('下载失败！', '提示', {
+          confirmButtonText: '确定',
+          showCancelButton: false,
+          type: 'error'
+        })
+      }
+    },
+    blurFn() {
+      if (this.dataFormType === '') {
+        this.searchForm.receiver = ''
+      }
+    },
+    querySearchRinm(query, cb) {
+      this.$refs['searchForm'].validateField('receiver', (valid) => {
+        if (!valid) {
+          if (query !== '') {
+            this.dataFormType = ''
+            const paramsObj = {
+              region: 'all',
+              rinm: encodeURI(query)
+            }
+            getRinmList(paramsObj).then(res => {
+              if (res.code === 200) {
+                cb(res.data)
+              }
+            })
+          } else {
+            // this.rinmData = []
+          }
+        }
+      })
+    },
+    handleRinmChange(item) {
+      if (item) {
+        this.dataFormType = 'yes'
+        this.ricdName = item.ricd
+      }
+    },
+    handleApproval(scope) {
+      const id = scope.row.id
+      approvalStaus(id)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '提交成功！'
+            })
+            this.$router.push({ name: 'dataGovernance_fixedPoint_approval' })
+          } else {
+            this.$message.error('提交失败！')
+          }
+        })
+        .catch()
+    },
+    handleSend(scope) {
+      // 发送
+      const obj = Object.assign([], this.list)
+      obj[scope.$index].loading = true
+      this.list = obj
+      const id = scope.row.id
+      sendData(id)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message.success('发送成功！')
+            this.getData()
+          } else {
+            this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' }).then().catch()
+          }
+          obj[scope.$index].loading = false
+          this.list = obj
+        })
+        .catch(() => {
+          obj[scope.$index].loading = false
+          this.list = obj
+        })
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.extractwrap {
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

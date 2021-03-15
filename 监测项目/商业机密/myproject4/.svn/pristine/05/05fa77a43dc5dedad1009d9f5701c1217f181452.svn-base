@@ -1,0 +1,582 @@
+<template>
+  <div class="suspicious">
+    <el-form :model="suspForm" ref="suspForm" :rules="suspRules" label-width="190px">
+      <!-- 第二块 -->
+      <el-row :gutter="20" v-if="hasData !== null">
+        <el-col :span="24" style="font-weight:bold; font-size:16px; margin:0 0 15px 22px;">基本信息</el-col>
+        <el-col :span="24">
+          <el-form-item label="报告机构：" prop="rinm">
+            <el-autocomplete v-model="suspForm.rinm" value-key="rinm" placeholder="报告机构" v-if="isView" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" @select="handleRinmSelect" style="width: 60%;"></el-autocomplete>
+            <span v-if="!isView">{{ suspForm.rinm }}</span>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="更正完成时限：" prop="correctLimitTime">
+            <el-date-picker v-model="suspForm.correctLimitTime" value-format="yyyy-MM-dd" type="date" placeholder="选择更正完成时限" :picker-options="updataPickerOptions">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="原可疑交易报告报文名：" prop="ornm">
+            <el-input v-model="suspForm.ornm" style="width: 60%;" v-if="isView" placeholder="最大长度为50位" @blur="getFiledOptions" maxlength="50"></el-input>
+            <span v-if="!isView">{{ suspForm.ornm }}</span>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="更正填报要求：" prop="correctAsk">
+            <el-input type="textarea" v-model="suspForm.correctAsk"  placeholder="最大长度为1000位" maxlength="1000" show-word-limit rows="5"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="待更正可疑交易总数：" prop="askNum"> 
+            <el-input v-if="isView" type="text" style="width: 60%;" v-model="suspForm.askNum"  placeholder="待更正可疑交易总数不能大于1000"></el-input>
+            <span v-if="!isView">{{suspForm.askNum}}</span>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24" style="font-weight:bold; font-size:16px; margin:0 0 15px 22px;">交易信息</el-col>
+        <el-table :data="suspForm.list">
+          <el-table-column label="可疑交易在原可疑交易报告中的序号" prop="tsno" min-width="100">
+            <template slot-scope="scope">
+              <el-form-item :prop="'list.'+ scope.$index+'.tsno'" :rules="suspRules.tsno">
+                <el-input v-model="scope.row.tsno" v-if="isView" placeholder="最大长度为9位" maxlength="9"></el-input>
+                <span v-if="!isView &&scope.$index !== 0">{{scope.row.tsno}}</span>
+                <span v-if="!isView && scope.$index === 0">{{scope.row.tsno}}</span>
+              </el-form-item>
+            </template>
+          </el-table-column>
+          <el-table-column label="待更正可疑交易发生日期" min-width="200" prop="tstm">
+            <template slot-scope="scope">
+              <el-form-item :prop="'list.'+ scope.$index+'.tstm'" :rules="suspRules.tstm">
+                <el-date-picker v-model="scope.row.tstm" type="datetime" value-format="yyyy-MM-dd HH:mm:ss" placeholder="选择日期" v-if="isView" style="width: 100%;">
+                </el-date-picker>   
+                <el-date-picker v-model="scope.row.tstm" type="datetime" value-format="yyyyMMddHHmmss" format="yyyy年MM月dd日 HH时mm分ss秒" placeholder="选择日期" v-if="!isView && scope.$index !== 0" disabled style="width: 100%;">
+                </el-date-picker>
+                 <el-date-picker v-model="scope.row.tstm" type="datetime" value-format="yyyyMMddHHmmss" format="yyyy年MM月dd日 HH时mm分ss秒" placeholder="选择日期" v-if="!isView && scope.$index === 0" disabled style="width: 100%;">
+                </el-date-picker>
+                <!-- <span v-if="!isView && scope.$index !== 0">{{scope.row.tstm}}</span>
+                <span v-if="!isView && scope.$index === 0">{{scope.row.tstm}}</span> -->
+              </el-form-item>
+            </template> 
+          </el-table-column>
+          <el-table-column label="待更正字段" prop="item" min-width="300">
+            <template slot-scope="scope">
+              <el-form-item :prop="'list.'+scope.$index+'.item'" :rules="suspRules.item" class="change_length">
+                <el-select multiple placeholder="请选择" v-model="scope.row.item" @change="baoFont(scope.row)" style="width: 100%;" clearable>
+                  <el-option v-for="(sItem, index) in filedOptions" :key="index" :label="sItem.name" :value="sItem.code">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" v-if="isView" width="100px">
+            <template slot-scope="scope" v-if="scope.$index !== 0">
+              <el-button type="text" @click="removeRow(scope)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination :current-page="pageInfo.current" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.size" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background @size-change="handleSizeChange" @current-change="handleCurrentChange" />
+        <el-button type="primary" @click="addRow" v-if="isAddTradeBtn" style="margin-top: 10px;">增加可疑交易</el-button>
+        <div class="dialog-footer">
+          <el-button @click="onCancel">取 消</el-button>
+          <el-button type="primary" @click="callWorkFlow" :loading="spLoading">提交审批</el-button>
+        </div>
+      </el-row>
+      <div v-else style="text-align: center; height:100px; line-height: 100px;">暂无数据</div>
+    </el-form>
+
+  </div>
+</template>
+
+<script>
+import { isValidInput, isValidBlank, onlyNumberValidate } from '@/utils/formValidate.js'
+import {
+  addsuspData,
+  addOtherSuspData,
+  getInfo,
+  getFiled
+} from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { mapGetters } from 'vuex'
+
+export default {
+  props: {
+    dialogVisible: {
+      type: Boolean
+    },
+    correctParams: {
+      type: Object
+    },
+    tradeIdLength: {
+      type: Number
+    },
+    closeLoading: {
+      type: Boolean
+    }
+  },
+  data() {
+    return {
+      updataPickerOptions: { // 更正时间 选中今天及以后
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7
+        }
+      },
+      tradeIdLengthInfo: '',
+      suspVisible: this.dialogVisible,
+      rinmOptions: [], // 报告机构列表
+      isView: true,
+      isAddTradeBtn: true,
+      filedOptions: [],
+      suspForm: {
+        rinm: '',
+        ricd: '',
+        correctLimitTime: '',
+        correctAsk: '',
+        ornm: '',
+        askNum: '',
+        list: []
+      },
+      suspRules: {
+        rinm: [{ required: true, message: '内容不能为空', trigger: 'blur' }],
+        // ricd: [{ required: true, message: '内容不能为空', trigger: 'blur' }],
+        ornm: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidBlank, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ],
+        // tsno: [{ max: 10, message: '最大长度为10位', trigger: 'blur' }],
+        correctAsk: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidBlank, trigger: 'blur' },
+          { max: 1000, message: '最大长度为1000位', trigger: 'blur' }
+        ],
+        askNum: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' }
+        ],
+        correctLimitTime: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        tsno: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 10, message: '最大长度为10位', trigger: 'blur' }
+        ],
+        tstm: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        item: [{ required: true, message: '内容不能为空', trigger: 'change' }]
+      },
+      listObj: {},
+      tradeId: null,
+      correctType: null,
+      hasData: null,
+      tempDataSrc: '',
+      tempIndustry: '',
+      spLoading: false,
+      pageInfo: {
+        current: 1,
+        size: 10,
+        total: null
+      },
+      fenObj: []
+    }
+  },
+  computed: {
+    ...mapGetters(['roles', 'businessFlag', 'workFlow2business'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    },
+    dialogVisible(val) {
+      if (val) this.getData()
+    }
+  },
+  mounted() {
+    this.fenObj = []
+    this.filedOptions = []
+    this.getData()
+  },
+  methods: {
+    baoFont(scope) {
+      if (this.fenObj.length > 0) {
+        for (var i = 0; i < this.fenObj.length; i++) {
+          // 如果数组中的id等于当前选择数据的id那么就把当前scope的值赋值给数组中的值
+          if (scope.tradeId === this.fenObj[i].tradeId) {
+            this.fenObj[i] = scope
+            this.fenObj.splice(i, 1)
+            i--
+          }
+        }
+      }
+      const obj = Object.assign({}, scope)
+      obj.stdt = obj.tstm
+      delete obj.tstm
+      this.fenObj.push(obj)
+    },
+    callWorkFlow() {
+      this.$refs['suspForm'].validate(val => {
+        if (val) {
+          // *********jyl-改前代码***********
+          if (this.suspForm.list.length.toString() !== this.suspForm.askNum.toString()) {
+            this.$message({
+              type: 'error',
+              message: '待更正可疑交易总数与交易信息不匹配,请仔细检查'
+            })
+            return false
+
+          // ************jyl-改后代码****************
+          // if (this.fenObj.length.toString() !== this.suspForm.askNum.toString()) {
+          //   this.$message({
+          //     type: 'error',
+          //     message: '待更正可疑交易总数与交易信息不匹配,请仔细检查'
+          //   })
+          //   return false
+          } else {
+            // this.suspVisible = false
+            // this.$emit('dialogState', this.suspVisible)
+            setTimeout(() => {
+              this.$store.dispatch('workFlow', { configCode: 'suspectCorrect' })
+              this.$store.dispatch('openWorkFlow', true)
+            }, 500)
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    // 分页
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.size = size
+      // this.getData()
+      this.getTradeInfo(this.pageInfo.current, this.pageInfo.size)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.current = pageNum
+      // this.getData()
+      this.getTradeInfo(this.pageInfo.current, this.pageInfo.size)
+    },
+    getData() {
+      this.spLoading = this.closeLoading
+      if (this.$refs.suspForm) {
+        this.$refs.suspForm.resetFields()
+      }
+      this.tradeId = this.correctParams.tradeId
+      this.correctType = this.correctParams.correctType
+      this.tempIndustry = this.correctParams.industry
+      this.isAddTradeBtn = true
+      this.isView = true
+      this.tempDataSrc = ''
+      if (this.correctParams.organ === '5') {
+        // 通过来源判断是其他还是人工补正发起模块
+        if (this.tradeId) {
+          // 判断有tradeid和没填tradeid
+          this.getTradeInfo(this.pageInfo.current, this.pageInfo.size) // 发起人工补正
+          this.isAddTradeBtn = false
+          this.isView = false
+        } else {
+          this.suspForm.list = [
+            {
+              tsno: '',
+              tstm: '',
+              item: []
+            }
+          ]
+          this.pageInfo.total = 1
+          this.suspForm.rinm = ''
+          this.suspForm.xmlId = ''
+          this.suspForm.ricd = ''
+          this.suspForm.askNum = ''
+          this.suspForm.ornm = ''
+          this.hasData = ['0']
+          this.isView = true
+          this.isAddTradeBtn = true
+        }
+      } else {
+        this.isView = false
+        this.getTradeInfo(this.pageInfo.current, this.pageInfo.size)
+        this.isAddTradeBtn = false
+      }
+    },
+    getTradeInfo(current, size) {
+      getInfo(this.correctParams, current, size)
+        .then(res => {
+          if (res.code === 200) {
+            this.hasData = res.data.list
+            this.pageInfo.total = res.data.total
+            if (this.hasData !== null) {
+              if (this.hasData.length > 0) {
+                this.suspForm.list = []
+                this.suspForm.ornm = res.data.list[0].xmlName
+                this.suspForm.rinm = res.data.list[0].rinm
+                this.suspForm.xmlId = res.data.list[0].xmlId
+                this.suspForm.ricd = res.data.list[0].ricd
+                const obj = Object.assign([], res.data.list)
+
+                obj.map(item => {
+                  if (item) {
+                    this.listObj = {
+                      tsno: item.tradeSeqno.toString(),
+                      tstm: item.tstm,
+                      tradeId: item.tradeId,
+                      item: []
+                    }
+                    this.suspForm.list.push(this.listObj)
+                  }
+                })
+
+                for (let index = 0; index < this.fenObj.length; index++) {
+                  for (let ind = 0; ind < this.suspForm.list.length; ind++) {
+                    if (this.fenObj[index].tsno === this.suspForm.list[ind].tsno) {
+                      this.suspForm.list[ind].item = this.fenObj[index].item
+                    }
+                  }
+                }
+                this.suspForm.askNum = res.data.total
+                this.tempDataSrc = res.data.list[0].dataSrc
+                this.getFiledInfo(this.suspForm.ricd, this.tempDataSrc)
+              } else {
+                return false
+              }
+            }
+          }
+        })
+        .catch(() => {})
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    getFiledOptions() {
+      if (this.suspForm.ricd !== '' && this.suspForm.ornm !== '') {
+        const paramsObj = {
+          ricd: this.suspForm.ricd,
+          tradeType: '1',
+          dataSrc: '',
+          reportBody: this.suspForm.ornm
+        }
+        getFiled(paramsObj)
+          .then(res => {
+            // 获取字段列表
+            if (res.code === 200) {
+              this.filedOptions = res.data
+            }
+          })
+          .catch(() => {})
+      }
+    },
+    handleRinmSelect(item) {
+      if (item) {
+        this.suspForm.ricd = item.ricd
+        this.getFiledOptions()
+        // this.getFiledInfo(this.suspForm.ricd)
+      }
+    },
+    getFiledInfo(ricd, dataSrc) {
+      // 获取待更正字段
+      const paramsObj = {
+        ricd: ricd,
+        tradeType: '1',
+        dataSrc: dataSrc
+      }
+      getFiled(paramsObj)
+        .then(res => {
+          // 获取字段列表
+          if (res.code === 200) {
+            this.filedOptions = res.data
+          }
+        })
+        .catch(() => {})
+    },
+    onCancel() {
+      this.spLoading = false
+      this.suspVisible = false
+      this.$emit('dialogState', this.suspVisible)
+    },
+    resetForm(formName) {
+      this.$refs[formName].resetFields()
+    },
+    nextStep() {
+      this.spLoading = true
+      if (this.correctParams.organ === '5') {
+        if (this.tradeId) {
+          this.otherCorrectSubmit()
+        } else {
+          this.correctSubmit()
+        }
+      } else {
+        this.otherCorrectSubmit()
+      }
+    },
+    correctSubmit() {
+      const arr = []
+      this.suspForm.list.forEach(item => {
+        if (item) {
+          const listObj = {
+            tsno: Number(item.tsno),
+            stdt: item.tstm,
+            item: []
+          }
+          arr.push(listObj)
+        }
+      })
+      const paramsObj = {
+        correctType: this.correctType,
+        tradeId: this.tradeId,
+        reportCode: this.suspForm.ricd,
+        correctLimitTime: this.suspForm.correctLimitTime,
+        correctAsk: this.suspForm.correctAsk,
+        askNum: this.suspForm.askNum,
+        ornm: this.suspForm.ornm,
+        suspectTrades: arr,
+        workflow: this.workFlow2business
+      }
+      addsuspData(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.spLoading = false
+            this.suspVisible = false
+            this.$emit('dialogState', this.suspVisible)
+
+            this.$message({
+              type: 'success',
+              message: '提交成功！'
+            })
+            this.resetForm('suspForm')
+          } else {
+            this.spLoading = false
+            this.$message.error('提交失败！')
+          }
+        })
+        .catch(() => {
+          this.spLoading = false
+        })
+    },
+    otherCorrectSubmit() {
+      this.suspForm.list.forEach(e => {
+        const fileds = e.item
+        console.log(fileds)
+        this.itemObj = {
+          item: fileds
+        }
+      })
+
+      const paramsObj = {
+        correctType: this.correctType,
+        tradeId: this.tradeId,
+        reportCode: this.suspForm.ricd,
+        problemSource: this.correctParams.organ,
+        correctLimitTime: this.suspForm.correctLimitTime,
+        correctAsk: this.suspForm.correctAsk,
+        industry: this.tempIndustry,
+        askNum: this.suspForm.askNum,
+        ornm: this.suspForm.ornm,
+        reportBody: this.suspForm.rinm,
+        xmlId: this.suspForm.xmlId,
+        suspectTrades: this.fenObj,
+        workflow: this.workFlow2business
+      }
+      addOtherSuspData(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.spLoading = false
+            this.suspVisible = false
+            this.$emit('dialogState', this.suspVisible)
+
+            this.$message({
+              type: 'success',
+              message: '提交成功！'
+            })
+          } else {
+            this.spLoading = false
+            this.$message.error('提交失败！')
+          }
+        })
+        .catch(() => {
+          this.spLoading = false
+        })
+    },
+    addRow() {
+      var _data = {
+        tsno: '',
+        tstm: '',
+        item: []
+      }
+      this.suspForm.list.push(_data)
+      const len = this.suspForm.list.length
+      if (len > 1000) {
+        this.suspForm.list.splice(Number(len - 1), 1)
+        this.$message({
+          message: '最多可以添加1000条交易',
+          type: 'warning'
+        })
+      }
+      this.pageInfo.total = this.suspForm.list.length
+    },
+    removeRow(scope) {
+      const index = scope.$index
+      this.$confirm('确定要删除此交易吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.suspForm.list.splice(index, 1)
+          this.pageInfo.total = this.suspForm.list.length
+        })
+        .catch(() => {})
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.suspicious {
+  .el-table__header-wrapper .cell::before {
+    content: '*';
+    color: #f00;
+    margin-right: 4px;
+  }
+  .inforow {
+    padding-bottom: 15px;
+    font-weight: bold;
+  }
+  .dialog-footer {
+    padding-top: 10px;
+    text-align: right;
+  }
+  .el-table .el-table__row td {
+    .cell {
+      height: 100%;
+      .el-form-item {
+        margin-bottom: 0;
+        .el-form-item__content {
+          margin-left: 0px !important;
+        }
+      }
+    }
+  }
+  .el-date-editor--datetime {
+    width: 250px !important;
+  }
+  .change_length {
+    .el-select__tags >span {
+      display: block!important;
+      width: 100%;
+    }
+    .el-form-item__content {
+      margin-left: 0!important;
+    } 
+  }
+}
+</style>

@@ -1,0 +1,1007 @@
+<template>
+  <div class="cueManage_interIntelligence_businessForm">
+    <el-form :model="form" ref="refForm" :rules="rulesForm" :disabled="disableds">
+      <fieldset class="classFiledset">
+        <legend> 请求方信息 </legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="编号" prop="invNum">
+              <el-input :disabled="disabled"   v-model="form.invNum" maxlength="20"  placeholder="请输入编号,最长20字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="国家/地区" prop="reqState">
+              <el-select :disabled="disabled" clearable  v-model="form.reqState" filterable placeholder="请选择" class="w100">
+                <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          
+        </el-row>
+       <el-row :gutter="20">
+<el-col :span="12">
+            <el-form-item label="机构" prop="reqOrg">
+              <el-input :disabled="disabled"   v-model="form.reqOrg" maxlength="50"  placeholder="请输入机构,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+       </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="联系人" prop="reqLinkman">
+              <el-input :disabled="disabled"   v-model="form.reqLinkman" maxlength="30"  placeholder="请输入联系人,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+             <el-col :span="12">
+            <el-form-item label="职务" prop="reqDuty">
+              <el-input :disabled="disabled"   v-model="form.reqDuty" maxlength="30"  placeholder="请输入职务,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+         
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="传真" prop="reqFax">
+              <el-input :disabled="disabled"   v-model="form.reqFax" maxlength="30"  placeholder="请输入传真,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="E-mail" prop="reqEmail">
+              <el-input :disabled="disabled"   v-model="form.reqEmail" maxlength="30"  placeholder="请输入E-mail,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+          <el-row :gutter="20">
+             <el-col :span="12">
+            <el-form-item label="电话" prop="reqPhone">
+              <el-input :disabled="disabled"   v-model="form.reqPhone" maxlength="30"  placeholder="请输入电话,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+            <el-col :span="12">
+            <el-form-item label="地址" prop="reqAddress">
+              <el-input :disabled="disabled"   v-model="form.reqAddress" maxlength="50"  placeholder="请输入地址,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+          
+          </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="法定代表人" prop="reqLegal">
+              <el-input :disabled="disabled"   v-model="form.reqLegal" maxlength="30"  placeholder="请输入法定代表人,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="职务" prop="reqLegalDuty">
+              <el-input :disabled="disabled"   v-model="form.reqLegalDuty" maxlength="30"  placeholder="请输入职务,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+               <el-col :span="12">
+            <el-form-item label="签名" prop="reqSignature">
+              <el-input :disabled="disabled"   v-model="form.reqSignature" maxlength="30"  placeholder="请输入签名,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="日期" prop="reqTime">
+              <!-- <el-date-picker :picker-options="pickerOptions" :disabled="disabled" v-model="form.reqTime" type="date" placeholder="选择日期">
+              </el-date-picker> -->
+                 <el-date-picker   value-format="yyyy-MM-dd" :disabled="disabled" v-model="form.reqTime" type="date" placeholder="选择日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+      </fieldset>
+
+      <fieldset class="classFiledset">
+        <legend>披露方的FIU</legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="国家/地区" prop="fiuStateorg">
+              <el-select :disabled="disabled" clearable  v-model="form.fiuStateorg" filterable placeholder="请选择" class="w100">
+                <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="机构" prop="fiuOrg">
+              <el-input :disabled="disabled"   v-model="form.fiuOrg" maxlength="50"  placeholder="请输入机构,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+      
+        </el-row>
+  <el-row :gutter="20">
+    <el-col :span="12">
+            <el-form-item label="联系人" prop="fiuLinkman">
+              <el-input :disabled="disabled"   v-model="form.fiuLinkman" maxlength="30"  placeholder="请输入联系人,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="职务" prop="fiuDuty">
+              <el-input :disabled="disabled"   v-model="form.fiuDuty" maxlength="30"  placeholder="请输入职务,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+  </el-row>
+        <el-row :gutter="20">
+          
+          <el-col :span="12">
+            <el-form-item label="电话" prop="fiuPhone">
+              <el-input :disabled="disabled"   v-model="form.fiuPhone" maxlength="30"  placeholder="请输入电话,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="传真" prop="fiuFax">
+              <el-input :disabled="disabled"   v-model="form.fiuFax" maxlength="30"  placeholder="请输入传真,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="E-mail" prop="fiuEmail">
+              <el-input :disabled="disabled"   v-model="form.fiuEmail" maxlength="30"  placeholder="请输入E-mail,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="地址" prop="fiuAddress">
+              <el-input :disabled="disabled"   v-model="form.fiuAddress" maxlength="50"  placeholder="请输入地址,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </fieldset>
+       <fieldset class="classFiledset">
+        <legend>金融及其他信息</legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="关联企业" prop="fEnterprise">
+              <el-input :disabled="disabled"   v-model="form.fEnterprise" maxlength="30"  placeholder="请输入关联企业,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="地址" prop="fAdress">
+              <el-input :disabled="disabled"   v-model="form.fAdress" maxlength="50"  placeholder="请输入地址,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+          
+        </el-row>
+ <el-row :gutter="20">
+<el-col :span="12">
+            <el-form-item label="银行名称" prop="fBankname">
+              <el-input :disabled="disabled"   v-model="form.fBankname" maxlength="30"  placeholder="请输入银行名称,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+           <el-col :span="12">
+            <el-form-item label="银行账号" prop="fBankaccount">
+              <el-input :disabled="disabled"   v-model="form.fBankaccount" maxlength="30"  placeholder="请输入银行账号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+ </el-row>
+        <el-row :gutter="20">
+         
+          <el-col :span="12">
+            <el-form-item label="银行地址" prop="fBankadress">
+              <el-input :disabled="disabled"   v-model="form.fBankadress" maxlength="50"  placeholder="请输入银行地址,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </fieldset>
+      <div style="height:32px">
+        <el-button style="float:right"  :disabled="disabled"   @click="add">新增</el-button>
+      </div>
+             <fieldset class="classFiledset">
+        <legend>主体信息</legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="主体名称(自然人或企业)" prop="ztName">
+              <el-input :disabled="disabled"   v-model="form.ztName" maxlength="30"  placeholder="请输入主体名称(自然人或企业),最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="别名" prop="ztBname">
+              <el-input :disabled="disabled"   v-model="form.ztBname" maxlength="30"  placeholder="请输入别名,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        
+        </el-row>
+         <el-row :gutter="20">
+         <el-col :span="12">
+            <el-form-item label="地址" prop="ztAddress">
+              <el-input :disabled="disabled"   v-model="form.ztAddress" maxlength="50"  placeholder="请输入地址,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+            <el-col :span="12">
+            <el-form-item label="该主体与本调查的关系" prop="ztGuanxi">
+              <el-input :disabled="disabled"   v-model="form.ztGuanxi" maxlength="30"  placeholder="请输入该主体与本调查的关系,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+         </el-row>
+        <el-row :gutter="20">
+        
+          <el-col :span="12">
+            <el-form-item label="职业活动" prop="ztActivity">
+              <el-input :disabled="disabled"   v-model="form.ztActivity" maxlength="30"  placeholder="请输入职业活动,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="证件号码(社会保险号，营业执照等)" prop="ztIdnum">
+              <el-input :disabled="disabled"   v-model="form.ztIdnum" maxlength="30"  placeholder="请输入证件号码(社会保险号，营业执照等),最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="护照号" prop="ztPassport">
+              <el-input :disabled="disabled"   v-model="form.ztPassport" maxlength="30"  placeholder="请输入护照号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="颁发机构" prop="ztIdnumorg">
+              <el-input :disabled="disabled"   v-model="form.ztIdnumorg" maxlength="50"  placeholder="请输入颁发机构,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+         
+        </el-row>
+   <el-row :gutter="20">
+ <el-col :span="12">
+            <el-form-item label="其他证件号码" prop="ztOtheridnum">
+              <el-input :disabled="disabled"   v-model="form.ztOtheridnum" maxlength="30"  placeholder="请输入其他证件号码,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+           <el-col :span="12">
+            <el-form-item label="其他证件号码颁发机构" prop="ztOtheridnumorg">
+              <el-input :disabled="disabled"   v-model="form.ztOtheridnumorg" maxlength="50"  placeholder="请输入其他证件号码颁发机构,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+   </el-row>
+        <el-row :gutter="20">
+         
+          <el-col :span="12">
+            <el-form-item label="电话号码" prop="ztPhone">
+              <el-input :disabled="disabled"   v-model="form.ztPhone" maxlength="30"  placeholder="请输入电话号码,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="其他(请注明)" prop="ztOther">
+              <el-input :disabled="disabled"   v-model="form.ztOther" maxlength="30"  placeholder="请输入其他(请注明),最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="国籍" prop="ztNationlity">
+              <el-select :disabled="disabled" clearable  v-model="form.ztNationlity" filterable placeholder="请选择" class="w100">
+                <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="性别" prop="ztSex">
+               <el-select v-model="form.ztSex"  :disabled="disabled" placeholder="请选择性别">
+                <el-option label="男" value="男"></el-option>
+                <el-option label="女" value="女"></el-option>
+              </el-select>
+              <!-- <el-input :disabled="disabled"   v-model="form.ztSex" maxlength="30"  placeholder="请输入性别,最长30字符"></el-input> -->
+            </el-form-item>
+          </el-col>
+     
+        </el-row>
+ <el-row :gutter="20">
+     <el-col :span="12">
+            <el-form-item label="生日" prop="ztBirthday">
+              <el-date-picker :disabled="disabled" v-model="form.ztBirthday" type="date" value-format="yyyy-MM-dd" placeholder="选择日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+ </el-row>
+        <el-row :gutter="20">
+           <el-col :span="8">
+            <el-form-item label="出生地"  prop="ztBirthplace">
+              <el-select :disabled="disabled" clearable  v-model="form.ztBirthplace" filterable placeholder="国家/地区" class="w100">
+                <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item prop="ztProvinces" >
+              <el-input style="margin-top:32px" :disabled="disabled"  maxlength="25"  v-model="form.ztProvinces" placeholder="州/省"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item  prop="ztCity">
+              <el-input style="margin-top:32px"  :disabled="disabled"  maxlength="25"  v-model="form.ztCity" placeholder="城市"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </fieldset>
+      <fieldset class="classFiledset">
+        <legend>交易对手信息</legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="对方名称(自然人或企业)" prop="rivlName">
+              <el-input :disabled="disabled"   v-model="form.rivlName" maxlength="30"  placeholder="请输入对方名称,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="对方证件号(社会保险号，营业执照等)" prop="rivlIdnum">
+              <el-input :disabled="disabled"   v-model="form.rivlIdnum" maxlength="30"  placeholder="请输入对方证件号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+       
+        </el-row>
+   <el-row :gutter="20">
+   <el-col :span="12">
+            <el-form-item label="护照号" prop="rivlPassportnum">
+              <el-input :disabled="disabled"   v-model="form.rivlPassportnum" maxlength="30"  placeholder="请输入护照号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="银行名" prop="rivlBankname">
+              <el-input :disabled="disabled"   v-model="form.rivlBankname" maxlength="30"  placeholder="请输入银行名,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+   </el-row>
+        <el-row :gutter="20">
+          
+          <el-col :span="12">
+            <el-form-item label="银行账号" prop="rivlBankaccount">
+              <el-input :disabled="disabled"   v-model="form.rivlBankaccount" maxlength="30"  placeholder="请输入银行账号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="交易日期" prop="rivlTradedate">
+              <!-- <el-date-picker :picker-options="pickerOptions" :disabled="disabled" v-model="form.rivlTradedate" type="date" placeholder="选择日期">
+              </el-date-picker> -->
+               <el-date-picker  :disabled="disabled" v-model="form.rivlTradedate" type="date" value-format="yyyy-MM-dd" placeholder="选择日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="交易金额" prop="rivlTradeamount">
+              <el-input :disabled="disabled"   v-model="form.rivlTradeamount" maxlength="20"  placeholder="请输入交易金额,最长20字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" style="margin-top:30px">
+            <el-form-item label="交易方向" prop="rivlTradedirection">
+              <el-radio :disabled="disabled" v-model="form.rivlTradedirection" label="1">收款</el-radio>
+              <el-radio :disabled="disabled" v-model="form.rivlTradedirection" label="2">付款</el-radio>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </fieldset>
+      <div class="vfor" v-for="(el,index) in myarr" :key="index">
+         <div style="height:32px">
+        <el-button style="float:right"  :disabled="disabled"   @click.prevent="removeDomain(el)">删除</el-button>
+      </div>
+         <fieldset class="classFiledset">
+        <legend>主体信息{{index+2}}</legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="主体名称(自然人或企业)" prop="ztName">
+              <el-input :disabled="disabled"   v-model="el.ztName" maxlength="30"  placeholder="请输入主体名称(自然人或企业),最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="别名" prop="ztBname">
+              <el-input :disabled="disabled"   v-model="el.ztBname" maxlength="30"  placeholder="请输入别名,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        
+        </el-row>
+         <el-row :gutter="20">
+         <el-col :span="12">
+            <el-form-item label="地址" prop="ztAddress">
+              <el-input :disabled="disabled"   v-model="el.ztAddress" maxlength="50"  placeholder="请输入地址,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+            <el-col :span="12">
+            <el-form-item label="该主体与本调查的关系" prop="ztGuanxi">
+              <el-input :disabled="disabled"   v-model="el.ztGuanxi" maxlength="30"  placeholder="请输入该主体与本调查的关系,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+         </el-row>
+        <el-row :gutter="20">
+        
+          <el-col :span="12">
+            <el-form-item label="职业活动" prop="ztActivity">
+              <el-input :disabled="disabled"   v-model="el.ztActivity" maxlength="30"  placeholder="请输入职业活动,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="证件号码(社会保险号，营业执照等)" prop="ztIdnum">
+              <el-input :disabled="disabled"   v-model="el.ztIdnum" maxlength="30"  placeholder="请输入证件号码(社会保险号，营业执照等),最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="护照号" prop="ztPassport">
+              <el-input :disabled="disabled"   v-model="el.ztPassport" maxlength="30"  placeholder="请输入护照号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="颁发机构" prop="ztIdnumorg">
+              <el-input :disabled="disabled"   v-model="el.ztIdnumorg" maxlength="50"  placeholder="请输入颁发机构,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+         
+        </el-row>
+   <el-row :gutter="20">
+ <el-col :span="12">
+            <el-form-item label="其他证件号码" prop="ztOtheridnum">
+              <el-input :disabled="disabled"   v-model="el.ztOtheridnum" maxlength="30"  placeholder="请输入其他证件号码,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+           <el-col :span="12">
+            <el-form-item label="其他证件号码颁发机构" prop="ztOtheridnumorg">
+              <el-input :disabled="disabled"   v-model="el.ztOtheridnumorg" maxlength="50"  placeholder="请输入其他证件号码颁发机构,最长50字符"></el-input>
+            </el-form-item>
+          </el-col>
+   </el-row>
+        <el-row :gutter="20">
+         
+          <el-col :span="12">
+            <el-form-item label="电话号码" prop="ztPhone">
+              <el-input :disabled="disabled"   v-model="el.ztPhone" maxlength="30"  placeholder="请输入电话号码,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="其他(请注明)" prop="ztOther">
+              <el-input :disabled="disabled"   v-model="el.ztOther" maxlength="30"  placeholder="请输入其他(请注明),最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="国籍" prop="ztNationlity">
+              <el-select :disabled="disabled" clearable  v-model="el.ztNationlity" filterable placeholder="请选择" class="w100">
+                <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="性别" prop="ztSex">
+               <el-select v-model="el.ztSex"  :disabled="disabled" placeholder="请选择性别">
+                <el-option label="男" value="男"></el-option>
+                <el-option label="女" value="女"></el-option>
+              </el-select>
+              <!-- <el-input :disabled="disabled"   v-model="form.ztSex" maxlength="30"  placeholder="请输入性别,最长30字符"></el-input> -->
+            </el-form-item>
+          </el-col>
+     
+        </el-row>
+ <el-row :gutter="20">
+     <el-col :span="12">
+            <el-form-item label="生日" prop="ztBirthday">
+              <el-date-picker :disabled="disabled" v-model="el.ztBirthday" type="date"  value-format="yyyy-MM-dd" placeholder="选择日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+ </el-row>
+        <el-row :gutter="20">
+           <el-col :span="8">
+            <el-form-item label="出生地"  prop="ztBirthplace">
+              <el-select :disabled="disabled" clearable  v-model="el.ztBirthplace" filterable placeholder="国家/地区" class="w100">
+                <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item prop="ztProvinces" >
+              <el-input style="margin-top:32px" :disabled="disabled"  maxlength="25"  v-model="el.ztProvinces" placeholder="州/省"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item  prop="ztCity">
+              <el-input style="margin-top:32px"  :disabled="disabled"  maxlength="25"  v-model="el.ztCity" placeholder="城市"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </fieldset>
+      <fieldset class="classFiledset">
+        <legend>交易对手信息{{index+2}}</legend>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="对方名称(自然人或企业)" prop="rivlName">
+              <el-input :disabled="disabled"   v-model="el.rivlName" maxlength="30"  placeholder="请输入对方名称,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="对方证件号(社会保险号，营业执照等)" prop="rivlIdnum">
+              <el-input :disabled="disabled"   v-model="el.rivlIdnum" maxlength="30"  placeholder="请输入对方证件号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+       
+        </el-row>
+   <el-row :gutter="20">
+   <el-col :span="12">
+            <el-form-item label="护照号" prop="rivlPassportnum">
+              <el-input :disabled="disabled"   v-model="el.rivlPassportnum" maxlength="30"  placeholder="请输入护照号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="银行名" prop="rivlBankname">
+              <el-input :disabled="disabled"   v-model="el.rivlBankname" maxlength="30"  placeholder="请输入银行名,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+   </el-row>
+        <el-row :gutter="20">
+          
+          <el-col :span="12">
+            <el-form-item label="银行账号" prop="rivlBankaccount">
+              <el-input :disabled="disabled"   v-model="el.rivlBankaccount" maxlength="30"  placeholder="请输入银行账号,最长30字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="交易日期" prop="rivlTradedate">
+              <!-- <el-date-picker :picker-options="pickerOptions" :disabled="disabled" v-model="form.rivlTradedate" type="date" placeholder="选择日期">
+              </el-date-picker> -->
+               <el-date-picker   value-format="yyyy-MM-dd" :disabled="disabled" v-model="el.rivlTradedate" type="date" placeholder="选择日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="交易金额" prop="rivlTradeamount">
+              <el-input :disabled="disabled"   v-model="el.rivlTradeamount" maxlength="20"  placeholder="请输入交易金额,最长20字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" style="margin-top:30px">
+            <el-form-item label="交易方向" prop="rivlTradedirection">
+              <el-radio :disabled="disabled" v-model="el.rivlTradedirection" label="1">收款</el-radio>
+              <el-radio :disabled="disabled" v-model="el.rivlTradedirection" label="2">付款</el-radio>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </fieldset>
+      </div>
+      <!-- 分割线 -->
+      <div class="block">
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="请描述该调查案件的情况，并陈述其主要违法事实：" prop="anjianCase">
+              <el-input :disabled="disabled"   :autosize="{ minRows: 2, maxRows: 14}"   v-model="form.anjianCase" type="textarea" maxlength="500"  placeholder="请描述该调查案件的情况,最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="24">
+            <el-form-item label="您需要披露方的FIU提供什么样的信息？" prop="plMess">
+              <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"   v-model="form.plMess" type="textarea" maxlength="500"  placeholder="您需要披露方的FIU提供什么样的信息？最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="24">
+            <el-form-item label="通过协查获得的信息将作何用？怎样使用？" prop="messEmploy">
+              <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"   v-model="form.messEmploy" type="textarea" maxlength="500"  placeholder="通过协查获得的信息将作何用？怎样使用？最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="24">
+            <el-form-item label="有没有正在进行的正式调查或司法程序？" prop="judProcedure">
+              <el-input :disabled="disabled" :autosize="{ minRows: 2, maxRows: 14}"    v-model="form.judProcedure" type="textarea" maxlength="500"  placeholder="有没有正在进行的正式调查或司法程序？最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="24">
+            <el-form-item label="你认为涉案资产会被没收或被冻结吗？" prop="frozen">
+              <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"   v-model="form.frozen" type="textarea" maxlength="500"  placeholder="你认为涉案资产会被没收或被冻结吗？最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="24">
+            <el-form-item label="请陈述涉案资产的数量、类型或是性质：" prop="propertyMess">
+              <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"   v-model="form.propertyMess" type="textarea" maxlength="500"  placeholder="请陈述涉案资产的数量、类型或是性质，最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="24">
+            <el-form-item label="调查中涉及哪些其他机构或国家？" prop="involeNation">
+              <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"   v-model="form.involeNation" type="textarea" maxlength="500"  placeholder="调查中涉及哪些其他机构或国家？最长500字符"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+    </el-form>
+  </div>
+</template>
+
+<script>
+import { noSpaceAndTs, commonPattern } from '@/utils/formValidate.js'
+import { country } from '@/api/common/citys.js'
+export default {
+  props: {
+    businessFormData: Object,
+    disableds: Boolean,
+    myarr: Array
+  },
+  data() {
+    return {
+      pickerOptions: {
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7
+        }
+      },
+      disabled: false,
+      form: {
+        invNum: '',
+        reqState: '',
+        reqOrg: '',
+        reqLinkman: '',
+        reqDuty: '',
+        reqLegalDuty: '',
+        reqPhone: '',
+        reqFax: '',
+        reqEmail: '',
+        reqAddress: '',
+        reqLegal: '',
+        reqSignature: '',
+        reqTime: '',
+        fiuStateorg: '',
+        fiuOrg: '',
+        fiuLinkman: '',
+        fiuDuty: '',
+        fiuPhone: '',
+        fiuFax: '',
+        fiuEmail: '',
+        fiuAddress: '',
+        ztName: '',
+        ztBname: '',
+        ztAddress: '',
+        ztGuanxi: '',
+        ztActivity: '',
+        ztIdnum: '',
+        ztPassport: '',
+        ztIdnumorg: '',
+        ztOtheridnum: '',
+        ztOtheridnumorg: '',
+        ztPhone: '',
+        ztOther: '',
+        ztNationlity: '',
+        ztSex: '',
+        ztBirthday: '',
+        ztCity: '',
+        ztProvinces: '',
+        ztBirthplace: '',
+        fEnterprise: '',
+        fAdress: '',
+        fBankname: '',
+        fBankaccount: '',
+        fBankadress: '',
+        rivlName: '',
+        rivlIdnum: '',
+        rivlPassportnum: '',
+        rivlBankname: '',
+        rivlBankaccount: '',
+        rivlTradedate: '',
+        rivlTradeamount: '',
+        rivlTradedirection: '',
+        anjianCase: '',
+        plMess: '',
+        messEmploy: '',
+        judProcedure: '',
+        frozen: '',
+        propertyMess: '',
+        involeNation: ''
+      },
+      countryOption: [],
+      rulesForm: {
+        invNum: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }
+        ],
+        // reqState: [{ max: 100,message: '最大长度不能超过100位', trigger: 'blur' }],
+        reqOrg: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        reqLinkman: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        reqDuty: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        reqLegalDuty: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        reqPhone: [
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        reqFax: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        reqEmail: [
+          { validator: this.emailValidate, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }
+        ],
+        reqAddress: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        reqLegal: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        reqSignature: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        // reqTime: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        // fiuStateorg: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        fiuOrg: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        fiuLinkman: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        fiuDuty: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        fiuPhone: [
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        fiuFax: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        fiuEmail: [
+          { validator: this.emailValidate, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        fiuAddress: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztName: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztBname: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztAddress: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztGuanxi: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztActivity: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztIdnum: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztPassport: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztIdnumorg: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztOtheridnum: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztOtheridnumorg: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        ztPhone: [
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        // ztPhone: [
+        //   { validator: this.PhoneNum, trigger: 'blur' },
+        //   { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        ztOther: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过100位', trigger: 'blur' }],
+        // ztNationlity: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        ztSex: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: '10', message: '最大长度不能超过10位', trigger: 'blur' }],
+        // ztBirthday: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        ztCity: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        ztProvinces: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        // ztBirthplace: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        fEnterprise: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        fAdress: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        fBankname: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        fBankaccount: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        fBankadress: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        rivlName: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        rivlIdnum: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        rivlPassportnum: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        rivlBankname: [
+          { validator: this.NullAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        rivlBankaccount: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        // rivlTradedate: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        rivlTradeamount: [
+          { validator: this.isValidMoney, trigger: 'blur' }],
+        // rivlTradedirection: [{ max: '30', message: '最大长度不能超过30位', trigger: 'blur' }],
+        anjianCase: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }],
+        plMess: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }],
+        messEmploy: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }],
+        judProcedure: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }],
+        frozen: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }],
+        propertyMess: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }],
+        involeNation: [
+
+          { max: '500', message: '最大长度不能超过500位', trigger: 'blur' }]
+      }
+
+    }
+  },
+  watch: {
+    businessFormData: {
+      handler(val) {
+        if (val) {
+          this.form = this.businessFormData
+          this.disabled = this.businessFormData.noWrite
+        }
+      },
+      deep: true,
+      immediate: true
+    }
+
+  },
+  mounted() {
+    this.getCountryList()
+  },
+  methods: {
+    add() {
+      this.myarr.push({
+        ztName: '',
+        ztBname: '',
+        ztAddress: '',
+        ztGuanxi: '',
+        ztActivity: '',
+        ztIdnum: '',
+        ztPassport: '',
+        ztIdnumorg: '',
+        ztOtheridnum: '',
+        ztOtheridnumorg: '',
+        ztPhone: '',
+        ztOther: '',
+        ztNationlity: '',
+        ztSex: '',
+        ztBirthday: '',
+        ztCity: '',
+        ztProvinces: '',
+        ztBirthplace: '',
+        rivlName: '',
+        rivlIdnum: '',
+        rivlPassportnum: '',
+        rivlBankname: '',
+        rivlBankaccount: '',
+        rivlTradedate: '',
+        rivlTradeamount: '',
+        rivlTradedirection: ''
+      })
+      console.log(this.myarr, 555555555555555555)
+    },
+    removeDomain(item) {
+      var index = this.myarr.indexOf(item)
+      if (index !== -1) {
+        this.myarr.splice(index, 1)
+      }
+    },
+    emailValidate(rule, value, callback) {
+      var email = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/
+      if (value === '' || value === undefined) {
+        callback()
+      } else {
+        if (!email.exec(value)) {
+          callback(new Error('请输入邮箱，如：123456@163.com'))
+        } else {
+          callback()
+        }
+      }
+    },
+    PhoneNum(rule, value, callback) {
+      // var phone = /^((1[0-9]{10})|((\d{3,4}-)?\d{7,8}))$/
+      var phone = /^\d+(-)?(\d+)?$/
+      if (value !== null) {
+        if (value === '' || value === undefined) {
+          callback()
+        } else {
+          if (!phone.test(value)) {
+            callback(new Error('请输入电话号'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    NullAndTs(rule, value, callback) {
+      var spcae = /(^\s)|(\s$)/
+      if (spcae.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // 金额校验
+    isValidMoney(rule, value, callback) {
+      var money = /(^[1-9]([0-9]+)?(\.[0-9]{1,3})?$)|(^(0){1}$)|(^[0-9]\.[0-9]([0-9])?$)/
+      if (value === '' || value === undefined) {
+        callback()
+      } else {
+        if (!money.test(value)) {
+          callback(new Error('请输入正确的数字，最多保留三位小数!'))
+        } else {
+          callback()
+        }
+      }
+    },
+    validateForm() {
+      let flag = false
+      this.$refs['refForm'].validate((valid) => {
+        flag = valid
+      })
+      return flag
+    },
+    // 国家名
+    getCountryList() {
+      country().then(res => {
+        this.countryOption = res.data.list
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.cueManage_interIntelligence_businessForm {
+  .classFiledset {
+    border-radius: 5px;
+    // border-color: #67c23a;
+    border-color: #e1f3d8;
+    margin-bottom: 10px;
+  }
+  .el-date-editor--date {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+  .title {
+    margin-bottom: 20px;
+  }
+}
+</style>

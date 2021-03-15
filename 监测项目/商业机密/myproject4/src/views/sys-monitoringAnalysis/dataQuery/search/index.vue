@@ -1,0 +1,2094 @@
+<template>
+  <div class="allTitleSearch">
+    <el-card style="margin-bottom:20px">
+      <div slot="header">
+        全文检索查询
+      </div>
+
+      <!--搜索框-->
+      <el-form :model="form" ref="form" :rules="formRules" class="serach">
+        <el-row :gutter="20" style>
+          <el-col :span="10" :offset="6">
+            <el-row>
+              <!-- <el-form-item> -->
+              <!-- <el-input placeholder="请输入关键词" v-model="form.code" clearable>
+                <el-button slot="append" icon="el-icon-time" @click="handleToggle"></el-button>
+              </el-input> -->
+              <!-- </el-form-item> -->
+              <el-form-item label-width="0" prop="code">
+                <el-col :span="22">
+                <el-input placeholder="请输入关键词" v-model.trim="form.code" :maxlength="200" clearable>
+                </el-input>
+              </el-col>
+              <el-col :span="2">
+                <el-button style="height: 40px;width:100%;" icon="el-icon-time" @click="handleToggle"></el-button>
+              </el-col>
+              </el-form-item>
+              
+              
+            </el-row>
+            <el-row v-if="isDateShow" style="margin-top: 5px;">
+              <el-col :span="22">
+                <el-date-picker v-model="form.dateValue" :picker-options="pickerOptions1" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+                </el-date-picker>
+              </el-col>
+              <el-col :span="2">
+                <el-popover placement="bottom-start" width="500" trigger="hover">
+                  <el-row>
+                    <el-col style="margin-left:20px" :span="22">
+                      <div v-for="(item,index) in title" :key="index">
+                      <span>{{item}}</span>
+                      <br/>
+                      </div>
+                    </el-col>
+                  </el-row>
+                  <el-button type="text" style="padding: 8px 0 !important" slot="reference" icon="el-icon-warning">时间说明</el-button>
+                </el-popover>
+              </el-col>
+            </el-row>
+            <!-- <el-row style="font-size: 12px; color:#F56C6C; margin-top: 10px;">提示：可用逻辑运算符“&、||、！”来表达多关键词检索；用“”表示精确检索，*表示模糊检索</el-row> -->
+          </el-col>
+          <el-col :span="8">
+            <el-button type="primary" @click="handleQuery">检索</el-button>
+            <el-button type="primary" plain v-show="listShow" @click="handleQueryTwice">二次检索</el-button>
+            <!-- <el-button type="primary" @click="clearAll">清空</el-button> -->
+          </el-col>
+        </el-row>
+        <!-- <el-row style="margin:0 auto;">
+          <el-col :span="form.isSplice? 19: 16" :offset="form.isSplice? 5: 8" style="margin-top: 15px;">
+            <el-checkbox v-model="form.isStructured">是否查询结构化数据</el-checkbox>
+            <el-checkbox v-if="false" v-model="form.isSplice">是否查询拼接交易</el-checkbox>
+            <el-checkbox v-if="form.isSplice">拼接交易库</el-checkbox>
+            <el-checkbox v-if="form.isSplice">应用层拼接</el-checkbox>
+          </el-col>
+        </el-row> -->
+        <el-row>
+          <el-col :span="16" :offset="6" style="margin-top: 15px;">
+            <el-checkbox v-model="form.isStructured" @change="selectJieGou">是否查询结构化数据</el-checkbox>
+          </el-col>
+        </el-row>
+        <!-- <el-row style="font-size: 12px; color:#F56C6C; text-align:center; margin-top: 10px;">提示：可用逻辑运算符“&、||、！”来表达多关键词检索；用“”表示精确检索，*表示模糊检索</el-row> -->
+      </el-form>
+
+      <!--高级搜索条件选择-->
+      <div class="hideBox">
+        <el-form :model="form" label-width="150px">
+          <div class="block">
+            <el-row>
+              <el-form-item label="非结构化数据库表：">
+                <el-checkbox :indeterminate="isNoIndeterminate" v-model="nCheckAll" @change="handleNoCheckAllChange">全选</el-checkbox>
+                <el-checkbox-group v-model="checkedNoStructured" @change="handleNoCheckedStruChange">
+                  <el-checkbox v-for="nItem in noStruItems" :label="nItem.describe" :key="nItem.describe">{{nItem.describe}}</el-checkbox>
+                </el-checkbox-group>
+              </el-form-item>
+            </el-row>
+            <!-- <el-row v-if="form.isStructured"> -->
+            <el-row v-if="false">
+              <el-col :span="24">
+                <el-form-item label="">
+                  <div slot="label">
+                    <span style="display:inline-block;">结构化数据库：</span>
+                    <el-button type="primary" @click="handleResult">定制结果列表</el-button>
+                  </div>
+                  <el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
+                  <el-checkbox-group v-model="checkedStructured" @change="handleCheckedStruChange">
+                    <el-checkbox v-for="item in struItems" :label="item.describe" :key="item.describe">{{item.describe}}</el-checkbox>
+                  </el-checkbox-group>
+                  <!--  -->
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+        </el-form>
+      </div>
+      <el-collapse v-if="isTemplateShow">
+        <el-collapse-item title="XXX查询模板:" name="1">
+          模板内容
+        </el-collapse-item>
+      </el-collapse>
+      <div class="divider divider-horizontal"></div>
+      <!-- 非结构化查询结果 -->
+      <div v-if="currentTabIndex == 0" v-loading="loadingtechno"
+        element-loading-text="拼命加载中"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)">
+            <!--搜索结果列表-->
+            <el-row>
+              <!-- <el-col :span="8" style="height:32px;padding-top:10px;">您搜索的
+                <span class="active">{{currentParamsUnStru.keyword}} {{currentParamsUnStru.keyword2 || ''}}</span>，共有
+                <span class="active">{{unStruResultTotalCount}}</span>个结果
+              </el-col> -->
+              
+            </el-row>
+            <div class="divider divider-dashed"></div>
+            <el-tabs v-model="activeNameSearch" type="card" @tab-click="handleClick">
+              <el-tab-pane  label="非结构化数据" name="first">
+                <el-row>
+                  <el-col :span="24" style="textAlign:right;">
+                    排序：
+                    <el-radio-group v-model="radio" @change="handleRadioChange">
+                      <el-radio label="1">匹配程度</el-radio>
+                      <el-radio label="2">入库时间</el-radio>
+                    </el-radio-group>
+                    <el-select :disabled="this.radio ==='1'" @change="handleNoStruOptionsChange" v-model="currentFilterOptionUnStru" placeholder="所在库表" style="margin-left:10px;width:25%">
+                      <el-option v-for="item in optionsNoStruFilter" :key="item.value" :label="item.label" :value="item.value">
+                      </el-option>
+                    </el-select>
+                  </el-col>
+                  <el-col :span="8" style="padding-top:10px;">您搜索的
+                    <span class="active">{{input1}} {{input2}}</span> 共有
+                    <span class="active">{{unStruResultTotalCount}}</span>个结果
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="24">
+                    <el-table
+                      ref="multipleTable"
+                      @selection-change="handleSelectionChange"
+                      :data="unStruResultList"
+                      tooltip-effect="dark"
+                      style="width: 100%;"
+                      class="tableStyle">
+                      <el-table-column
+                        type="selection"
+                        width="55"/>
+                        <el-table-column>
+                          <template slot-scope="item">
+                            <div class="result_list">
+                              <!--<div class="content" v-for="ite in item.splitContent" :key="ite">-->
+                                <!--{{ite}}<span class="active">{{item.metaKey}}</span>-->
+                              <!--</div>-->
+                              <div class="content" v-html="item.row.highlight" @click="showInfo(item.row.xmlContent,item.row.judge,item.row.attach_type,item.row.attach_path)" style="cursor:pointer">
+                                <!--{{item.lastSplit}}-->
+                              </div>
+                              <el-dialog
+                                title="详情"
+                                :visible.sync="dialogVisibleHtml"
+                                center
+                                width="96%">
+                                <div v-html="htmlDialog"></div>
+                                <span slot="footer" class="dialog-footer">
+                                  <el-button @click="dialogVisibleHtml = false">取 消</el-button>
+                                  <el-button type="primary" @click="dialogVisibleHtml = false">确 定</el-button>
+                                </span>
+                              </el-dialog>
+                              <ul class="content_footer">
+                                <li>
+                                  <!-- <el-tag size="mini">
+                                    {{item.library_name}}-{{item.attach_name}}
+                                  </el-tag> -->
+                                  {{item.row.library_name}}{{item.row.attach_name ===undefined?'':'-'+item.row.attach_name}}
+                                  <em class="split"></em>
+                                </li>
+                                <li>{{item.row.save_date | formatDate}}
+                                  <em class="split"></em>
+                                </li>
+                                <li>
+                                  <el-button type="text" @click="downLoadFile(item.row.attach_path ,item.row.attach_type,item.row.attach_name,item.row.index_type,item.row.judge)">下载</el-button>
+                                </li>
+                              </ul>
+                            </div>
+                          </template>
+                        </el-table-column>
+                    </el-table>
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="7" style="padding-top:8px">
+                    <el-button type="primary" @click="downloadMoreNew">批量下载</el-button>
+                    <!-- <el-button type="primary">人工补正</el-button>
+                    <el-button type="primary">扩展分析</el-button> -->
+                  </el-col>
+                  <el-col :span="17" style="float:right">
+                    <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPageUnStru" :page-sizes="[10, 20, 30, 40]" :page-size="100" layout="total, sizes, prev, pager, next, jumper" :total="unStruResultTotalCount" background></el-pagination>
+                  </el-col>
+                </el-row>
+              </el-tab-pane>
+              <el-tab-pane label="结构化数据" v-if="form.isStructured" name="second">
+                <el-row>
+                  <el-col :span="8" style="padding-top:10px;">您搜索的
+                    <span class="active">{{input1}} {{input2}}</span> 共有
+                    <span class="active">{{pageInfoJieGou.total}}</span>个结果
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="24">
+                    <el-table
+                      ref="multipleTable"
+                      @selection-change="handleSelectionChangeJieGou"
+                      :data="jieGouStruResultList"
+                      tooltip-effect="dark"
+                      style="width: 100%;"
+                      class="tableStyle">
+                      <el-table-column
+                        type="selection"
+                        width="55"/>
+                        <el-table-column>
+                          <template slot-scope="item">
+                            <div class="result_list">
+                              <!--<div class="content" v-for="ite in item.splitContent" :key="ite">-->
+                                <!--{{ite}}<span class="active">{{item.metaKey}}</span>-->
+                              <!--</div>-->
+                              <div class="content" v-html="item.row.highlight" @click="showInfoJieGou(item.row.xmlContent,item.row.judge,item.row.attach_type,item.row.attach_path,item.row.index_type,item.row.id)" style="cursor:pointer">
+                                <!--{{item.lastSplit}}-->
+                              </div>
+                              <el-dialog
+                                title="详情"
+                                :visible.sync="dialogVisibleHtmlJieGou"
+                                center
+                                width="96%">
+                                <div v-html="htmlDialogJieGou"></div>
+                                <span slot="footer" class="dialog-footer">
+                                  <el-button @click="dialogVisibleHtmlJieGou = false">取 消</el-button>
+                                  <el-button type="primary" @click="dialogVisibleHtmlJieGou = false">确 定</el-button>
+                                </span>
+                              </el-dialog>
+                              <ul class="content_footer">
+                                <li>
+                                  <!-- <el-tag size="mini">
+                                    {{item.library_name}}-{{item.attach_name}}
+                                  </el-tag> -->
+                                  {{item.row.library_name}}{{item.row.attach_name ===undefined?'':'-'+item.row.attach_name}}
+                                  <em class="split"></em>
+                                </li>
+                                <li>{{item.row.store_date }}
+                                  <em class="split"></em>
+                                </li>
+                                <li>
+                                  <el-button type="text" @click="downLoadFileJieGou(item.row.id,item.row.attach_type,item.row.attach_name,item.row.index_type,item.row.judge)">下载</el-button>
+                                </li>
+                              </ul>
+                            </div>
+                          </template>
+                        </el-table-column>
+                    </el-table>
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="7" style="padding-top:8px">
+                    <el-button type="primary" @click="downloadMoreNewJieGou">批量下载</el-button>
+                    <!-- <el-button type="primary">人工补正</el-button>
+                    <el-button type="primary">扩展分析</el-button> -->
+                  </el-col>
+                  <el-col :span="17" style="float:right">
+                    <el-pagination @size-change="handleSizeChangeJieGou" @current-change="handleCurrentChangeJieGou" :current-page="pageInfoJieGou.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfoJieGou.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfoJieGou.total" background></el-pagination>
+                  </el-col>
+                </el-row>
+              </el-tab-pane>
+              
+            </el-tabs>
+          </div>
+      <el-tabs v-model="activeName" @tab-click="handleTabClick" type="card">
+        <el-tab-pane v-if="false" label="结构化查询结果" name="second">
+          <el-tabs @tab-click="handleStruTabClick">
+            <el-tab-pane :label="node.label" v-for="(node, index) in struTabDatas" :key="index">
+              <el-table :data="data_list" v-loading="node.loading" :element-loading-text="loadingText" element-loading-background="rgba(0, 0, 0, 0.1)">
+                <el-table-column type="index" label="序号" fixed></el-table-column>
+                <el-table-column :label="colName" v-for="(colName, key) in node.colNames" :key="key" min-width="120" show-overflow-tooltip>
+                  <!-- <el-table-column :label="colName" sortable="custom" v-for="(colName, key) in node.colNames" :key="key" min-width="120" show-overflow-tooltip> -->
+                  <template slot-scope="scope">
+                    <el-tooltip class="item" effect="dark" placement="top">
+                      <div slot="content">{{ node.table[scope.$index][key] }}</div>
+                      <span style="color: #409EFF;" @click="handleXmlName(scope)">{{ node.table[scope.$index][key] }}</span>
+                    </el-tooltip>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" fixed="right" min-width="100px">
+                  <template slot-scope="scope">
+                    <span style="margin-right: 10px">
+                      <!-- <el-button type="text" plain @click="handleTableBtn(node, scope.row)">操作详情</el-button> -->
+                      <el-button type="text" plain @click="handleXmlName(scope)">操作详情</el-button>
+                    </span>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-dialog
+                  title="详情"
+                  :visible.sync="dialogVisibleJieGou"
+                  center
+                  width="96%">
+                  <tradeDetail></tradeDetail>
+                  <reportDetail></reportDetail>
+                  <span slot="footer" class="dialog-footer">
+                    <el-button @click="dialogVisibleJieGou = false">取 消</el-button>
+                    <el-button type="primary" @click="dialogVisibleJieGou = false">确 定</el-button>
+                  </span>
+                </el-dialog>
+              <el-row>
+                <el-col :span="7" style="padding-top:8px">
+                  <!-- <el-button type="primary">批量下载</el-button>
+                  <el-button type="primary">人工补正</el-button>
+                  <el-button type="primary">扩展分析</el-button> -->
+                </el-col>
+                <el-col :span="17" style="float:right">
+                  <el-pagination @size-change="handleStruSizeChange" @current-change="handleStruCurrentChange" :current-page="node.request.pageNo" :page-sizes="[10, 20, 30, 40]" :page-size="node.request.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="node.totalCount" background></el-pagination>
+                </el-col>
+              </el-row>
+            </el-tab-pane>
+          </el-tabs>
+        </el-tab-pane>
+      </el-tabs>
+
+    </el-card>
+    <!--交易详情--> 
+      <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="tradeDetailVisible">
+        <component :is="treadeComName" :tradeDetailVisible="tradeDetailVisible" :tradeDetailInfo="tradeDetailInfo" @setTradeDetailVisible="getTradeDetailVisible"></component>
+      </el-dialog>
+      <!--下载详情-->
+      <el-dialog
+        title="批量下载"
+        :visible.sync="isMoreDialog"
+        width="20%"
+        :before-close="handleClose">
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="handleClose">取 消</el-button>
+          <el-button type="primary" :loading="isMoreLoading">下载中......</el-button>
+        </span>
+      </el-dialog>
+            <!--交易详情-->
+      <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="dealDetailVisible" top="3vh" class="exportwrapper">
+        <div v-loading="dealLoading" element-loading-text="正在加载中"
+    element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)" class="type-large-wrap">
+        <el-form :model="dealForm" ref="dealForm" label-width="auto">
+          <!-- 第一行 -->
+          <el-row :gutter="20">
+            <el-col :span="24">
+              <div v-for="(val, key) in detailLeft" :key="key">
+                <el-col :span="24">
+                  <el-form-item :label="key + '：'" v-if="Object.prototype.toString.call(val) == '[object String]' || Object.prototype.toString.call(val) == '[object Null]' || Object.prototype.toString.call(val) == '[object Number]'">
+                    <span class="label-item">{{val}}</span>
+                  </el-form-item>
+                  <div v-if="Object.prototype.toString.call(val) == '[object Object]' || Object.prototype.toString.call(val) == '[object Array]'">
+                    <div class="title" style="padding-bottom: 0px; padding-top: 0px;">{{key}}</div>
+                    <div>
+                      <div v-for="(oVal, oKey) in val" :key="oKey">
+                        <el-form-item :label="oKey + '：'" v-if="Object.prototype.toString.call(oVal) == '[object String]' || Object.prototype.toString.call(oVal) == '[object Null]' || Object.prototype.toString.call(oVal) == '[object Number]'">
+                          <span class="label-item">{{oVal}}</span>
+                        </el-form-item>
+                        <el-row v-if="Object.prototype.toString.call(oVal) == '[object Object]' || Object.prototype.toString.call(oVal) == '[object Array]'" class="active-border">
+                          <div class="title">{{oKey}}</div>
+                          <el-col :span="tKey === '资金用途' || tKey === '交易目的' || tKey === '资金来源与用途' || tKey === '资金来源和用途' || tKey === '交易信息备注_1' || tKey === '交易信息备注_2' ? 24 : 12" v-for="(tVal, tKey) in oVal" :key="tKey">
+                              <el-form-item :label="tKey + '：'" v-if="Object.prototype.toString.call(tVal) == '[object String]' || Object.prototype.toString.call(tVal) == '[object Null]' || Object.prototype.toString.call(tVal) == '[object Number]'">
+                                <span class="label-item">{{tVal}}</span>
+                              </el-form-item>
+                              <div v-if="Object.prototype.toString.call(tVal) == '[object Object]' || Object.prototype.toString.call(tVal) == '[object Array]'">
+                                <div>
+                                  <div v-for="(thVal, thKey) in tVal" :key="thKey">
+                                    <el-form-item :label="thKey + '：'" v-if="Object.prototype.toString.call(thVal) == '[object String]' || Object.prototype.toString.call(thVal) == '[object Null]' || Object.prototype.toString.call(thVal) == '[object Number]'">
+                                      <span class="label-item">{{thVal}}</span>
+                                    </el-form-item>
+                                    <div v-if="Object.prototype.toString.call(thVal) == '[object Object]' || Object.prototype.toString.call(thVal) == '[object Array]'">
+                                      <div class="title">{{thKey}}</div>
+                                      <div>
+                                        <div v-for="(fVal, fKey) in thVal" :key="fKey">
+                                          <el-form-item :label="fKey + '：'" v-if="Object.prototype.toString.call(fVal) == '[object String]' || Object.prototype.toString.call(fVal) == '[object Null]' || Object.prototype.toString.call(fVal) == '[object Number]'">
+                                            <span class="label-item">{{fVal}}</span>
+                                          </el-form-item>
+                                          <div v-if="Object.prototype.toString.call(fVal) == '[object Object]' || Object.prototype.toString.call(fVal) == '[object Array]'">
+                                            <div class="title">{{fKey}}</div>
+                                            <div>
+                                              <div v-for="(fiVal, fiKey) in fVal" :key="fiKey">
+                                                <el-form-item :label="fiKey + '：'" v-if="Object.prototype.toString.call(fiVal) == '[object String]' || Object.prototype.toString.call(fiVal) == '[object Null]'">
+                                                  <span class="label-item">{{fiVal}}</span>
+                                                </el-form-item>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                          </el-col>
+                        </el-row>
+                      </div>
+                    </div>
+                  </div>
+                </el-col>
+              </div>
+            </el-col>
+          </el-row>
+        </el-form>
+        <!-- <div slot="footer" class="dialog-footer">
+          <el-button @click="onCancel" type="primary" plain>取消</el-button>
+        </div> -->
+        </div>
+      </el-dialog>
+      <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="nameListXTFVisible" top="3vh" class="exportwrapper">
+        <manualEntry :nameListXTF="nameListXTF"></manualEntry>
+      </el-dialog>
+      <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="detailDialogXTFVisible" top="3vh" class="exportwrapper">
+        <detailDialog :nameListXTF="nameListXTF"></detailDialog>
+      </el-dialog>
+      <!-- 上报线索库弹窗 -->
+      <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="shangBaoXianSuoKu" top="3vh" class="exportwrapper">
+        <shangBaoXianSuoDialog :nameListXTF="nameListXTF"></shangBaoXianSuoDialog>
+      </el-dialog>
+      <el-dialog :title="tradeDialogTitle" width="96%" :visible.sync="yanPanXianSuoDialog" top="3vh" class="exportwrapper">
+        <yanPanXianSuo :nameListXTF="nameListXTF"></yanPanXianSuo>
+      </el-dialog>
+  </div>
+
+</template>
+
+<script>
+  // const itemNoOptions = [
+  //   {
+  //     indexname: 'unstructured-data',
+  //     indextype: 'bh',
+  //     describe: '可疑报告库',
+  //     mold: '1',
+  //     sort: 1
+  //   },
+  //   {
+  //     indexname: 'unstructured-data',
+  //     indextype: 'core',
+  //     describe: '中心内部线索库',
+  //     mold: '1',
+  //     sort: 2
+  //   },
+  //   {
+  //     indexname: 'unstructured-data',
+  //     indextype: 'report-clues',
+  //     describe: '分支行对外线索',
+  //     mold: '1',
+  //     sort: 3
+  //   },
+  //   {
+  //     indexname: 'unstructured-data',
+  //     indextype: 'international-consortium',
+  //     describe: '国际协查通报文件',
+  //     mold: '1',
+  //     sort: 4
+  //   },
+  //   {
+  //     indexname: 'unstructured-data',
+  //     indextype: 'macro-analysis',
+  //     describe: '宏观报告库',
+  //     mold: '1',
+  //     sort: 5
+  //   },
+  //   {
+  //     indexname: 'unstructured-data',
+  //     indextype: 'branch-report-clues',
+  //     describe: '分支行上报分析申请',
+  //     mold: '1',
+  //     sort: 6
+  //   }
+  // ]
+  const itemOptions = [
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '银行业大额交易',
+      'mold': '2',
+      'sort': 1
+    },
+    {
+      'indexname': 'dm_t_sh_trade',
+      'indextype': 'BH',
+      'describe': '证券业大额交易',
+      'mold': '2',
+      'sort': 2
+    },
+    {
+      'indexname': 'dm_t_ih_trade',
+      'indextype': 'BH',
+      'describe': '保险业大额交易',
+      'mold': '2',
+      'sort': 3
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '银行业可疑交易',
+      'mold': '2',
+      'sort': 4
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '证券业可疑交易',
+      'mold': '2',
+      'sort': 5
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '保险业可疑交易',
+      'mold': '2',
+      'sort': 6
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '中国银联可疑',
+      'mold': '2',
+      'sort': 7
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '支付机构交易',
+      'mold': '2',
+      'sort': 8
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '资金清算中心可疑',
+      'mold': '2',
+      'sort': 9
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '银行业可疑报告',
+      'mold': '2',
+      'sort': 10
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '证券业可疑报告',
+      'mold': '2',
+      'sort': 11
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '保险业可疑报告',
+      'mold': '2',
+      'sort': 12
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '中国银联可疑报告',
+      'mold': '2',
+      'sort': 13
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '支付机构交易报告',
+      'mold': '2',
+      'sort': 14
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '资金清算中心可疑报告',
+      'mold': '2',
+      'sort': 15
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '通用可疑报告',
+      'mold': '2',
+      'sort': 16
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '身份信息库',
+      'mold': '2',
+      'sort': 17
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '线索库',
+      'mold': '2',
+      'sort': 18
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '名单库',
+      'mold': '2',
+      'sort': 19
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '宏观报告库',
+      'mold': '2',
+      'sort': 20
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '账户信息库',
+      'mold': '2',
+      'sort': 21
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '主体属性库',
+      'mold': '2',
+      'sort': 22
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '账号属性库',
+      'mold': '2',
+      'sort': 23
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '规则和模型排名库',
+      'mold': '2',
+      'sort': 24
+    },
+    {
+      'indexname': 'dm_t_bh_trade',
+      'indextype': 'BH',
+      'describe': '预警排名库',
+      'mold': '2',
+      'sort': 25
+    }
+  ]
+  import { getOptionDBInfos, getList, getListBefore, toUrl, toUrlStatus, toUrlJieGou, toUrlStatusJieGou, getInfoByTableNameAndId } from '@/api/sys-monitoringAnalysis/dataQuery/fulltextRetrieval.js'
+  import tradeDetail from '@/views/sys-monitoringAnalysis/dataQuery/dataType/tradeDetail'
+  import reportDetail from '@/views/sys-monitoringAnalysis/dataQuery/dataType/reportDetail'
+  import { formatTime } from '@/utils'
+  import { getToken } from '@/utils/auth'
+  import { getUUID } from '@/utils'
+  import manualEntry from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/rosterManage/manualEntry'
+  import detailDialog from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/rosterManageanalyst/detail'
+  import shangBaoXianSuoDialog from '@/views/sys-monitoringAnalysis/informationInteraction/reportClues/add'
+  import yanPanXianSuo from '@/views/sys-monitoringAnalysis/judgedClues/add'
+  import { ValidQueryInput } from '@/utils/formValidate'
+  export default {
+    components: {
+      tradeDetail,
+      reportDetail,
+      manualEntry,
+      detailDialog,
+      shangBaoXianSuoDialog,
+      yanPanXianSuo
+    },
+    component() {
+      formatTime
+    },
+    data() {
+      return {
+        pickerOptions1: {
+          disabledDate(time) {
+            return time.getTime() > Date.now()
+          }
+        },
+        title: [
+          '检索时间取值释义：',
+          '1、可疑交易报告：落地时间',
+          '2、内部线索库：移送时间',
+          '3、分支行上报研判线索：提交时间',
+          '4、国际协查文件库（协查请求、协查反馈）：接收时间、移送时间',
+          '5、宏观分析报告库：发布时间',
+          '6、行政调查反馈信息库：反馈时间',
+          '7、知识资料库：审核通过时间'
+        ],
+  
+        nameListXTFVisible: false,
+        detailDialogXTFVisible: false,
+        shangBaoXianSuoKu: false,
+        yanPanXianSuoDialog: false,
+        nameListXTF: {
+          id: '',
+          typeXTF: ''
+        },
+        dealDetailVisible: false,
+        dealLoading: false,
+        detailLeft: {},
+        dealForm: {},
+        loadingtechno: false,
+        isTemplateShow: false,
+        isDateShow: false,
+        activeName: '',
+        form: {
+          dateValue: '',
+          code: '',
+          isStructured: false,
+          isSplice: false
+        },
+        formRules: {
+          code: [
+            { validator: ValidQueryInput, trigger: 'blur' }
+          // { max: 50, message: '字符长度必须50位', trigger: 'blur' }
+          ]
+        },
+        listShow: false,
+        nCheckAll: false,
+        checkAll: false,
+        noStruItems: [],
+        checkedNoStructured: [],
+        checkedStructured: [],
+        struItems: itemOptions,
+        isIndeterminate: true,
+        isNoIndeterminate: true,
+        radio: '1',
+        currentPage: 1,
+        optionsNoStruFilter: [
+          {
+            value: '全部',
+            label: '全部'
+          }
+        ],
+        token: getToken(),
+        jianSuoZhongJie: '',
+        jianSuoStart: '',
+        jianSuoEnd: '',
+        jieGouStruResultData: '',
+        jieGouStruResultList: [], // 结构化查询列表
+        pageInfoJieGou: {
+          pageNum: 1,
+          pageSize: 10,
+          total: null
+        },
+        currentTabIndex: 0,
+        unStruOptionMap: {},
+        struOptionMap: {},
+        unStruResultData: '',
+        unStruResultTotalCount: 0, // 搜索列表总条数
+        unStruResultList: [],
+        currentPageUnStru: 1,
+        currentParamsUnStru: { keyword: '', keyword2: '' },
+        currentFilterOptionUnStru: '',
+        struTabDatas: [],
+        currentStruTabIndex: -1,
+        loadingText: '数据正在加载，请稍候',
+        htmlDialog: '', // 检索绑定的数据
+        htmlDialogJieGou: '',
+        dialogVisibleHtml: false, // 检索的弹窗
+        dialogVisibleHtmlJieGou: false,
+        dialogVisibleJieGou: false, // 结构化操作详情的数据
+        treadeComName: null, // 交易详情组件名称
+        tradeDialogTitle: null, // 交易详情组件title
+        tradeDetailVisible: false, // 交易详情
+        tradeDetailInfo: {}, // 交易详情参数
+        wEleven: '',
+        wFourty: '',
+        data_list: [],
+        downloadOne: [],
+        downloadTwo: [],
+        downloadThree: [],
+        downloadFour: [],
+        uuId: getUUID(),
+        isMoreDialog: false,
+        isMoreLoading: false,
+        timer: '',
+        input1: '',
+        input2: '',
+        handClickInfo: '', // 结构化操作的tab名
+        activeNameSearch: 'first'
+      }
+    },
+    filters: {
+      // js时间戳转换成日期 xtf
+      formatDate(value) {
+        const date = new Date(value)
+        const y = date.getFullYear()
+        let MM = date.getMonth() + 1
+        MM = MM < 10 ? ('0' + MM) : MM
+        let d = date.getDate()
+        d = d < 10 ? ('0' + d) : d
+        // let h = date.getHours()
+        // h = h < 10 ? ('0' + h) : h
+        // let m = date.getMinutes()
+        // m = m < 10 ? ('0' + m) : m
+        // let s = date.getSeconds()
+        // s = s < 10 ? ('0' + s) : s
+        // return y + '-' + MM + '-' + d + ' ' + h + ':' + m + ':' + s
+        return y + '-' + MM + '-' + d
+      }
+  
+    },
+    created() {
+      getOptionDBInfos()
+        .then(res => {
+          if (res.code === 200) {
+            this.struItems = res.data.structured
+            this.noStruItems = res.data.unstructured
+            this.noStruItems.forEach(item => {
+              this.checkedNoStructured.push(item.describe)
+            })
+            this.isNoIndeterminate = false
+            this.nCheckAll = true
+          }
+        })
+        .catch(() => {})
+    },
+    mounted() {
+    },
+    methods: {
+      // 结构化复选框
+      selectJieGou() {
+        if (this.form.isStructured === false) {
+          this.activeNameSearch = 'first'
+        }
+      },
+      // 结构化数据和非结构化数据tab标签点击事件
+      handleClick(tab, event) {
+        console.log(tab, event)
+      },
+      // 取消下载
+      handleClose() {
+        this.$confirm('确认取消？')
+          .then(_ => {
+            clearInterval(this.timer)
+            this.isMoreDialog = false
+          })
+          .catch(_ => {})
+      },
+      handleSelectionChangeJieGou(val) {
+        console.log(val)
+  
+        this.downloadThree = []
+        this.downloadFour = []
+        val.forEach(item => {
+          if (item.judge === true) {
+            this.downloadThree.push({
+              id: item.id,
+              tableId: item.attach_type,
+              filen: item.attach_name
+            })
+          } else {
+            this.downloadFour.push({
+              id: item.id,
+              index_type: item.index_type
+            })
+          }
+        })
+        // this.multipleSelection = val
+      },
+      handleSelectionChange(val) {
+        this.downloadOne = []
+        this.downloadTwo = []
+        val.forEach(item => {
+          if (item.judge === true) {
+            this.downloadOne.push({
+              id: item.attach_path,
+              tableId: item.attach_type,
+              filen: item.attach_name
+            })
+          } else {
+            this.downloadTwo.push({
+              rk: item.attach_path,
+              sameDay: 'false',
+              fileNames: item.attach_name
+            })
+          }
+        })
+      },
+      selectFile(info, val) {
+        console.log(info)
+        console.log(val)
+      },
+      // 非结构化下载
+      downloadMoreNew() {
+        this.uuId = getUUID()
+        if (this.downloadOne.length === 0 && this.downloadTwo.length === 0) {
+          this.$message({
+            type: 'error',
+            message: '请选择数据',
+            showClose: true,
+            duration: 6000
+          })
+          return false
+        } else {
+          const obj = {
+            uuid: this.uuId,
+            downloadTwo: this.downloadTwo,
+            downloadOne: this.downloadOne,
+            token: this.token
+          }
+          toUrl(obj).then(res => {
+            if (res.code === 200) {
+              this.isMoreDialog = true
+              this.isMoreLoading = true
+              this.timer = setInterval(() => {
+                toUrlStatus(this.uuId).then(res => {
+                  if (res.code === 200) {
+                    if (res.message === '200') {
+                      clearInterval(this.timer)
+                      location.href = '/caml-hbase/hbase/moredownload/' + this.uuId
+                      this.isMoreDialog = false
+                    } else if (res.message === '201') {
+                      clearInterval(this.timer)
+                      this.isMoreDialog = false
+                    } else if (res.message === '500') {
+                      clearInterval(this.timer)
+                      this.$message({
+                        type: 'error',
+                        message: '下载失败',
+                        showClose: true,
+                        duration: 6000
+                      })
+                      this.isMoreDialog = false
+                    } else {
+                      console.log('请求中')
+                    }
+                  }
+                })
+              }, 15000)
+            }
+          })
+        }
+  
+        // location.href = '/caml-hbase/hbase/more/' + this.uuId + '/' + encodeURI(JSON.stringify(this.downloadTwo)) + '/' + encodeURI(JSON.stringify(this.downloadOne)) + '?token=' + this.token
+      },
+      // 结构化下载
+      downloadMoreNewJieGou() {
+        this.uuId = getUUID()
+        if (this.downloadThree.length === 0 && this.downloadFour.length === 0) {
+          this.$message({
+            type: 'error',
+            message: '请选择数据',
+            showClose: true,
+            duration: 6000
+          })
+          return false
+        } else {
+          const obj = {
+            uuid: this.uuId,
+            downloadFour: this.downloadFour,
+            downloadThree: this.downloadThree,
+            token: this.token
+          }
+  
+          toUrlJieGou(obj).then(res => {
+            if (res.code === 200) {
+              this.isMoreDialog = true
+              this.isMoreLoading = true
+              this.timer = setInterval(() => {
+                toUrlStatusJieGou(this.uuId).then(res => {
+                  if (res.code === 200) {
+                    if (res.message === '200') {
+                      clearInterval(this.timer)
+                      location.href = '/caml-query/structure/moredownload/' + this.uuId
+                      this.isMoreDialog = false
+                    } else if (res.message === '201') {
+                      clearInterval(this.timer)
+                      this.isMoreDialog = false
+                    } else if (res.message === '500') {
+                      clearInterval(this.timer)
+                      this.$message({
+                        type: 'error',
+                        message: '下载失败',
+                        showClose: true,
+                        duration: 6000
+                      })
+                      this.isMoreDialog = false
+                    } else {
+                      console.log('请求中')
+                    }
+                  }
+                })
+              }, 15000)
+            }
+          })
+        }
+  
+        // location.href = '/caml-hbase/hbase/more/' + this.uuId + '/' + encodeURI(JSON.stringify(this.downloadTwo)) + '/' + encodeURI(JSON.stringify(this.downloadOne)) + '?token=' + this.token
+      },
+      downloadMore() {
+        if (this.downloadOne.length !== 0 && this.downloadTwo.length === 0) {
+          this.downloadOneMethod()
+        } else if (this.downloadTwo.length !== 0 && this.downloadOne.length === 0) {
+          this.downloadTwoMethod()
+        } else if (this.downloadOne.length !== 0 && this.downloadTwo.length !== 0) {
+          for (let index = 0; index < 2; index++) {
+            const iframe = document.createElement('iframe')
+            iframe.style.display = 'none'
+            iframe.style.height = 0
+            if (index === 0) {
+              iframe.src = '/caml-query/report/query/complex/import/' + encodeURI(JSON.stringify(this.downloadOne)) + '/sync8a?token=' + this.token
+            } else if (index === 1) {
+              iframe.src = '/caml-hbase/hbase/more/' + encodeURI(JSON.stringify(this.downloadTwo)) + '?token=' + this.token
+            } else {
+              iframe.src = ''
+            }
+            document.body.appendChild(iframe)
+            setTimeout(() => {
+              iframe.remove()
+            }, 5 * 60 * 1000)
+          }
+        } else {
+          this.$message({
+            type: 'error',
+            message: '请选择数据',
+            showClose: true,
+            duration: 6000
+          })
+        }
+
+        // this.SelectionArra.forEach((element, index) => {
+        //   const iframe = document.createElement('iframe')
+        //   iframe.style.display = 'none'
+        //   iframe.style.height = 0
+        //   iframe.src = `api/submit/package/download?id=${element}`
+        //   document.body.appendChild(iframe)
+        //   setTimeout(() => {
+        //     iframe.remove()
+        //   }, 5 * 60 * 1000)
+        // })
+        // this.downloadOne = [{ id: '2f3863b2dcf24164ae2a301779bb3086',
+        //   tableId: 'w_77' }]
+  
+        // location.href = '/caml-hbase/hbase/more/' + encodeURI(JSON.stringify(this.downloadTwo)) + '?token=' + this.token
+        // this.$nextTick(() => {
+        //   location.href = '/caml-query/report/query/import/' + this.downloadOne + '/sync8a?token=' + this.token
+        // })
+      },
+      downloadOneMethod() {
+        location.href = '/caml-query/report/query/complex/import/' + encodeURI(JSON.stringify(this.downloadOne)) + '/sync8a?token=' + this.token
+      },
+      downloadTwoMethod() {
+        location.href = '/caml-hbase/hbase/more/' + encodeURI(JSON.stringify(this.downloadTwo)) + '?token=' + this.token
+      },
+
+      clearAll() {
+        this.form.code = ''
+        this.jianSuoZhongJie = ''
+        this.jianSuoStart = ''
+        this.jianSuoEnd = ''
+        this.form.dateValue = []
+      },
+      // 下载检索结果 xtf
+      // downLoadFile(id) {
+      //   location.href = '/caml-hbase/hbase?rk=' + id + '&sameDay=false&token=' + this.token
+      // },
+      // 非结构化下载
+      downLoadFile(id, type, attachName, indexType, judge) {
+        if (judge === true) {
+          location.href = '/caml-query/report/query/import/' + id + '/sync8a?tableId=' + type + '&token=' + this.token + '&filen=' + attachName
+        } else {
+          if (indexType !== 'susp_attachment') {
+            location.href = '/caml-hbase/hbase?rk=' + id + '&sameDay=false&token=' + this.token + '&fileNames=' + attachName
+          } else {
+            location.href = '/caml-hbase/hbase?rk=' + id + '&sameDay=false&token=' + this.token
+          }
+        }
+      },
+      // 结构化下载
+      downLoadFileJieGou(id, type, attachName, indexType, judge) {
+        if (judge === true) {
+          location.href = '/caml-query/report/query/import/' + id + '/sync8a?tableId=' + type + '&token=' + this.token + '&filen=' + attachName
+        } else {
+          if (indexType === 'DM_LIST_CHAROSTER_NAMES') {
+            location.href = `/monitor/listwarn/center/${id}/export?token=${this.token}`
+          } else if (indexType === 'DM_LIST_ANALYST') {
+            location.href = `/monitor/listwarn/analyst/${id}/export?token=${this.token}`
+          } else if (indexType === 'DM_P_S_CLUE') {
+            location.href = `/monitor/reportClue/export?clueId=${id}&token=${this.token}`
+          } else if (indexType === 'DM_REPORT_LEADS') {
+            location.href = `/monitor/reportLeads/export?clueId=${id}&token=${this.token}`
+          } else {
+            location.href = '/caml-query/structure/export/' + id + '/' + indexType
+          }
+        }
+      },
+      // 结构化数据详情
+      handleTableBtn(node, id) {
+        this.dialogVisibleJieGou = true
+      },
+      // 点击结构化表格
+      handleXmlName(scope) {
+        if (this.handClickInfo === '银行业可疑报告') {
+          this.treadeComName = 'reportDetail'
+          this.tradeDialogTitle = '报告详情'
+          // const id = scope.row.id
+          // if (this.totalDtId === 'w_44' || this.totalDtId === 'w_55' || this.totalDtId === 'w_66' || this.totalDtId === 'w_100' || this.totalDtId === 'w_110' || this.totalDtId === 'w_120' || this.totalDtId === 'w_130' || this.totalDtId === 'w_140' || this.totalDtId === 'w_150') { // 交易
+          //   if (this.disabled) {
+          //     id = scope.row.rept_id
+          //   } else {
+          //     id = scope.row.xml_id
+          //   }
+          // } else {
+          //   id = scope.row.id
+          // }
+          this.tradeDetailInfo = {
+            id: scope.row.source.id,
+            tableId: this.wEleven,
+            newDate: false
+          }
+          this.tradeDetailVisible = true
+        } else {
+          this.treadeComName = 'tradeDetail'
+          this.tradeDialogTitle = '交易详情'
+          // const id = scope.row.id
+          // if (this.totalDtId === 'w_44' || this.totalDtId === 'w_55' || this.totalDtId === 'w_66' || this.totalDtId === 'w_100' || this.totalDtId === 'w_110' || this.totalDtId === 'w_120' || this.totalDtId === 'w_130' || this.totalDtId === 'w_140' || this.totalDtId === 'w_150') { // 交易
+          //   if (this.disabled) {
+          //     id = scope.row.rept_id
+          //   } else {
+          //     id = scope.row.xml_id
+          //   }
+          // } else {
+          //   id = scope.row.id
+          // }
+          this.tradeDetailInfo = {
+            id: scope.row.source.id,
+            tableId: this.wEleven,
+            newDate: false
+          }
+          this.tradeDetailVisible = true
+        }
+      },
+      // 结构化数据排序
+      handleSortChange(column) { // 排序
+        this.isSortVal = false
+        this.sortParamsObj = {}
+        let filed = ''
+        for (var key in this.header) {
+          if (this.header[key] === column.column.label) {
+            filed = key
+          }
+        }
+        let tOrder = ''
+        if (column.column.order === 'descending') {
+          tOrder = false
+        } else if (column.column.order === 'ascending') {
+          tOrder = true
+        }
+
+        const paramsObj = {
+          tableName: this.totalDtId,
+          column: filed,
+          newDate: this.disabled,
+          sort: tOrder,
+          key: this.randomKey,
+          pageNum: this.pageInfo.pageNum,
+          pageSize: this.pageInfo.pageSize
+        }
+        this.sortParamsObj = paramsObj
+        this.isAllExport = false // 控制批量导出按钮显示
+        this.isPaginationShow = false
+        this.loadingBox = true
+        this.loadingText = '正在查询中，请稍候……'
+        this.data_list = []
+        this.total = 0
+        this.handleOptions = []
+        this.getSortData(paramsObj)
+      },
+      // getSortData(paramsObj) {
+      //   getSortList(paramsObj).then(res => {
+      //     if (res.code === 200) {
+      //       this.$nextTick(function() {
+      //         this.loadingBox = false
+      //         this.loadingText = ''
+      //         this.loading = false
+      //       })
+      //       this.total = res.data.result.total
+      //       this.data_list = res.data.result.list
+      //       this.handleOptions = res.data.operation
+      //       if (res.data.result.list.length === 0) {
+      //         this.isSortVal = false
+      //         this.$confirm('暂无数据', '提示', {
+      //           showCancelButton: false,
+      //           type: 'warning'
+      //         }).then()
+      //           .catch()
+      //       } else {
+      //         this.isSortVal = true
+      //       }
+      //       this.$nextTick(function() {
+      //         this.isAllExport = true // 控制批量导出按钮显示
+      //         this.isPaginationShow = true
+      //       })
+      //     } else {
+      //       this.$nextTick(function() {
+      //         this.loadingBox = false
+      //         this.loadingText = ''
+      //         this.loading = false
+      //       })
+      //     }
+      //   }).catch(() => {
+      //     this.$nextTick(function() {
+      //       this.loadingBox = false
+      //       this.loadingText = ''
+      //       this.loading = false
+      //     })
+      //   })
+      // },
+      getTradeDetailVisible(val) {
+        this.tradeDetailVisible = val
+      },
+      showInfo(id, judge, attach_type, attach_path) {
+        if (judge === false) {
+          this.dialogVisibleHtml = true
+          this.htmlDialog = id
+        } else {
+          this.treadeComName = 'reportDetail'
+          this.tradeDialogTitle = '报告详情'
+          this.tradeDetailInfo = {
+            id: attach_path,
+            tableId: attach_type,
+            newDate: false
+          }
+          this.tradeDetailVisible = true
+        }
+      },
+      showInfoJieGou(xmlContent, judge, attach_type, attach_path, index_type, infoId) {
+        if (judge === false) {
+          if (index_type !== 'DM_LIST_CHAROSTER_NAMES' && index_type !== 'DM_LIST_ANALYST' && index_type !== 'DM_P_S_CLUE' && index_type !== 'DM_REPORT_LEADS') {
+            const obj = {
+              id: infoId,
+              index_type: index_type
+            }
+            getInfoByTableNameAndId(obj).then(res => {
+              if (res.code === 200) {
+                this.detailLeft = res.data.trade
+                this.dealDetailVisible = true
+              }
+            })
+          } else if (index_type === 'DM_LIST_CHAROSTER_NAMES') {
+            this.nameListXTF.id = infoId
+            this.nameListXTF.typeXTF = 'typeXTF'
+            this.nameListXTFVisible = true
+          } else if (index_type === 'DM_LIST_ANALYST') {
+            this.nameListXTF.id = infoId
+            this.nameListXTF.typeXTF = 'typeXTF'
+            this.detailDialogXTFVisible = true
+          } else if (index_type === 'DM_P_S_CLUE') {
+            this.nameListXTF.id = infoId
+            this.nameListXTF.typeXTF = 'typeXTF'
+            this.shangBaoXianSuoKu = true
+          } else if (index_type === 'DM_REPORT_LEADS') {
+            this.nameListXTF.id = infoId
+            this.nameListXTF.typeXTF = 'typeXTF'
+            this.yanPanXianSuoDialog = true
+          }
+        } else {
+          this.treadeComName = 'reportDetail'
+          this.tradeDialogTitle = '报告详情'
+          this.tradeDetailInfo = {
+            id: attach_path,
+            tableId: attach_type,
+            newDate: false
+          }
+          this.tradeDetailVisible = true
+        }
+      },
+      initOptionMap() {
+        this.struItems.forEach(item => {
+          this.struOptionMap[item.describe] = item
+        })
+        this.noStruItems.forEach(item => {
+          this.unStruOptionMap[item.describe] = item
+        })
+      },
+      // 所在库表
+      handleNoStruOptionsChange() {
+        // 过滤当前页非结构化结果集
+        if (this.currentFilterOptionUnStru === '全部') {
+          const types = []
+          this.checkedNoStructured.forEach(item => {
+            const indexType = this.getUnStruOptionItemByName(item).indextype
+            types.push(indexType)
+          })
+          this.currentParamsUnStru.type = types.join(',')
+          this.requestUnstruData()
+        } else {
+          // this.currentParamsUnStru -- 查询条件
+          if (this.currentParamsUnStru !== null) {
+            const indexType = this.getUnStruOptionItemByName(this.currentFilterOptionUnStru).indextype
+            this.currentParamsUnStru.type = indexType
+            this.requestUnstruData()
+          } else {
+            this.queryUnstruData()
+          }
+        }
+      },
+      // 所在库表
+      noStruFilterOptionInit() {
+        // 如果所在库表的长度大于0
+        if (this.optionsNoStruFilter.length > 0) {
+          this.optionsNoStruFilter.splice(1, this.optionsNoStruFilter.length)
+        }
+        // 非结构化数据库的复选框
+        this.checkedNoStructured.forEach(name => {
+          const item = this.getUnStruOptionItemByName(name)
+          const node = {}
+          node.value = item.describe
+          node.label = item.describe
+          this.optionsNoStruFilter.push(node)
+        })
+      },
+      // 检索
+      handleQuery() {
+        this.$refs['form'].validate(valid => {
+          if (valid) {
+            this.input1 = ''
+            this.input2 = ''
+            this.input1 = this.form.code
+            // 非结构化复选框逻辑
+            if (this.checkedNoStructured.length === 0) {
+              this.$confirm('检索条件至少选择一张非结构化数据库表', '提示', {
+                confirmButtonText: '确定',
+                showCancelButton: false,
+                type: 'warning'
+              })
+              return
+            }
+            // 结构化复选框逻辑
+            // if (this.form.isStructured && this.checkedStructured.length === 0) {
+            //   this.$confirm('请至少选择一张结构化数据库表', '提示', {
+            //     confirmButtonText: '确定',
+            //     showCancelButton: false,
+            //     type: 'warning'
+            //   })
+            //   return
+            // }
+            // 检索关键字逻辑
+            if (this.form.code === '') {
+              this.$confirm('请输入检索关键字', '提示', {
+                confirmButtonText: '确定',
+                showCancelButton: false,
+                type: 'warning'
+              })
+              return
+            }
+            this.currentPage = 1
+            this.jianSuoZhongJie = encodeURI(this.form.code.replace(/(^\s*)|(\s*$)/g, ''))// 检索和二次检索逻辑
+            // this.jianSuoZhongJie = this.form.code.replace(/(^\s*)|(\s*$)/g, '')// 检索和二次检索逻辑
+            this.listShow = true // 二次检索逻辑
+            // this.activeName = 'first' // 非结构化查询结果的tab-pane
+            this.queryUnstruData() // 检索逻辑
+            this.queryStruDataInit()
+          }
+        })
+      },
+      // 结构化获取的列表数据
+      jieGouStruResultShow() {
+        // 检索出来的列表
+        if (this.jieGouStruResultList.length > 0) {
+          // this.unStruResultList = []
+          this.jieGouStruResultList.splice(0, this.jieGouStruResultList.length)
+        }
+        // unStruResultData 查询出来的列表数据
+        for (let i = 0; i < this.jieGouStruResultData.length; i++) {
+          // 每一条数据
+          const item = this.jieGouStruResultData[i].source
+          // 高亮数据
+          const highlight = this.jieGouStruResultData[i].highlight
+          const node = {}
+          // 下载附件的id
+          node.id = item.id
+          // 判断报告还是xxx
+          node.judge = item.judge
+          // 文件名
+          node.attach_name = item.filen
+          // 文件的id
+          node.attach_path = item.attach_path
+          // 文件的路径
+          // node.attach_source_path = item.attach_source_path
+          // 文件的保存日期----时间戳
+          // node.save_date = item.save_date
+          // index-type
+          if (item.index_type === undefined) {
+            node.index_type = 'bh'
+          } else {
+            node.index_type = item.index_type
+          }
+          // 文件类型
+          node.attach_type = item.attach_type
+          // 库的名字
+          // if (item.library_name === undefined) {
+          //   node.library_name = this.getOptionNameByIndexType(this.noStruItems, node.index_type)
+          // } else {
+          //   node.library_name = item.library_name
+          // }
+          node.library_name = item.indexTypeStr
+          // 表的名字
+          node.table_name = item.table_name === undefined ? '' : item.table_name
+          // 描述
+          // node.origin_direction = item.origin_direction
+          // xx日期
+          node.store_date = item.redt
+          // xml详情
+          if (item.content) {
+            node.xmlContent = item.content
+          }
+  
+          // 高亮文字
+          node.highlight = highlight['content.stem_']
+          this.jieGouStruResultList.push(node)
+        }
+      },
+      // 非结构化获取
+      initUnStruResultShow() {
+        // 检索出来的列表
+        if (this.unStruResultList.length > 0) {
+          // this.unStruResultList = []
+          this.unStruResultList.splice(0, this.unStruResultList.length)
+        }
+        // unStruResultData 查询出来的列表数据
+        for (let i = 0; i < this.unStruResultData.length; i++) {
+          // 每一条数据
+          const item = this.unStruResultData[i].source
+          // 高亮数据
+          const highlight = this.unStruResultData[i].highlight
+          const node = {}
+          // 下载附件的id
+          node.id = item.id
+          // 判断报告还是xxx
+          node.judge = item.judge
+          // 文件名
+          node.attach_name = item.attach_name
+          // 文件的id
+          node.attach_path = item.attach_path
+          // 文件的路径
+          node.attach_source_path = item.attach_source_path
+          // 文件的保存日期----时间戳
+          node.save_date = item.save_date
+          // index-type
+          if (item.index_type === undefined) {
+            node.index_type = 'bh'
+          } else {
+            node.index_type = item.index_type
+          }
+          // 文件类型
+          node.attach_type = item.attach_type
+          // 库的名字
+          if (item.library_name === undefined) {
+            node.library_name = this.getOptionNameByIndexType(this.noStruItems, node.index_type)
+          } else {
+            node.library_name = item.library_name
+          }
+          // 表的名字
+          node.table_name = item.table_name
+          // 描述
+          node.origin_direction = item.origin_direction
+          // xx日期
+          node.store_date = item.store_date
+          // xml详情
+          if (item.attach_content) {
+            node.xmlContent = item.attach_content
+          }
+  
+          // 高亮文字
+          node.highlight = highlight.attach_content
+          this.unStruResultList.push(node)
+        }
+      },
+      requestUnstruDataJieGou() {
+        getListBefore(this.currentParamsUnStru).then(res => {
+          if (res.code === 200) {
+            // 列表数据
+            this.loadingtechno = false
+            this.jieGouStruResultData = res.data.list
+            if (this.jieGouStruResultData === undefined) {
+              this.jieGouStruResultData = ''
+            }
+            if (this.jieGouStruResultData !== '') {
+              // 搜索列表总条数
+              this.pageInfoJieGou.total = res.data.totalCount
+              // this.unStruResultTotalCount = this.unStruResultData.totalCount
+              // 处理获取的列表数据
+              this.$nextTick(() => {
+                this.jieGouStruResultShow()
+              })
+            } else {
+              this.pageInfoJieGou.total = 0
+              this.loadingtechno = false
+            }
+          }
+        })
+      },
+      requestUnstruDataFeiJieGou() {
+        // 非结构化查询
+        getList(this.currentParamsUnStru).then(res => {
+          if (res.code === 200) {
+            // 列表数据
+            this.loadingtechno = false
+            this.unStruResultData = res.data.list
+            if (this.unStruResultData === undefined) {
+              this.unStruResultData = ''
+            }
+            if (this.unStruResultData !== '') {
+              // 搜索列表总条数
+              this.unStruResultTotalCount = res.data.totalCount
+              // this.unStruResultTotalCount = this.unStruResultData.totalCount
+              // 处理获取的列表数据
+              this.initUnStruResultShow()
+            } else {
+              this.unStruResultTotalCount = 0
+              this.loadingtechno = false
+            }
+          }
+        }).catch(() => {
+          this.loadingtechno = false
+        })
+      },
+      // 检索的查询
+      requestUnstruData() {
+        this.loadingtechno = true
+        // 非结构化查询
+        getList(this.currentParamsUnStru).then(res => {
+          if (res.code === 200) {
+            // 列表数据
+            this.loadingtechno = false
+            this.unStruResultData = res.data.list
+            if (this.unStruResultData === undefined) {
+              this.unStruResultData = ''
+            }
+            if (this.unStruResultData !== '') {
+              // 搜索列表总条数
+              this.unStruResultTotalCount = res.data.totalCount
+              // this.unStruResultTotalCount = this.unStruResultData.totalCount
+              // 处理获取的列表数据
+              this.initUnStruResultShow()
+            } else {
+              this.unStruResultTotalCount = 0
+              this.loadingtechno = false
+            }
+          }
+        }).catch(() => {
+          this.loadingtechno = false
+        })
+        // 结构化查询
+        if (this.form.isStructured) {
+          getListBefore(this.currentParamsUnStru).then(res => {
+            if (res.code === 200) {
+            // 列表数据
+              this.loadingtechno = false
+              this.jieGouStruResultData = res.data.list
+              if (this.jieGouStruResultData === undefined) {
+                this.jieGouStruResultData = ''
+              }
+              if (this.jieGouStruResultData !== '') {
+              // 搜索列表总条数
+                this.pageInfoJieGou.total = res.data.totalCount
+                // this.unStruResultTotalCount = this.unStruResultData.totalCount
+                // 处理获取的列表数据
+                this.$nextTick(() => {
+                  this.jieGouStruResultShow()
+                })
+              } else {
+                this.pageInfoJieGou.total = 0
+                this.loadingtechno = false
+              }
+            }
+          })
+        }
+      },
+      // 二次检索按钮
+      handleQueryTwice() {
+        this.$refs['form'].validate(valid => {
+          if (valid) {
+            if (this.form.code === this.jianSuoZhongJie) {
+              this.$message({
+                type: 'warning',
+                message: '请将输入框的内容删除后，在重新输入内容后，在进行二次检索'
+              })
+              return false
+            } else {
+              if (this.form.code === '') {
+                this.$confirm('请输入检索关键字', '提示', {
+                  confirmButtonText: '确定',
+                  showCancelButton: false,
+                  type: 'warning'
+                })
+                return
+              }
+              // 结构化复选框逻辑
+              // if (this.form.isStructured && this.checkedStructured.length === 0) {
+              //   this.$confirm('请至少选择一张结构化数据库表', '提示', {
+              //     confirmButtonText: '确定',
+              //     showCancelButton: false,
+              //     type: 'warning'
+              //   })
+              //   return
+              // }
+              this.input2 = ''
+              this.input2 = this.form.code
+              this.queryUnstruDataTwice()
+              this.queryStruDataInitTwice()
+            }
+          } else {
+            this.input2 = ''
+          }
+        })
+      },
+      getUnStruOptionItemByName(name) {
+        for (let i = 0; i < this.noStruItems.length; i++) {
+          const item = this.noStruItems[i]
+          if (item.describe === name) {
+            return item
+          }
+        }
+      },
+      getStruOptionItemByName(name) {
+        for (let i = 0; i < this.struItems.length; i++) {
+          const item = this.struItems[i]
+          if (item.describe === name) {
+            return item
+          }
+        }
+      },
+      getOptionNameByIndexType(optionItems, indexType) {
+        for (let i = 0; i < optionItems.length; i++) {
+          const item = optionItems[i]
+          if (item.indextype === indexType) {
+            return item.describe
+          }
+        }
+      },
+      // 检索逻辑
+      queryUnstruData() {
+        this.currentPageUnStru = 1
+        // 所在库表
+        this.noStruFilterOptionInit()
+        const types = []
+        this.checkedNoStructured.forEach(item => {
+          const indexType = this.getUnStruOptionItemByName(item).indextype
+          types.push(indexType)
+        })
+        // let startDate = '1970-01-01'
+        // let endDate = '2050-01-01'
+        let startDate = ''
+        let endDate = ''
+        if (this.form.dateValue !== null && this.form.dateValue !== '') {
+          startDate = this.form.dateValue[0]
+          endDate = this.form.dateValue[1]
+          this.jianSuoStart = this.form.dateValue[0]
+          this.jianSuoEnd = this.form.dateValue[1]
+        }
+        let sort = ''
+        if (this.radio === '1') {
+          sort = 'matchDegree'
+        } else {
+          sort = 'createTime'
+        }
+  
+        this.currentParamsUnStru = {
+          pageNo: this.currentPageUnStru,
+          pageSize: 10,
+          keyword: encodeURI(this.form.code.replace(/(^\s*)|(\s*$)/g, '')),
+          // keyword: this.form.code.replace(/(^\s*)|(\s*$)/g, ''),
+          indexName: 'unstructured-data',
+          type: types.join(','),
+          startDate: startDate,
+          endDate: endDate,
+          sort: sort,
+          tableId: ''
+        }
+        this.currentParamsUnStru.pageNo = 1
+        this.requestUnstruData()
+      },
+      // 二次检索
+      queryUnstruDataTwice() {
+        this.currentPageUnStru = 1
+        this.noStruFilterOptionInit()
+        const types = []
+        this.checkedNoStructured.forEach(item => {
+          const indexType = this.getUnStruOptionItemByName(item).indextype
+          // this.wFourty = this.getStruOptionItemByName(name).tableid
+          types.push(indexType)
+        })
+        let startDate2 = ''
+        let endDate2 = ''
+        if (this.form.dateValue !== null && this.form.dateValue !== '') {
+          startDate2 = this.form.dateValue[0]
+          endDate2 = this.form.dateValue[1]
+        }
+        let sort = ''
+        if (this.radio === '1') {
+          sort = 'matchDegree'
+        } else {
+          sort = 'createTime'
+        }
+        this.currentParamsUnStru = {
+          pageNo: this.currentPageUnStru,
+          pageSize: 10,
+          keyword: encodeURI(this.jianSuoZhongJie),
+          // keyword: this.jianSuoZhongJie,
+          indexName: 'unstructured-data',
+          type: types.join(','),
+          startDate: this.jianSuoStart,
+          endDate: this.jianSuoEnd,
+          startDate2: startDate2,
+          endDate2: endDate2,
+          sort: sort,
+          keyword2: encodeURI(this.form.code.replace(/(^\s*)|(\s*$)/g, '')),
+          // keyword2: this.form.code.replace(/(^\s*)|(\s*$)/g, ''),
+          tableId: ''
+        }
+        this.currentParamsUnStru.pageNo = 1
+        this.requestUnstruData()
+      },
+      // 检索
+      queryStruDataInit() {
+        this.struTabDatas.splice(0, this.struTabDatas.length)
+        let startDate = ''
+        let endDate = ''
+        if (this.form.dateValue !== null && this.form.dateValue !== '') {
+          startDate = this.form.dateValue[0]
+          endDate = this.form.dateValue[1]
+        }
+        let sort = ''
+        if (this.radio === '1') {
+          sort = 'matchDegree'
+        } else {
+          sort = 'createTime'
+        }
+        // 结构化复选框遍历
+        this.checkedStructured.forEach(name => {
+          const node = {}
+          const optionItem = this.getStruOptionItemByName(name)// 复选框里面的所有内容
+  
+          node.label = name // 复选框的汉字内容
+          node.request = {
+            pageNo: 1,
+            pageSize: 10,
+            keyword: encodeURI(this.form.code.replace(/(^\s*)|(\s*$)/g, '')),
+            // keyword: this.form.code.replace(/(^\s*)|(\s*$)/g, ''),
+            indexName: optionItem.indexname,
+            type: optionItem.indextype,
+            startDate: startDate,
+            endDate: endDate,
+            sort: sort,
+            tableId: optionItem.tableid
+          }
+          node.loading = false
+          node.response = {
+            code: -1,
+            message: '尚未请求'
+          }
+          node.table = []
+          node.colNames = []
+          node.totalCount = 0
+          this.struTabDatas.push(node)
+          this.currentStruTabIndex = 0
+        })
+      },
+      // 二次检索
+      queryStruDataInitTwice() {
+        this.struTabDatas.splice(0, this.struTabDatas.length)
+        let startDate2 = ''
+        let endDate2 = ''
+        if (this.form.dateValue !== null && this.form.dateValue !== '') {
+          startDate2 = this.form.dateValue[0]
+          endDate2 = this.form.dateValue[1]
+        }
+        let sort = ''
+        if (this.radio === '1') {
+          sort = 'matchDegree'
+        } else {
+          sort = 'createTime'
+        }
+
+        this.checkedStructured.forEach(name => {
+          const node = {}
+          const optionItem = this.getStruOptionItemByName(name)
+          node.label = name
+          node.request = {
+            pageNo: 1,
+            pageSize: 10,
+            // keyword: this.jianSuoZhongJie,
+            keyword: this.jianSuoZhongJie,
+            indexName: optionItem.indexname,
+            type: optionItem.indextype,
+            startDate: this.jianSuoStart,
+            endDate: this.jianSuoEnd,
+            startDate2: startDate2,
+            endDate2: endDate2,
+            sort: sort,
+            keyword2: encodeURI(this.form.code.replace(/(^\s*)|(\s*$)/g, '')),
+            // keyword2: this.form.code.replace(/(^\s*)|(\s*$)/g, ''),
+            // tableId: optionItem.tableid
+            tableId: ''
+          }
+          node.loading = false
+          node.response = {
+            code: -1,
+            message: '尚未请求'
+          }
+          node.table = []
+          node.colNames = []
+          node.totalCount = 0
+          this.struTabDatas.push(node)
+          this.currentStruTabIndex = 0
+        })
+      },
+      requestStruData() {
+        const curNode = this.struTabDatas[this.currentStruTabIndex]
+        curNode.loading = true
+        getList(curNode.request).then(res => {
+          curNode.loading = false
+          curNode.response = res
+          this.data_list = res.data.result.list
+          curNode.table.splice(0, curNode.table.length)
+          curNode.colNames.splice(0, curNode.colNames.length)
+          curNode.totalCount = 0
+
+          if (res.data !== undefined && res.data !== '') {
+            const show = res.data.show
+            const feilds = []
+            if (show !== undefined && show !== '') {
+              for (const fn in show) {
+                feilds.push(fn)
+                curNode.colNames.push(show[fn])
+              }
+            }
+            if (res.data.result !== undefined && res.data.result !== '') {
+              const result = res.data.result
+              curNode.totalCount = result.totalCount
+              for (const i in result.list) {
+                const item = result.list[i].source
+                const row = []
+                for (const j in feilds) {
+                  row.push(item[feilds[j]])
+                }
+                curNode.table.push(row)
+              }
+            }
+          }
+        })
+          .catch(() => {
+            curNode.loading = false
+          })
+      },
+      queryStruData() {
+        const curNode = this.struTabDatas[this.currentStruTabIndex]
+        this.wEleven = curNode.request.tableId
+        if (curNode.response.code !== 200) {
+          this.requestStruData()
+        }
+      },
+      // 结构化查询结果点击事件
+      handleStruTabClick(tab, event) {
+        this.handClickInfo = tab.label
+        this.currentStruTabIndex = Number(tab.index)
+        this.queryStruData()
+      },
+      // 非结构化查询结果
+      handleTabClick(tab, event) {
+        const tabIndex = Number(tab.index)
+        this.currentTabIndex = tabIndex
+        if (tabIndex === 1) {
+          this.queryStruData()
+        }
+      },
+      handleNoCheckAllChange(val) { // 非结构化全选
+        // this.isNoIndeterminate = false
+        // this.checkedNoStructured = []
+        // this.checkedNoStructured = val ? itemNoOptions : []
+        if (val) {
+          this.noStruItems.forEach(item => {
+            this.checkedNoStructured.push(item.describe)
+          })
+        } else {
+          this.checkedNoStructured = []
+        }
+        this.isNoIndeterminate = false
+      },
+      handleNoCheckedStruChange(value) { // 非结构化单选
+        const checkedCount = value.length
+        this.nCheckAll = checkedCount === this.noStruItems.length
+        this.isNoIndeterminate = checkedCount > 0 && checkedCount < this.noStruItems.length
+      },
+      handleCheckAllChange(val) { // 结构化全选
+        // this.checkedStructured = val ? this.itemOptions : []
+        if (val) {
+          itemOptions.forEach(item => {
+            this.checkedStructured.push(item.describe)
+          })
+        } else {
+          this.checkedStructured = []
+        }
+        this.isIndeterminate = false
+      },
+      handleCheckedStruChange(value) { // 结构化单选
+        const checkedCount = value.length
+        this.checkAll = checkedCount === this.struItems.length
+        this.isIndeterminate = checkedCount > 0 && checkedCount < this.struItems.length
+      },
+      // 非结构化分页
+      handleSizeChange(val) {
+        if (this.currentParamsUnStru !== null) {
+          this.currentParamsUnStru.pageSize = Number(val)
+          this.requestUnstruDataFeiJieGou()
+        } else {
+          this.queryUnstruData()
+        }
+      },
+      handleCurrentChange(val) {
+        if (this.currentParamsUnStru !== null) {
+          this.currentParamsUnStru.pageNo = Number(val)
+          this.currentPageUnStru = val
+          this.requestUnstruDataFeiJieGou()
+        } else {
+          this.queryUnstruData()
+        }
+      },
+      // 结构化分页
+      handleSizeChangeJieGou(val) {
+        if (this.currentParamsUnStru !== null) {
+          this.currentParamsUnStru.pageSize = Number(val)
+          this.requestUnstruDataJieGou()
+        } else {
+          this.queryUnstruData()
+        }
+      },
+      handleCurrentChangeJieGou(val) {
+        if (this.currentParamsUnStru !== null) {
+          this.currentParamsUnStru.pageNo = Number(val)
+          this.currentPageUnStru = val
+          this.requestUnstruDataJieGou()
+        } else {
+          this.queryUnstruData()
+        }
+      },
+      // 结构化查询结果分页xtf
+      handleStruSizeChange(val) {
+        const curNode = this.struTabDatas[this.currentStruTabIndex]
+        curNode.request.pageSize = Number(val)
+        this.requestStruData()
+      },
+      // 结构化查询结果分页xtf
+      handleStruCurrentChange(val) {
+        const curNode = this.struTabDatas[this.currentStruTabIndex]
+        curNode.request.pageNo = Number(val)
+        this.requestStruData()
+      },
+      handleRadioChange(val) {
+        if (val === '1') {
+          this.currentFilterOptionUnStru = ''
+          const types = []
+          this.checkedNoStructured.forEach(item => {
+            const indexType = this.getUnStruOptionItemByName(item).indextype
+            types.push(indexType)
+          })
+          this.currentParamsUnStru.type = types.join(',')
+        }
+        let sort = 'matchDegree'
+  
+        if (val !== '1') {
+          sort = 'createTime'
+        }
+        if (this.currentParamsUnStru !== null) {
+          this.currentParamsUnStru.sort = sort
+          this.requestUnstruData()
+        } else {
+          this.queryUnstruData()
+        }
+      },
+      // 日期控件显示
+      handleToggle() {
+        this.form.dateValue = ''
+        this.isDateShow = !this.isDateShow
+      },
+      handleResult() {
+        this.activeName = 'first'
+      }
+    }
+  }
+</script>
+
+<style lang="scss">
+  .allTitleSearch {
+    .tableStyle{
+      .el-table tbody tr td {
+        text-align: left !important;
+      }
+    }
+    .serach {
+      margin-bottom: 15px;
+      .el-input--small .el-input__inner {
+        height: 40px;
+        position: relative;
+      }
+      .el-button--primary {
+        min-width: 100px;
+        height: 40px;
+      }
+      .secButton {
+        margin-top: 4px;
+      }
+      .tip {
+        font-size: 10px;
+        color: red;
+      }
+      .el-icon-search {
+        margin-top: 10px;
+        font-size: 23px;
+      }
+    }
+    .stitle {
+      padding: 10px 0;
+    }
+    .el-checkbox-group
+    .hideBox {
+      .line2 {
+        .el-select {
+          width: 100%;
+        }
+      }
+      .line3 {
+        .el-select {
+          width: 140px;
+        }
+      }
+      .el-checkbox {
+        margin-left: 16px;
+        width: 123px;
+      }
+      .block {
+        transition: 0.3s linear;
+        overflow: hidden;
+        .blockTitle {
+          margin-bottom: 20px;
+        }
+      }
+    }
+    .el-form-item--small.el-form-item {
+      margin-bottom: 8px;
+    }
+    .content {
+      text-align: left !important;
+      color: rgba(0, 0, 0, 0.65);
+      line-height: 26px;
+      text-overflow: -o-ellipsis-lastline;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      max-width: 1095px;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .divider {
+      margin: 5px 0;
+    }
+
+    .content_footer {
+      text-align: left !important;
+      margin-left: auto;
+      font-size: 0px;
+      margin: 10px 0;
+      color: #909399;
+      li:first-child {
+        padding-left: 0px;
+      }
+      li {
+        display: inline-block;
+        padding: 0 16px;
+        position: relative;
+        font-size: 14px;
+        line-height: 22px;
+        text-align: center;
+      }
+    }
+
+    .active {
+      color: #f56c6c;
+    }
+  }
+</style>

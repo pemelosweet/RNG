@@ -1,0 +1,40 @@
+1、defaultProps 是给props设置默认值    propTypes是给props做类型校验的
+2、props如果想传多个参数   <Doms {...props} /> 这种结构，
+3、constructor的作用，1.给点击事件添加this指向   2.想拿到props进行操作（props跟this.props不是一个概念）
+4、ref的三种写法
+  1.ref='text'
+  2.ref={(currentNode)=>{this.input=currentNode}}  
+  3. ref={this.myRef}   //在constructor中写 this.myRef =React.createRef()
+    // 第一种ref的用法 是通过ref字符串
+    // 第二种ref的用法 是通过在dom节点上或者组件上挂载函数，函数的参数就是dom 的ref值
+    // 第三种ref的用法 是react.createRef() recat16.3的一种方式
+    // 官方不建议使用大量使用ref
+5、事件处理
+   react用onClick（自定义）事件，而不是用原生dom事件，是为了更好的兼容性
+   react 的事件是通过事件委托的方式来处理的
+   通过event.target得到发生事件的dom元素对象
+6、不要过分的使用ref ，如果发生的元素跟你操作的元素一致，可以省略ref ，通过event来获取值
+7、受控组件  通过onchang来触发，将值存到state中，每次输入的时候值就会改变
+8、费受控组件 ，通过ref来获取值， 在点击提交的时候 随用随调
+9、生命周期
+	旧的
+   constructor
+   componentWillmount
+   render*
+  componentDidMount *     调用接口的时候
+  shouldComponentUpdate^ 如果为false阻止接下来生命周期
+  componentDidUpdate*     数据发生变化的时候
+
+  componentWillUnmount*   组件将要卸载的时候
+
+新的生命周期
+移除了componentWillmount   componentWillUpdate   componentWillReceiveProps
+
+新增了static getDerivedStateFromProps()  '代替了'componentWillReceiveProps 和 ‘componentWillmount’
+getSnapshotBeforeUpdate() 此生命周期的任何返回值将作为参数传递给 componentDidUpdate()。代替了‘componentWillUpdate’
+10. 快捷方式
+ rcc（react class component）  类组件构成   
+ rfc（react function component）  函数组件构成
+11. defaultChecked  表示复选框默认选中
+12.生成唯一的id   uuid （nanoid）
+13.不对啊

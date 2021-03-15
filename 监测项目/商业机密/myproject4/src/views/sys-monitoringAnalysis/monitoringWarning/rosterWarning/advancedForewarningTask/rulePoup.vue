@@ -1,0 +1,304 @@
+<template>
+  <div class="forewarningTask_rulePoup">
+    <el-form :model="dialogForm" ref="searchForm" label-width="114px" :rules="searchRules" class="demo-form-inline">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="规则名称" prop="ruleName">
+            <el-input v-model="dialogForm.ruleName" maxlength="50" placeholder="最长50字符数"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="预警程度" prop="wornLevel" >
+            <el-select v-model="dialogForm.wornLevel" clearable placeholder="请选择" style="width:100%;">
+              <el-option v-for="item in wornLevelArr" :key="item.codeId" :label="item.codeName" :value="item.codeId">
+              </el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="监测周期">
+            <el-date-picker value-format="yyyy-MM-dd" v-model="dialogForm.monitorCycle" type="daterange" unlink-panels range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :picker-options="pickerOptions" style="width:100% !important;">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+        <!-- <el-col :span="24">
+          <organization-tree :lableWidth="114" ref="tree" :inner="true"></organization-tree>
+        </el-col> -->
+
+      </el-row>
+
+      <div style="text-align:right">
+        <el-button type="primary" @click="queryData"> 查询</el-button>
+        <el-button @click="cleanUp"> 清空</el-button>
+      </div>
+
+    </el-form>
+    <el-table
+      v-loading="loading"
+      element-loading-text="拼命加载中"
+      element-loading-spinner="el-icon-loading"
+      element-loading-background="rgba(0, 0, 0, 0.1)" 
+      style="width: 100%" 
+      :data="tableData" 
+      @selection-change="handelSelect" 
+      ref="poupTable">
+      <el-table-column type="selection" reserve-selection></el-table-column>
+      <el-table-column label="序号" type="index" fixed="left"></el-table-column>
+      <el-table-column prop="ruleName" label="规则名称" min-width="120"  show-overflow-tooltip></el-table-column>
+      <el-table-column label="监测周期" min-width="140"  show-overflow-tooltip>
+        <template slot-scope="scope">
+          <span v-if="scope.row.mCycleStart">{{`${scope.row.mCycleStart}~${scope.row.mCycleEnd}`}}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="wornCycle" label="预警周期" min-width="100"  show-overflow-tooltip></el-table-column>
+      <!-- <el-table-column prop="JCFW" label="预警范围" min-width="140"  show-overflow-tooltip>
+        <template slot-scope="scope">
+          <el-tooltip class="item" effect="dark" placement="top-start">
+            <div slot="content" v-for="(item,index2) in scope.row.listWarnRangeDO" :key="index2" style="margin:4px">{{item.rangeName}}</div>
+            <span v-if="index==0" v-for="(item,index) in scope.row.listWarnRangeDO" :key="index">{{item.rangeName}}</span>
+          </el-tooltip>
+
+        </template>
+      </el-table-column> -->
+      <el-table-column prop="wornLevel" label="预警程度" min-width="140"  show-overflow-tooltip></el-table-column>
+      <el-table-column prop="option" label="操作" width="140" fixed="right">
+        <template slot-scope="scope">
+          <el-button type="text" @click="viewSingle(scope.row.ruleId)">查看预警条件</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background>
+    </el-pagination>
+    <div style="textAlign:right; paddingTop:20px">
+      <el-button type="primary" @click="add">添 加</el-button>
+      <el-button @click="clearSelect">返 回</el-button>
+    </div>
+
+    <div>
+        <el-dialog :visible.sync="dialogVisible" title="预警条件详情" :modal="false" :modal-append-to-body='false' top="20px">
+          <el-form :model="dialogForm" label-width="200px">
+            <div>
+              <el-form-item v-for="(item,index) in singleRuleData" :key="index" :label="`${item.worn_value}：`">
+                <span v-if="item.para_type=='time'">{{item.param_value.replace('|','~')}}</span>
+                <span style="margin:0 10px" v-if="item.br_name && item.para_type !=='time'">{{item.br_name}}</span>
+                <span style="margin:0 10px" v-if="item.param_value && item.para_type !=='time'">{{item.param_value}}</span>
+              </el-form-item>
+            </div>
+
+          </el-form>
+
+          <span slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="dialogVisible = false">关 闭</el-button>
+
+          </span>
+        </el-dialog>
+    </div>
+  </div>
+
+</template>
+
+<script>
+import {
+  ruleDetail
+} from '@/api/sys-monitoringAnalysis/roster-warning/warning-rule.js'
+import { rule } from '@/api/sys-monitoringAnalysis/roster-warning/warning-task.js'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  data() {
+    return {
+      dialogForm: {
+        ruleName: '',
+        wornLevel: '',
+        wornCycle: '',
+        monitorCycle: []
+      },
+      dialogVisible: false,
+      singleRuleData: [],
+      wornLevelArr: [],
+      wornCycleArr: [],
+      loading: false,
+      pickerOptions: {
+        shortcuts: [
+          {
+            text: '最近一周',
+            onClick(picker) {
+              const end = new Date()
+              const start = new Date()
+              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+              picker.$emit('pick', [start, end])
+            }
+          },
+          {
+            text: '最近一个月',
+            onClick(picker) {
+              const end = new Date()
+              const start = new Date()
+              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
+              picker.$emit('pick', [start, end])
+            }
+          },
+          {
+            text: '最近三个月',
+            onClick(picker) {
+              const end = new Date()
+              const start = new Date()
+              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90)
+              picker.$emit('pick', [start, end])
+            }
+          }
+        ]
+      },
+      tableData: [],
+      ruleData: [],
+      params: {},
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      searchRules: {
+        ruleName: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    searchParams() {
+      const obj = Object.assign({}, this.dialogForm)
+      if (this.dialogForm.monitorCycle) {
+        obj.mCycleStart = this.dialogForm.monitorCycle[0]
+        obj.mCycleEnd = this.dialogForm.monitorCycle[1]
+        delete obj.monitorCycle
+      }
+      return obj
+    }
+  },
+  methods: {
+    // h获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'WARNDEGREE':
+              this.wornLevelArr = res.data
+              break
+            case 'WARNCYCLE':
+              this.wornCycleArr = res.data
+              break
+
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 清除查询条件
+    cleanUp() {
+      this.dialogForm = {
+        ruleName: '',
+        wornLevel: '',
+        wornCycle: '',
+        monitorCycle: []
+      }
+    },
+    onSubmit() {
+      console.log('submit!')
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData(this.searchParams)
+    },
+    queryData() {
+      this.pageInfo.pageNum = 1
+      this.params = Object.assign({}, this.searchParams, this.pageInfo)
+      this.fetchData()
+    },
+    // 请求数据
+    fetchData() {
+      this.loading = true
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.params = Object.assign({}, this.params, this.pageInfo)
+          this.params.advancedWarning = '1'
+          rule(this.params).then(res => {
+            if (res.code === 200) {
+              this.tableData = res.data.list
+              this.pageInfo.total = res.data.total
+              this.loading = false
+            } else {
+              this.loading = false
+            }
+          })
+            .catch(err => {
+              this.loading = false
+              console.log(err)
+            })
+        }
+      })
+    },
+    // 勾线的table
+    handelSelect(val) {
+      if (val.length > 1) {
+        this.$refs.poupTable.clearSelection()
+        this.$refs.poupTable.toggleRowSelection(val.pop())
+      } else {
+        this.ruleData = val
+      }
+    },
+    add() {
+      this.dialogFormVisible = false
+      this.dataFn()
+    },
+    clearSelect() {
+      this.dialogFormVisible = false
+      this.$refs.poupTable.clearSelection()
+      this.dataFn()
+    },
+    dataFn() {
+      this.$emit('listFn', {
+        Visible: this.dialogFormVisible,
+        ruleData: JSON.parse(JSON.stringify(this.ruleData))
+      })
+    },
+    // 查看单条规则
+    viewSingle(id) {
+      ruleDetail(id).then(res => {
+        if (res.code === 200) {
+          this.singleRuleData = res.data
+          this.dialogVisible = true
+        }
+      })
+    }
+  },
+  mounted() {
+    this.getDictionary('WARNDEGREE')
+    this.getDictionary('WARNCYCLE')
+    this.fetchData()
+  },
+  activated() {
+    this.fetchData()
+  }
+}
+</script>
+
+<style lang="scss">
+.forewarningTask_rulePoup {
+  thead {
+    .el-table-column--selection {
+      .cell {
+        display: none;
+      }
+    }
+  }
+}
+</style>

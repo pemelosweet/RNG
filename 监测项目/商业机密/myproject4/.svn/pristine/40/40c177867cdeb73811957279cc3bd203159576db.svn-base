@@ -1,0 +1,986 @@
+<template>
+  <div style='width:100%;height:100%;background-color:#fff;position: relative'>
+  <div class="sequencewrap" v-if='dataPermission && initPermission' v-loading="loading2" element-loading-text="首次加载较慢，请稍侯……" element-loading-background="rgba(0, 0, 0, 0.1)">
+    <el-card>
+      <div slot="header" class="clearfix"><span>账户资金流向分析</span>
+        <el-popover placement="bottom-start" width="1000" trigger="hover">
+          <el-row>
+            <el-col style="margin-left:20px" :span="22">
+              <div v-for="(item,index) in title" :key="index">
+              <span>{{item}}</span>
+              <br/>
+              </div>
+            </el-col>
+          </el-row>
+          <el-button type="text" slot="reference" icon="el-icon-warning">口径说明</el-button>
+        </el-popover>
+      </div>
+      <!-- <el-row> -->
+        <el-form :model="form" label-width="180px" ref="searchForm"  method="post" :action="formUrl" :rules="formsRules">
+          <el-row>
+            <el-col :span="10">
+              <el-form-item label="统计类型：" prop="flwoDTO.countType">
+                <el-select v-model="form.flwoDTO.countType" clearable placeholder="请选择查询方式" style="width:100%;" @change="handleChange">
+                  <el-option value="0" label="按账户统计"></el-option>
+                  <el-option value="1" label="按交易主体统计"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="10">
+              <el-form-item label="交易日期：" prop="flwoDTO.startDate">
+                <el-date-picker v-model="form.flwoDTO.startDate" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" @change="dateChange" :picker-options="pickerOptions1" style="width:100% !important;">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row>
+            <el-col :span="10">
+              <el-form-item label="交易金额起点(万元)：" prop="flwoDTO.cratInit">
+                <el-input v-model="form.flwoDTO.cratInit" maxlength="5" placeholder="最多输入5位数字"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="10">
+              <el-form-item label="交易金额排名：" prop="flwoDTO.cratRank">
+                <el-input v-model="form.flwoDTO.cratRank" maxlength="5" placeholder="最多输入5位数字"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <!-- <el-row>
+            <el-col :span="10">
+              <el-col :span="16">
+                <el-form-item label="义务机构类型：" prop="levelType">
+                  <el-select v-model="form.levelType" clearable placeholder="请选择" @change="isTypeShow" @clear='clearOptions'>
+                    <el-option v-for="(item,index) in options" :key="index" :label="item.text" :value="item.value">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="" label-width="0" prop="flwoDTO.ricdTypes">
+                  <el-select class='custOptions' multiple v-model="form.flwoDTO.ricdTypes" placeholder="请选择" @focus="getIndustry" @change='changeOptions'>
+                    <el-option v-for="(item,index) in typeDate" :key="index" :label="item.text" :value="item.value" :disabled="item.disabled">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-col>
+          </el-row> -->
+
+          <el-row v-show="form.flwoDTO.countType === '0'">
+            <el-col :span="24">
+              <el-form-item label="批量导入账户：">
+                <el-switch v-model="value2">
+                </el-switch>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row>
+            <el-col :span="10" v-if="form.flwoDTO.countType === '0' && value2 === false">
+              <el-form-item label="交易账号：" prop="flwoDTO.account">
+                <el-input v-model="form.flwoDTO.account" placeholder="最多输入64位" maxlength="64"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row v-show="form.flwoDTO.countType === '0' && value2 === true">
+            <el-col :span="6">
+              <el-form-item label="账户：">
+                <el-upload class="upload-demo" ref="upload" :action="uploadUrl" :auto-upload="true" :headers="headers" :file-list="fileList" :before-upload="beforeUpload" :on-success="successUpload" :limit="1" accept=".xlsx,.xls">
+                  <el-button size="small" type="primary">导入模板</el-button>
+                </el-upload>
+              </el-form-item>
+            </el-col>
+            <el-col :span="4">
+              <el-form-item label-width="1px">
+                <el-button type="text" icon="el-icon-download" @click="handleDownloadModels">模板下载</el-button>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row v-show="form.flwoDTO.countType === '1'">
+            <el-form-item label="批量导入主体：">
+              <el-switch v-model="value3">
+              </el-switch>
+            </el-form-item>
+          </el-row>
+
+          <el-row v-show="form.flwoDTO.countType === '1' && value3 === false">
+            <el-col :span="12">
+              <el-form-item label="交易主体类型：">
+                <el-radio-group v-model="form.flwoDTO.subjectType">
+                  <el-radio label="0">个人</el-radio>
+                  <el-radio label="1">机构</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row v-if="form.flwoDTO.countType === '1'&&form.flwoDTO.subjectType === '0'&&value3 === false">
+            <el-col :span="10">
+              <el-form-item label="交易主体证件号码：" prop="flwoDTO.credNo">
+                <el-input v-model="form.flwoDTO.credNo" placeholder="最多输入128位" maxlength="128"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row v-if="form.flwoDTO.countType === '1'&&form.flwoDTO.subjectType === '1'&&value3 === false">
+            <el-col :span="10">
+              <el-form-item label="交易主体名称：" prop="flwoDTO.subjectName">
+                <el-input v-model="form.flwoDTO.subjectName" placeholder="最多输入128位" maxlength="128"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="10">
+              <el-form-item label="交易主体证件号码：">
+                <el-input v-model="form.flwoDTO.subjectID" placeholder="最多输入128位" maxlength="128"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row v-show="form.flwoDTO.countType === '1'&&form.flwoDTO.subjectType === '0'&&value3 === true">
+            <el-col :span="6">
+              <el-form-item label="交易主体：">
+                <el-upload class="upload-demo" ref="upload2" :action="uploadUrl" :auto-upload="true" :headers="headers" :file-list="fileList" :before-upload="beforeUpload" :on-success="successUpload" :limit="1" accept=".xlsx,.xls">
+                  <el-button size="small" type="primary">导入模板</el-button>
+                </el-upload>
+              </el-form-item>
+            </el-col>
+            <el-col :span="4">
+              <el-form-item label-width="1px">
+                <el-button type="text" icon="el-icon-download" @click="handleDownloadModels">模板下载</el-button>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row v-show="form.flwoDTO.countType === '1'&&form.flwoDTO.subjectType === '1'&&value3 === true">
+            <el-col :span="6">
+              <el-form-item label="交易主体：">
+                <el-upload class="upload-demo" ref="upload3" :action="uploadUrl" :auto-upload="true" :headers="headers" :file-list="fileList" :before-upload="beforeUpload" :on-success="successUpload" :limit="1" accept=".xlsx,.xls">
+                  <el-button size="small" type="primary">导入模板</el-button>
+                </el-upload>
+              </el-form-item>
+            </el-col>
+            <el-col :span="4">
+              <el-form-item label-width="1px">
+                <el-button type="text" icon="el-icon-download" @click="handleDownloadModels">模板下载</el-button>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+        </el-form>
+      <!-- </el-row> -->
+
+      <div class="btnalign">
+        <el-button type="primary" @click="handleQury('searchForm')">统计</el-button>
+        <el-button @click="clearForm()" type="primary" plain>清空</el-button>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        按账户资金流向统计结果表：
+        <el-button type="primary" @click="exportStatistics" plain>导出全部</el-button>
+        <el-button type="primary" @click="exportStaTwo" plain>导出已选</el-button>
+      </div>
+      <!-- 初始化统计结果 -->
+      <el-table v-show="!initType" :empty-text="tableClue" :data="returnData" style="width: 100%">
+        <el-table-column type="selection" width="55"></el-table-column>
+        <el-table-column type="index" label="序号" width="150"></el-table-column>
+        <el-table-column label="资金转出交易主体" v-if="form.flwoDTO.countType === '1'">
+          <template slot-scope="scope">
+            <div>{{scope.row.outflowName}}</div>
+            <div>{{scope.row.outflowID}}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="资金转入交易主体" v-if="form.flwoDTO.countType === '1'">
+          <template slot-scope="scope">
+            <div>{{scope.row.inflowName}}</div>
+            <div>{{scope.row.inflowID}}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="资金转出账户" v-if="form.flwoDTO.countType === '0'">
+          <template slot-scope="scope">
+            <div>{{scope.row.outflowName}}</div>
+            <div>{{scope.row.outflowAccount}}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="资金转入账户" v-if="form.flwoDTO.countType === '0'">
+          <template slot-scope="scope">
+            <div>{{scope.row.inflowName}}</div>
+            <div>{{scope.row.inflowAccount}}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="合计笔数(笔)" prop="totalNum" ></el-table-column>
+        <el-table-column label="合计金额(万元)" prop="amount" ></el-table-column>
+        
+        
+      </el-table>
+      
+      <!-- 实际统计结果 账户 -->
+      <el-table v-show="initType&&outflowAccountType" :empty-text="tableClue" :data="returnData" style="width: 100%" @sort-change="tabSortChange" v-loading="loadingTab" :element-loading-text="loadingStr" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55"></el-table-column>
+        <el-table-column type="index" label="序号" width="150"></el-table-column>
+        <el-table-column label="资金转出账户" show-overflow-tooltip key='1'>
+          <template slot-scope="scope">
+            <div>{{scope.row.outflowName}}</div>
+            <div>{{scope.row.outflowAccount}}</div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="资金转入账户" show-overflow-tooltip key='2'>
+          <template slot-scope="scope">
+            <div>{{scope.row.inflowName}}</div>
+            <div>{{scope.row.inflowAccount}}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="合计笔数(笔)" prop="totalNum" sortable="custom" key='3'>
+          <template slot-scope="scope">
+            <span v-if="scope.row.totalNum===null">--</span>
+            <span v-else>{{scope.row.totalNum}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="合计金额(万元)" prop="amount" sortable="custom" key='4'>
+          <template slot-scope="scope">
+            <span v-if="scope.row.amount===null">--</span>
+            <span v-else>{{scope.row.amount}}</span>
+          </template>
+        </el-table-column>       
+      </el-table>
+      
+      <!-- 实际统计结果 主体 -->
+      <el-table v-show="initType&&outflowAccountType === false" :data="returnData" style="width: 100%" @selection-change="handleSelectionChange" @sort-change="tabSortChange" v-loading="loadingTab" :element-loading-text="loadingStr" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" width="55"></el-table-column>
+        <el-table-column type="index" label="序号" width="150"></el-table-column>
+        
+        <el-table-column label="资金转出交易主体" show-overflow-tooltip key='5'>
+          <template slot-scope="scope">
+            <div>{{scope.row.outflowName}}</div>
+            <div>{{scope.row.outflowID}}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="资金转入交易主体" show-overflow-tooltip key='6'>
+          <template slot-scope="scope">
+            <div>{{scope.row.inflowName}}</div>
+            <div>{{scope.row.inflowID}}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="合计笔数(笔)" prop="totalNum" key='7'>
+          <template slot-scope="scope">
+            <span v-if="scope.row.totalNum===null">--</span>
+            <span v-else>{{scope.row.totalNum}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="合计金额(万元)" prop="amount" key='8'>
+          <template slot-scope="scope">
+            <span v-if="scope.row.amount===null">--</span>
+            <span v-else>{{scope.row.amount}}</span>
+          </template>
+        </el-table-column>
+        
+        
+      </el-table>
+      <!-- start -->
+
+      <div class="block">
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNums" :page-sizes="[10, 20, 30, 40]" :page-size="pageSizes" layout="total, sizes, prev, pager, next, jumper" :total="total" background>
+        </el-pagination>
+      </div>
+      <!-- <div v-if="!initType" style="width:100%;height:200px;"></div> -->
+      
+    </el-card>
+  </div>
+  <div v-if='!dataPermission||!initPermission' style="height:656px;position: relative;">
+    <div style="position: absolute;left: 50%; top: 50%; transform: translateX(-50%) translateY(-50%);text-align: center">
+      <i v-if='!dataPermission' class="el-icon-warning" style="font-size:65px;color: #E6A23C;"></i>
+      <p v-if='!dataPermission' style="height:40px;font-size:18px;letter-spacing: 2px" >您还未申请数据权限，请到"数据权限管理模块"申请!</p>
+    </div>
+  </div>
+  </div>
+</template>
+
+<script>
+  import { getToken } from '@/utils/auth'
+  import VeHistogram from 'v-charts/lib/histogram'
+  import Treeselect from '@riophae/vue-treeselect'
+  import { mapGetters } from 'vuex'
+  import {
+    // getIndustryFrist,
+    // getIndustrySecond,
+    getPermission
+  } from '@/api/sys-monitoringAnalysis/statisticForm/large'
+  import UploadExcelComponent from '@/components/UploadExcel/index.vue'
+  import { statistical, getDataFlag, getCacheData, exportApi } from '@/api/sys-monitoringAnalysis/statisticForm/statisticalInterface.js'
+  export default {
+    components: {
+      Treeselect,
+      VeHistogram,
+      UploadExcelComponent
+    },
+    data() {
+      const numJudgement = (rule, value, callback) => {
+        const num = /^\d{1,}$/
+        if (value === '') {
+          callback()
+        } else if (num.test(value) === false) {
+          callback(new Error('只能输入数字'))
+        } else {
+          callback()
+        }
+      }
+      return {
+        pickerOptions1: {
+          disabledDate: (time) => {
+            const d = new Date()
+            return time.getTime() > d.getTime()
+          }
+        },
+        allValues: [],
+        loadingTab: false,
+        loadingStr: '',
+        dataPermission: true,
+        initPermission: false,
+        typeDate: [],
+        dataKey: '',
+        exportKey: '',
+        oldOptions: [],
+        typeShow: false,
+        initType: false,
+        loading2: false,
+        initialType: true,
+        outflowAccountType: false,
+        outflowIDType: false,
+        inflowAccountType: false,
+        inflowIDType: false,
+        laid: '',
+        tableClue: ' ',
+        multipleSelection: [],
+        multipleSelection2: [],
+        value2: false,
+        value3: false,
+        isTime: true,
+        timer: null,
+        exportTime: true,
+        exportTimer: null,
+        exportAll: false,
+        dtoKey: '',
+        form_stratDate: '',
+        form_endDate: '',
+        fileList: [],
+        returnData: [],
+        form: {
+          str: '',
+          // levelType: '',
+          flwoDTO: {
+            countType: '0',
+            startDate: [],
+            endDate: '',
+            cratInit: '0',
+            cratRank: '100',
+            // ricdTypes: [],
+            account: '',
+            subjectName: '',
+            subjectID: '',
+            subjectType: '0',
+            orderBy: '',
+            subjectID1: '',
+            rowNums: [],
+            credNo: ''
+          },
+          file: ''
+        },
+        options: [],
+        total: 0,
+        pageNums: 1,
+        pageSizes: 10,
+        token: getToken(),
+        headers: {
+          Authorization: getToken()
+        },
+        title: [
+          '分支行所统计的范围为：该统计不分辖区，为全国范围内报告机构报送的大额、可疑报告的数据。',
+          '1、资金转入账户与转出账户之间的交易总金额(万元)：按转入账号和转出账号之间交易金额总数SUM(CRAT_RMB/10000)',
+          '2、资金转入账户与转出账户之间的交易总笔数：按转入账号和转出账号之间的交易笔数COUNT(TRADE_ID)'
+        ],
+        formsRules: {
+          'flwoDTO.countType': [
+            { required: true, message: '请选择统计类型', trigger: 'blur' }
+          ],
+          'flwoDTO.startDate': [
+            { required: true, message: '请选择统计时间', trigger: 'blur' }
+          ],
+          'flwoDTO.cratInit': [
+            { validator: numJudgement, trigger: 'blur' }
+          ],
+          'flwoDTO.cratRank': [
+            { validator: numJudgement, trigger: 'blur' }
+          ],
+          'flwoDTO.account': [
+            { required: true, message: '请输入交易账号', trigger: 'blur' }
+          ],
+          // 'levelType': [
+          //   { required: true, message: '请选择机构类型', trigger: 'blur' }
+          // ],
+          // 'flwoDTO.ricdTypes': [
+          //   { required: true, message: '请选择机构类型', trigger: 'change' }
+          // ],
+          'flwoDTO.subjectName': [
+            { required: true, message: '请输入交易主体名称', trigger: 'blur' }
+          ],
+          'flwoDTO.credNo': [
+            { required: true, message: '请输入交易主体证件号码', trigger: 'blur' }
+          ]
+        }
+      }
+    },
+    created() {
+      this.getPermission()
+    },
+    mounted() {
+      this.getData()
+    },
+    destroyed() {
+      this.$message.closeAll()
+    },
+    computed: {
+      ...mapGetters(['roles']),
+      formUrl() {
+        return '/monitor/count/flow/excel'
+      },
+      uploadUrl() {
+        return '/monitor/count/flow/' + this.form.flwoDTO.countType + '/fileValidate'
+      }
+    },
+    methods: {
+      tabSortChange(column) {
+        if (column.prop === 'totalNum') {
+          if (column.order === 'ascending') {
+            this.loadingStr = '排序中，请稍候……'
+            this.loadingTab = true
+            this.form.flwoDTO.orderBy = '1'
+            this.getFormDa()
+          }
+          if (column.order === 'descending') {
+            this.loadingStr = '排序中，请稍候……'
+            this.loadingTab = true
+            this.form.flwoDTO.orderBy = '2'
+            this.getFormDa()
+          }
+        }
+        if (column.prop === 'amount') {
+          if (column.order === 'ascending') {
+            this.loadingStr = '排序中，请稍候……'
+            this.loadingTab = true
+            this.form.flwoDTO.orderBy = '3'
+            this.getFormDa()
+          }
+          if (column.order === 'descending') {
+            this.loadingStr = '排序中，请稍候……'
+            this.loadingTab = true
+            this.form.flwoDTO.orderBy = '4'
+            this.getFormDa()
+          }
+        }
+      },
+      // getIndustry() {
+      //   if (this.form.levelType !== '') {
+      //     var params = { type: this.form.levelType }
+      //     getIndustrySecond(params)
+      //       .then(res => {
+      //         if (res.code === 200) {
+      //           this.typeDate = res.data
+      //           this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+      //           if (this.form.flwoDTO.ricdTypes.includes('ALL_SELECT')) {
+      //             this.typeDate.map(item => {
+      //               if (item.value === 'ALL_SELECT') {
+      //                 this.form.flwoDTO.ricdTypes = ['ALL_SELECT']
+      //                 item.disabled = false
+      //               } else {
+      //                 item.disabled = true
+      //               }
+      //             })
+      //           } else {
+      //             this.typeDate.map(item => {
+      //               item.disabled = false
+      //             })
+      //           }
+      //         }
+      //       })
+      //   } else {
+      //     this.typeDate = []
+      //     this.$message({
+      //       type: 'success',
+      //       showClose: true,
+      //       duration: 6000,
+      //       message: '请先选择义务机构类型'
+      //     })
+      //   }
+      // },
+      // isTypeShow() {
+      //   if (this.form.levelType) {
+      //     this.form.flwoDTO.ricdTypes = []
+      //     this.typeDate = []
+      //     getIndustrySecond({ type: this.form.levelType })
+      //       .then(res => {
+      //         if (res.code === 200) {
+      //           this.typeDate = res.data
+      //           this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+      //         }
+      //       })
+      //   }
+      // },
+      listSort(column, prop, order) {
+        console.log(column, 1)
+        console.log(prop, 2)
+        console.log(order, 3)
+      },
+      tradingStartingPoint(rule, value, callback) {
+        if (value) {
+          callback(new Error('最多不能超过20'))
+        } else {
+          callback()
+        }
+      },
+      transactionRanking(rule, value, callback) {
+        if (value > 1000) {
+          callback(new Error('最多不能超过1000'))
+        } else {
+          callback()
+        }
+      },
+      handleSelectionChange(val) {
+        this.multipleSelection = val
+      },
+      // 统计日期结果
+      dateChange() {
+        this.form_stratDate = this.form.flwoDTO.startDate[0]
+        this.form_endDate = this.form.flwoDTO.startDate[1]
+      },
+      // 下载模板
+      handleDownloadModels() {
+        location.href = `/monitor/count/flow/${this.form.flwoDTO.countType}/download?token=${this.token}`
+      },
+      // 获取机构类型
+      getData() {
+        // getIndustryFrist()
+        //   .then(res => {
+        //     if (res.code === 200) {
+        //       this.options = res.data
+        //       this.form.levelType = this.options[0].value
+        //       var params = { type: this.form.levelType }
+        //       getIndustrySecond(params)
+        //         .then(res => {
+        //           if (res.code === 200) {
+        //             this.typeDate = res.data
+        //             this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+        //           }
+        //         })
+        //     }
+        //   })
+        //   .catch(() => {})
+        // getIndustry()
+        //   .then(res => {
+        //     if (res.code === 200) {
+        //       this.options = res.data
+        //     }
+        //   })
+        //   .catch(() => {})
+      },
+      getFormDa() {
+        this.tableClue = ' '
+        if (this.form.flwoDTO.startDate[0].indexOf('-') || this.form.flwoDTO.startDate[1].indexOf('-')) {
+          var startDate = this.form.flwoDTO.startDate[0].split('-')
+          var endDate = this.form.flwoDTO.startDate[1].split('-')
+          startDate[1] = startDate[1] < 10 ? '0' + Number(startDate[1]) : startDate[1]
+          startDate[2] = startDate[2] < 10 ? '0' + Number(startDate[2]) : startDate[2]
+          endDate[1] = endDate[1] < 10 ? '0' + Number(endDate[1]) : endDate[1]
+          endDate[2] = endDate[2] < 10 ? '0' + Number(endDate[2]) : endDate[2]
+          this.form.flwoDTO.startDate[0] = startDate.join('')
+          this.form.flwoDTO.startDate[1] = endDate.join('')
+        }
+        const fd = new FormData()
+        fd.append('file', this.form.file)
+        fd.append('countType', this.form.flwoDTO.countType)
+        fd.append('startDate', this.form.flwoDTO.startDate !== '' ? this.form.flwoDTO.startDate[0] : '')
+        fd.append('endDate', this.form.flwoDTO.startDate !== '' ? this.form.flwoDTO.startDate[1] : '')
+        fd.append('cratInit', this.form.flwoDTO.cratInit)
+        fd.append('cratRank', Number(this.form.flwoDTO.cratRank))
+        // const obj = {}
+        // if (this.form.flwoDTO.ricdTypes.length === 0) {
+        //   obj.industrys = this.form.levelType
+        // } else {
+        //   obj.industrys = this.form.flwoDTO.ricdTypes
+        // }
+        // fd.append('industrys', obj.industrys)
+        fd.append('account', this.form.flwoDTO.account)
+        fd.append('subjectName', this.form.flwoDTO.subjectName)
+        fd.append('subjectID', this.form.flwoDTO.countType === '1' && this.form.flwoDTO.subjectType === '0' && this.value3 === false ? this.form.flwoDTO.credNo : this.form.flwoDTO.subjectID)
+        fd.append('subjectType', this.form.flwoDTO.countType === '0' ? '' : this.form.flwoDTO.subjectType)
+        fd.append('orderBy', this.form.flwoDTO.orderBy)
+        fd.append('pageNum', this.pageNums)
+        fd.append('pageSize', this.pageSizes)
+
+        statistical(fd).then(res => {
+          if (res) {
+            if (res.code === 200) {
+              this.dataKey = res.data.key
+              this.dtoKey = res.data.dtoKey
+              this.isTime = false
+            } else {
+              this.$message({
+                showClose: true,
+                duration: 6000,
+                message: res.message,
+                type: 'error'
+              })
+              this.loading2 = false
+              this.loadingTab = false
+            }
+          } else {
+            this.$message({
+              showClose: true,
+              duration: 6000,
+              message: '网络异常请稍候尝试请求',
+              type: 'error'
+            })
+            this.loading2 = false
+            this.loadingTab = false
+          }
+        })
+          .catch(function(error) {
+            this.loading2 = false
+            this.loadingTab = false
+            console.log(error)
+          })
+      },
+      // 统计按钮
+      handleQury(formName) {
+        this.$refs[formName].validate(valid => {
+          if (valid) {
+            this.loading2 = true
+            this.getFormDa()
+          } else {
+            return false
+          }
+        })
+      },
+      // 批量导出
+      exportStatistics() {
+        if (this.returnData.length === 0) {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: '无可导出数据',
+            type: 'warning'
+          })
+        } else {
+          this.$confirm('此操作将导出此统计条件下的所有数据, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            exportApi({ laId: this.dtoKey }).then(res => {
+              if (res.code === 200) {
+                this.exportKey = res.data
+                this.exportTime = false
+              }
+            })
+          }).catch()
+        }
+      },
+      // 导出已选数据
+      exportStaTwo() {
+        if (this.multipleSelection.length === 0) {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: '请至少选择一条数据',
+            type: 'warning'
+          })
+        } else {
+          const rowNums = []
+          this.multipleSelection.forEach(el => {
+            rowNums.push(el.rowNum)
+          })
+          exportApi({ laId: this.dtoKey, rowNums: rowNums.join(',') }).then(res => {
+            if (res.code === 200) {
+              this.exportKey = res.data
+              this.exportTime = false
+            }
+          })
+        }
+      },
+      // 查询条件清空
+      clearForm() {
+        this.returnData = []
+        this.initType = false
+        this.total = 0
+        this.value3 = false
+        // this.form.levelType = ''
+        this.typeShow = false
+        this.form.flwoDTO.countType = ''
+        this.form.flwoDTO.startDate = ''
+        // this.form.flwoDTO.ricdTypes = []
+        this.form.flwoDTO.cratInit = 0
+        this.form.flwoDTO.cratRank = 0
+        this.form.file = ''
+        // this.$refs.searchForm.resetFields()
+        setTimeout(() => {
+          this.$refs.searchForm.clearValidate()
+        }, 0)
+      },
+      handleChange() {
+        this.returnData = []
+        this.initType = false
+        this.total = 0
+        setTimeout(() => {
+          this.$refs.searchForm.clearValidate(['flwoDTO.startDate', 'flwoDTO.cratInit', 'flwoDTO.cratRank', 'flwoDTO.account', 'flwoDTO.subjectName', 'flwoDTO.credNo'])
+        }, 0)
+        this.getData()
+      },
+      handleSizeChange(val) {
+        this.pageSizes = val
+        this.loadingStr = '正在统计中，请稍候……'
+        this.loadingTab = true
+        this.getFormDa()
+      },
+      handleCurrentChange(val) {
+        this.pageNums = val
+        this.loadingStr = '正在统计中，请稍候……'
+        this.loadingTab = true
+        this.getFormDa()
+      },
+      // 校验文件大小是否正确
+      beforeUpload(file) {
+        this.form.file = file
+        const isLt2M = file.size / 1024 / 1024 < 10
+        if (!isLt2M) {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: '上传文件大小不能超过 10MB!',
+            type: 'error'
+          })
+        }
+        return isLt2M
+      },
+      // 导入模板后判断校验结果
+      successUpload(response, file, fileList) {
+        if (response.code === 200) {
+          this.$message({
+            message: '上传成功',
+            type: 'success'
+          })
+        } else {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: response.message,
+            type: 'error'
+          })
+          this.form.file = ''
+          this.$refs.upload.clearFiles()
+          this.$refs.upload2.clearFiles()
+          this.$refs.upload3.clearFiles()
+        }
+      },
+      // changeOptions(val) {
+      //   this.allValues = []
+      //   // 保留所有值
+      //   for (const item of this.typeDate) {
+      //     this.allValues.push(item.value)
+      //   }
+      //   if (val.includes('ALL_SELECT')) {
+      //     this.typeDate.map(item => {
+      //       if (item.value === 'ALL_SELECT') {
+      //         this.form.flwoDTO.ricdTypes = ['ALL_SELECT']
+      //         item.disabled = false
+      //       } else {
+      //         item.disabled = true
+      //       }
+      //     })
+      //   } else {
+      //     this.typeDate.map(item => {
+      //       item.disabled = false
+      //     })
+      //   }
+      // 用来储存上一次的值，可以进行对比
+      // const oldVal = this.oldOptions.length === 1 ? this.oldOptions[0] : []
+
+      // 若是全部选择
+      // if (val.includes('ALL_SELECT')) this.form.flwoDTO.ricdTypes = allValues
+
+      // 取消全部选中 上次有 当前没有 表示取消全选
+      // if (oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) this.form.flwoDTO.ricdTypes = []
+
+      // 点击非全部选中 需要排除全部选中 以及 当前点击的选项
+      // 新老数据都有全部选中
+      // if (oldVal.includes('ALL_SELECT') && val.includes('ALL_SELECT')) {
+      //   const index = val.indexOf('ALL_SELECT')
+      //   val.splice(index, 1) // 排除全选选项
+      //   this.form.flwoDTO.ricdTypes = val
+      // }
+
+      // 全选未选 但是其他选项全部选上 则全选选上 上次和当前 都没有全选
+      // if (!oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) {
+      //   if (val.length === allValues.length - 1) this.form.flwoDTO.ricdTypes = ['ALL_SELECT'].concat(val)
+      // }
+
+      // 储存当前最后的结果 作为下次的老数据
+      // this.oldOptions[0] = this.form.flwoDTO.ricdTypes
+      // },
+      clearOptions() {
+        this.typeDate = []
+        // this.form.flwoDTO.ricdTypes = []
+      },
+      getPermission() {
+        getPermission().then(res => {
+          if (this.roles === 'branch' && !res.data.includes('ZHZJLXFX')) {
+            this.dataPermission = false
+          }
+          this.initPermission = true
+        })
+      }
+    },
+    watch: {
+      isTime(val) {
+        if (!val) {
+          this.timer = setInterval(() => {
+            getDataFlag(this.dataKey).then(res => {
+              if (res.code === 200) {
+                this.isTime = res.data
+              }
+            })
+          }, 3000)
+        } else {
+          getCacheData(this.dataKey).then(res => {
+            if (res.code === 200) {
+              this.returnData = []
+              this.loading2 = false
+              this.loadingTab = false
+              if (this.form.flwoDTO.countType === '0') {
+                this.outflowAccountType = true
+              }
+              if (this.form.flwoDTO.countType === '1') {
+                this.outflowAccountType = false
+              }
+              this.laid = res.data.laId
+              this.returnData = res.data.list
+              if (this.returnData.length > 0) {
+                this.initType = true
+              } else {
+                this.tableClue = '暂无数据'
+                this.$alert('暂无数据', '提示', {
+                  confirmButtonText: '确定'
+                })
+              }
+              this.total = res.data.total
+              this.initialType = false
+            }
+          })
+          clearInterval(this.timer)
+        }
+      },
+      exportTime(val) {
+        if (!val) {
+          this.timer = setInterval(() => {
+            getDataFlag(this.exportKey).then(res => {
+              if (res.code === 200) {
+                this.exportTime = res.data
+              }
+            })
+          }, 2000)
+        } else {
+          location.href = '/caml-query/count/flow/cache/export/' + this.exportKey + '?token=' + this.token
+          clearInterval(this.timer)
+        }
+      },
+      'form.flwoDTO.subjectType': function(ol, nl) {
+        if (nl !== ol) {
+          this.form.flwoDTO.subjectName = ''
+          this.form.flwoDTO.subjectID = ''
+          this.form.flwoDTO.credNo = ''
+          this.$refs.searchForm.clearValidate(['flwoDTO.subjectName', 'flwoDTO.credNo'])
+        }
+      },
+      value2: function(ol, nl) {
+        if (nl !== ol) {
+          this.form.flwoDTO.account = ''
+          this.$refs.searchForm.clearValidate(['flwoDTO.account'])
+        }
+      },
+      'form.flwoDTO.countType': function(ol, nl) {
+        if (nl !== ol) {
+          this.form.file = ''
+          this.form.flwoDTO.account = ''
+          this.form.flwoDTO.subjectName = ''
+          this.form.flwoDTO.subjectID = ''
+          this.form.flwoDTO.credNo = ''
+          this.form.flwoDTO.startDate = ''
+          // this.form.flwoDTO.ricdTypes = []
+          this.form.flwoDTO.cratInit = 0
+          this.form.flwoDTO.cratRank = 100
+          // this.form.levelType = ''
+          this.$refs.searchForm.clearValidate()
+          // this.$refs.searchForm.resetFields()
+  
+          this.$refs.upload.clearFiles()
+          this.$refs.upload2.clearFiles()
+          this.$refs.upload3.clearFiles()
+          console.log(this.$refs)
+        }
+      },
+      value3: function(ol, nl) {
+        if (this.form.flwoDTO.subjectType === '0' && ol === true) {
+          this.form.flwoDTO.credNo = ''
+          this.$refs.searchForm.clearValidate(['flwoDTO.credNo'])
+        }
+        if (this.form.flwoDTO.subjectType === '1' && ol === true) {
+          this.form.flwoDTO.subjectName = ''
+          this.form.flwoDTO.credNo = ''
+          this.form.flwoDTO.subjectID = ''
+          this.$refs.searchForm.clearValidate(['flwoDTO.subjectName', 'flwoDTO.credNo'])
+        }
+      }
+    }
+  }
+</script>
+
+<style src="@riophae/vue-treeselect/dist/vue-treeselect.min.css"></style>
+<style lang="scss">
+
+  .sequencewrap {
+    .fl {
+      float: left;
+      text-align: center;
+    }
+    .title {
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .addtype {
+      .el-form-item__label {
+        padding-right: 0;
+      }
+    }
+    .btnalign {
+      text-align: right;
+      margin-bottom: 15px;
+    }
+    .custOptions > div{
+    width:80%;
+    word-break:normal;
+    display:block;
+    white-space:pre-wrap;
+    overflow:hidden;
+    }
+    .el-table thead tr th>.cell{
+    white-space:normal !important;
+  } 
+  }
+</style>

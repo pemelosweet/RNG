@@ -1,0 +1,851 @@
+<template>
+  <div
+    class="interfileManage"
+    v-loading="loading"
+    element-loading-text="拼命加载中"
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.1)"
+  >
+    <el-card class="box-card" type="card">
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>国际情报文件管理</span>
+        <el-button
+          style="float:right"
+          type="text"
+          @click="addFile"
+          v-if="powers&&this.activeName==='first'"
+        >录入情报</el-button>
+        <el-button
+          style="float:right"
+          type="text"
+          @click="addFile2"
+          v-if="powers&&this.activeName==='second'"
+        >新增情报</el-button>
+      </div>
+      <div class="is-inbox-content">
+        <el-tabs v-model="activeName" @tab-click="handleClick">
+    <el-tab-pane label="接收情报" name="first">
+       <el-form
+          :model="formInline"
+          ref="formInline"
+          :rules="rulesForm"
+          label-width="100px"
+        >
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="文件类型："
+                prop="fileType"
+              >
+                <el-select
+                  v-model="formInline.fileType"
+                  placeholder="请选择"
+                  class="w100"
+                  clearable
+                >
+                  <el-option
+                    label="协查请求函"
+                    value="0"
+                  ></el-option>
+                  <el-option
+                    label="价值反馈表"
+                    value="1"
+                  ></el-option>
+                  <el-option
+                    label=" 协查反馈函"
+                    value="2"
+                  ></el-option>
+                  <el-option
+                    label="通报"
+                    value="3"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+              <el-col :span="8">
+              <el-form-item
+                label="我方索引号："
+                prop="indexNumber"
+              >
+                <el-input
+                  v-model="formInline.indexNumber"
+                  maxlength="50"
+                  placeholder="请输入索引号,最长50字符"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+         
+            <el-col :span="8">
+              <el-form-item
+                label="外方索引号："
+                prop="foreignIndex"
+              >
+                <el-input
+                  v-model="formInline.foreignIndex"
+                  maxlength="50"
+                  placeholder="请输入索引号,最长50字符"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="主题："
+                prop="subject"
+              >
+                <el-input
+                  v-model="formInline.subject"
+                  maxlength="50"
+                  placeholder="请输入主题,最长50字符"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+             <el-col :span="8">
+              <el-form-item
+                label="紧急程度："
+                prop="urgencyDegree"
+                class="w100"
+              >
+                <el-select
+                  v-model="formInline.urgencyDegree"
+                  filterable
+                  placeholder="请选择"
+                  clearable
+                  class="w100"
+                >
+                  <el-option
+                    v-for="(item,idx) in urgencyDegreeArr"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                    :key="idx"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+           
+            <el-col :span="8">
+              <el-form-item
+                label="接收日期："
+                prop="dateValue"
+              >
+                <el-date-picker
+                  v-model="formInline.dateValue"
+                  type="daterange"
+                  value-format="yyyy-MM-dd"
+                  align="right"
+                  unlink-panels
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                >
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row  :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="国家名："
+                prop="nationas"
+              >
+                <el-select
+                  v-model="formInline.nationas"
+                  filterable
+                  placeholder="请选择"
+                  class="w100"
+                  clearable
+                >
+                  <el-option
+                   :label="item.text" 
+                   :value="item.code"
+                    v-for="(item, index) in countryOptions"
+                    :key="index"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+ <el-col :span="8">
+              <el-form-item
+                label="状态："
+                prop="approvalStatus"
+                class="w100"
+              >
+                <el-select
+                  v-model="formInline.approvalStatus"
+                  filterable
+                  placeholder="请选择"
+                  clearable
+                  class="w100"
+                >
+                  <el-option
+                    v-for="(item,idx) in approvalStatusOption"
+                    :label="item.label"
+                    :value="item.label"
+                    :key="idx"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+        <el-row style="padding-bottom:10px">
+          <el-col
+            :span="12"
+            style="text-align:right;float:right"
+          >
+            <el-button
+              type="primary"
+              @click="onSubmit"
+            >查 询</el-button>
+            <el-button
+              type="primary"
+               plain
+              @click="resetForm('formInline')"
+            >清 空</el-button>
+          </el-col>
+        </el-row>
+<div class="taleBlock">
+ <el-table
+          :data="tableData"
+          @selection-change="handleSelectionChange"
+          tooltip-effect="dark"
+          style="width: 100%"
+        >
+          <!-- <el-table-column type="selection" width="55"></el-table-column> -->
+          <el-table-column
+            type="index"
+            label="序号"
+            width="60"
+            fixed
+          ></el-table-column>
+          <el-table-column
+          sortable
+            prop="subject"
+            label="主题"
+            min-width="140"
+            show-overflow-tooltip
+          >
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                @click="handleDetail(scope)"
+              >{{scope.row.subject}}</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column
+          sortable
+            prop="nationas"
+            label="国家名"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+          sortable
+            prop="fileType"
+            label="文件类型"
+            min-width="120"
+            
+          >
+            <template slot-scope="scope">
+              {{scope.row.fileType | filtersFiletype}}
+            </template>
+          </el-table-column>
+          <el-table-column
+          sortable
+            prop="ourIndex"
+            label="我方索引号"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+          sortable
+            prop="foreignIndex"
+            label="外方索引号"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+          sortable
+            prop="urgencyDegree"
+            label="紧急程度"
+            min-width="100"
+            
+          >
+            <template slot-scope="scope">
+              {{scope.row.urgencyDegree }}
+            </template>
+          </el-table-column>
+          <el-table-column
+          sortable
+            prop="receiveDate"
+            label="接收日期"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+          sortable
+            prop="approvalStatus"
+            label="状态"
+            min-width="120"
+            show-overflow-tooltip
+          >
+            <template slot-scope="scope">
+              {{ scope.row.approvalStatus=== '7' || scope.row.approvalStatus=== '8' ? '结束' :  scope.row.approvalStatus}}
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="操作"
+            width="180"
+            fixed="right"
+          >
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                :disabled="scope.row.approvalStatus === '待处理'"
+                @click="handleViewPress(scope)"
+              >查看</el-button>
+              <el-button
+                type="text"
+                v-if="scope.row.subject!=='后端数据录入'&&powers&&!(scope.row.intelBusinessType==='0'||scope.row.intelBusinessType==='1')"
+                :disabled="scope.row.updateFlag === '1'"
+                @click="handleGo(scope)"
+              >发起流程</el-button>
+              <el-button
+                  v-if="scope.row.subject!=='后端数据录入'&&powers&&(scope.row.intelBusinessType==='0'||scope.row.intelBusinessType==='1')"
+                type="text"
+                :disabled="scope.row.approvalStatus !== '待处理'"
+                @click="handleGo(scope)"
+              >编辑</el-button>
+               <el-button
+                 :disabled="scope.row.oneClick"
+                v-if="scope.row.fileType==='0'&& scope.row.approvalStatus=== '7'&&scope.row.intelBusinessType==='0'"
+                type="text"
+                @click="handleSends(scope)"
+              >反馈</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+</div>
+        <el-pagination
+        v-if="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-sizes="[10, 20, 30, 40]"
+          :page-size="pageInfo.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          background
+        >
+        </el-pagination>
+    </el-tab-pane>
+    <el-tab-pane label="发送情报" name="second">
+          <mysecond ref="mysecond"/>
+      </el-tab-pane>
+  </el-tabs>
+      </div>
+
+      <!--选择流程弹框-->
+      <el-dialog
+        title="选择流程"
+        :visible.sync="dialogPathVisible"
+      >
+        <el-table :data="pathTableList">
+          <el-table-column
+            type="index"
+            label="序号"
+            min-width="180"
+          ></el-table-column>
+          <el-table-column
+            prop="flowexName"
+            label="流程"
+            min-width="180"
+          ></el-table-column>
+          <el-table-column
+            label="操作"
+            width="180"
+            min-width="180"
+          >
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                @click="handleProccess(scope)"
+              >发起流程</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <!-- <span style="color:red">备注：实际从国际业务网用户端发起流程</span> -->
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import {
+  getCountry
+} from '@/api/sys-monitoringAnalysis/cueManage/interFileManage/index.js'
+import mysecond from './mysecond'
+// import { country } from '@/api/common/citys'
+import { getList, getPower } from '@/api/sys-monitoringAnalysis/cueManage/interFileManage/index.js'
+import { MYgetsourceBusinessArr } from '@/api/sys-monitoringAnalysis/cueManage/levelConfiguration.js'
+import { ValidQueryInput } from '@/utils/formValidate.js'
+export default {
+  components: {
+    mysecond
+  },
+  data() {
+    return {
+      arrDegree: [],
+      interAderrss: '',
+      activeName: 'first',
+      loading: false,
+      powers: false,
+      searchFlag: false,
+      formInline: {
+        urgencyDegree: '',
+        foreignIndex: '',
+        fileType: '',
+        nationas: '',
+        approvalStatus: '',
+        subject: '',
+        dateValue: '',
+        indexNumber: ''
+      },
+      urgencyDegreeArr: [],
+      tableData: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      flowObjparam: {}, // 工作流发起需要的参数
+      total: 0,
+      rulesForm: {
+        subject: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }
+        ],
+        indexNumber: [
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }
+        ],
+        foreignIndex: [
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      //   multipleSelectionArr: [],
+      //   multipleSelection: '', // table 要求单选选
+      pathTableList: [
+        // { flowexId: '0', flowexName: '国际情报文件报中心领导流程' },
+        // { flowexId: '1', flowexName: '国际协查反馈函报中心领导流程' }
+      ],
+      dialogPathVisible: false,
+      countryOptions: [],
+      approvalStatusOption: [
+        {
+          label: '待处理'
+        },
+        {
+          label: '国际处负责人签批处理单'
+        },
+        {
+          label: '综合处登记处理单'
+        },
+        {
+          label: '中心领导签批处理单'
+        },
+        {
+          label: '分办处室负责人阅办'
+        },
+        {
+          label: '分办处室业务人员办理'
+        },
+        {
+          label: '分办处室负责人签批办理结果'
+        },
+        {
+          label: '综合处登记办理结果'
+        },
+        {
+          label: '中心领导签批办理结果'
+        },
+        {
+          label: '国际处负责人阅办'
+        },
+        {
+          label: '国际处业务人员阅办'
+        },
+        {
+          label: '国际处业务人员起草处理单'
+        },
+        {
+          label: '综合处登记签批结果'
+        },
+        { label: '已发送' },
+        {
+          label: '结束'
+        },
+        {
+          label: '发起人收回'
+        }
+      ]
+    }
+  },
+  filters: {
+    filtersFiletype(val) {
+      switch (val) {
+        case '0':
+          return '协查请求函'
+        case '1':
+          return '价值反馈表'
+        case '2':
+          return ' 协查反馈函'
+        case '3':
+          return '通报'
+        case '4':
+          return '其他'
+        default:
+          break
+      }
+    },
+    filtersUrgencyDegree(val) {
+      // console.log(this.urgencyDegreeArr, 222)
+      // this.urgencyDegreeArr.forEach(el => {
+      //   if (el.codeId === val) {
+      //     return el.codeName
+      //   }
+      // })
+      // switch (val) {
+      //   case '0':
+      //     return '紧急'
+      //   case '1':
+      //     return '普通'
+      //   default:
+      //     break
+      // }
+    }
+  },
+  mounted() {
+    this.interAderrss = window.international
+    if (this.$route.params.activeName === 'second') {
+      this.activeName = this.$route.params.activeName
+      this.$refs.mysecond.getData()
+    } else {
+      this.getData()
+    }
+    this.init()
+  },
+  methods: {
+    // tabs切换
+    handleClick(tab, event) {
+      if (tab.index === '0') {
+        this.getData()
+      } else {
+        this.$refs.mysecond.getData()
+      }
+    },
+    init() {
+      getPower().then(res => {
+        if (res.code === 200) {
+          if (res.data.split(',').includes('operationalAnalyst')) {
+            this.powers = true
+          } else {
+            this.powers = false
+          }
+        }
+      })
+      this.getCountry()
+      this.getRestDictionary()
+    },
+    getRestDictionary() {
+      const page = {
+        pageNum: '1',
+        pageSize: '999'
+      }
+      MYgetsourceBusinessArr(page, '1').then(res => {
+        if (res.code === 200) {
+          this.urgencyDegreeArr = res.data.list
+          this.urgencyDegreeArr.forEach(is => {
+            this.arrDegree.push(is.codeId)
+          })
+          console.log(this.arrDegree, '93939')
+        }
+      }).catch(() => {
+        this.loadingA = false
+      })
+    },
+    // 查看流程
+    handleViewPress(scope) {
+      const titleCode =
+        scope.row.intelBusinessType === '0'
+          ? '国际情报文件报中心领导流程'
+          : '国际协查反馈函报中心领导流程'
+      this.$router.push({
+        name: 'cueManage_interIntelligence',
+        query: {
+          mailId: scope.row.mailId,
+          title: titleCode,
+          intelBusinessType: scope.row.intelBusinessType,
+          fileType: scope.row.fileType,
+          pageFlag: 'lookFlow',
+          updateFlag: scope.row.updateFlag,
+          theme: scope.row.subject
+        }
+      })
+    },
+
+    // 发起流程 - 打开弹窗
+    handleGo(scope) {
+      this.flowObjparam = scope.row
+      switch (scope.row.intelBusinessType) {
+        case '0':
+          this.pathTableList = [{ flowexId: '0', flowexName: '国际情报文件报中心领导流程' }]
+          break
+        case '1':
+          this.pathTableList = [{ flowexId: '1', flowexName: '国际协查反馈函报中心领导流程' }]
+          break
+        default:
+          this.pathTableList = [
+            { flowexId: '0', flowexName: '国际情报文件报中心领导流程' },
+            { flowexId: '1', flowexName: '国际协查反馈函报中心领导流程' }
+          ]
+          break
+      }
+      this.dialogPathVisible = true
+    },
+    // 反馈
+    handleSends(scope) {
+      this.tableData.forEach(el => {
+        if (el.mailId === scope.row.mailId) {
+          el.oneClick = true
+        }
+      })
+      window.open(`${this.interAderrss}?type=monitor&mailId=${scope.row.mailId}`, '_blank')
+      // location.href = `${this.interAderrss}?type=monitor&mailId=${scope.row.mailId}`
+      // location.href = `http://11.129.93.1:61450/#/outbox/fileTransfer?type=monitor&mailId=${scope.row.mailId}`
+    },
+    // 发起流程
+    handleProccess(scope) {
+      console.log(this.flowObjparam.fileType, '3sssssssssdddddddddd')
+      this.$router.push({
+        name: 'cueManage_interIntelligence',
+        query: {
+          flowexId: scope.row.flowexId,
+          mailId: this.flowObjparam.mailId,
+          title: scope.row.flowexName,
+          fileType: this.flowObjparam.fileType,
+          pageFlag: 'goflow',
+          updateFlag: this.flowObjparam.updateFlag,
+          theme: this.flowObjparam.subject
+        }
+      })
+    },
+
+    // 查看列表详情
+    handleDetail(scope) {
+      this.$router.push({
+        name: 'cueManage_newFile',
+        query: {
+          mailId: scope.row.mailId,
+          routeFlag: 'detial',
+          pageFlag: 'lookFlow',
+          title: '详情'
+        }
+      })
+    },
+
+    // 接受情报新增
+    addFile() {
+      this.$router.push({
+        name: 'cueManage_newFile',
+        query: {
+          routeFlag: 'add',
+          title: '新增'
+        }
+      })
+    },
+    // 发送情报的新增
+    addFile2() {
+      this.$router.push({
+        name: 'cueManage_newFiles',
+        query: {
+          routeFlag: 'add',
+          title: '新增情报'
+        }
+      })
+    },
+    // 多选
+    handleSelectionChange(val) {
+      this.multipleSelectionArr = val
+    },
+
+    // 获取列表
+    getData() {
+      if (sessionStorage.getItem('searchData')) {
+        const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+        if (searchData.pageName === this.$route.name && searchData.gjifReview) {
+          this.pageInfo = searchData.pageInfo
+          this.formInline = searchData.searchFrom
+          this.searchFlag = true
+        }
+      }
+      if (this.searchFlag) {
+        const obj1 = {
+          urgencyDegree: this.formInline.urgencyDegree,
+          foreignIndex: this.formInline.foreignIndex,
+          fileType: this.formInline.fileType,
+          nationas: this.formInline.nationas,
+          approvalStatus: this.formInline.approvalStatus,
+          subject: this.formInline.subject,
+          startScanTime: this.formInline.dateValue ? this.formInline.dateValue[0] : '',
+          endScanTime: this.formInline.dateValue ? this.formInline.dateValue[1] : '',
+          indexNumber: this.formInline.indexNumber,
+          pageNum: this.pageInfo.pageNum,
+          pageSize: this.pageInfo.pageSize,
+          receiver: 'CHN',
+          secret: 1
+        }
+        this.loading = true
+        getList(obj1)
+          .then(res => {
+            this.loading = false
+            if (res.code === 200) {
+              res.data.list.forEach(el => {
+                el.oneClick = false
+                if (this.arrDegree && this.arrDegree.indexOf(el.urgencyDegree) === -1) {
+                  el.urgencyDegree = ' '
+                } else {
+                  this.urgencyDegreeArr.forEach(els => {
+                    if (el.urgencyDegree === els.codeId) {
+                      el.urgencyDegree = els.codeName
+                    }
+                  })
+                }
+              })
+              this.tableData = res.data.list
+              this.total = res.data.total
+              const searchData = {
+                pageName: this.$route.name,
+                pageInfo: this.pageInfo,
+                searchFrom: this.formInline
+              }
+              sessionStorage.setItem('searchData', JSON.stringify(searchData))
+            }
+          })
+          .catch(() => {
+            this.loading = false
+          })
+      } else {
+        const obj2 = {
+          pageNum: this.pageInfo.pageNum,
+          pageSize: this.pageInfo.pageSize,
+          receiver: 'CHN',
+          secret: 1
+        }
+        this.loading = true
+        getList(obj2)
+          .then(res => {
+            this.loading = false
+            if (res.code === 200) {
+              res.data.list.forEach(el => {
+                el.oneClick = false
+                if (this.arrDegree && this.arrDegree.indexOf(el.urgencyDegree) === -1) {
+                  el.urgencyDegree = ' '
+                } else {
+                  this.urgencyDegreeArr.forEach(els => {
+                    if (el.urgencyDegree === els.codeId) {
+                      el.urgencyDegree = els.codeName
+                    }
+                  })
+                }
+              })
+              this.tableData = res.data.list
+              console.log(this.tableData, 222222222)
+
+              this.total = res.data.total
+              const searchData = {
+                pageName: this.$route.name,
+                pageInfo: this.pageInfo,
+                searchFrom: this.formInline
+              }
+              sessionStorage.setItem('searchData', JSON.stringify(searchData))
+            }
+          })
+          .catch(() => {
+            this.loading = false
+          })
+      }
+    },
+
+    // 查询
+    onSubmit() {
+      this.$refs.formInline.validate(valid => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.searchFlag = true
+          this.getData()
+        }
+      })
+    },
+
+    // 清空
+    resetForm(formName) {
+      this.searchFlag = false
+      this.$refs[formName].resetFields()
+      this.pageInfo.pageNum = 1
+      // this.getData()
+    },
+
+    // 获取国家
+    getCountry() {
+      getCountry().then(res => {
+        if (res.code === 200) {
+          this.countryOptions = res.data
+        }
+      })
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handlePathSizeChange(val) {
+      // this.pageInfo.pageSize = val
+      // this.getData()
+    },
+    handlePathCurrentChange() {},
+    deleteLine(scope) {
+      this.$confirm('是否确定删除？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(res => {})
+        .catch()
+    }
+  }
+}
+</script>
+
+<style  lang="scss">
+.interfileManage {
+  .w100 {
+    width: 100%;
+  }
+  .el-date-editor--daterange {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

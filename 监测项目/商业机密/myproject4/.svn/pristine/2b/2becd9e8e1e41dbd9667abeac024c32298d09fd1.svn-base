@@ -1,0 +1,2162 @@
+<template>
+  <div
+    class="judgedClues_manage"
+    v-loading="loading"
+    element-loading-spinner="el-icon-loading"
+    element-loading-text="拼命加载中"
+    element-loading-background="rgba(0, 0, 0, 0.1)"
+  >
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>查询</span>
+        <div style="float:right">
+          <!-- <router-link to="add">
+            <span style="color:#409EFF">新建线索</span>
+          </router-link>-->
+        </div>
+      </div>
+
+      <!-- 填报历史 表单搜索条件模块 -->
+      <div class="historyBlock">
+        <div class="searchBlock">
+          <el-form :model="form" label-width="120px" ref="searchForm">
+            <template v-if="toggleSearch">
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索名称："
+                    prop="clueName"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueName"
+                      placeholder="请输入线索名称,最长50字符"
+                      
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索编号： "
+                    prop="clueNo"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueNo"
+                      placeholder="请输入线索编号,最长50字符"
+                      
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-button type="primary" @click="onSubmit">查 询</el-button>
+                  <el-button  type="primary"
+                  plain @click="cleanUp">清 空</el-button>
+                  <el-button type="text" icon="el-icon-arrow-down" @click="toggleSearch=false">展开</el-button>
+                </el-col>
+              </el-row>
+            </template>
+
+            <template v-else>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索名称："
+                    prop="clueName"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueName"
+                      placeholder="请输入线索名称,最长50字符"
+                      
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索编号： "
+                    prop="clueNo"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueNo"
+                      placeholder="请输入线索编号,最长50字符"
+                      
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="线索状态：" prop="clewState" >
+                    <el-select v-model="form.clewState" placeholder="请选择" clearable>
+                      <el-option
+                        v-for="(item, index) in form.clueData"
+                        :key="index"
+                        :label="item.label"
+                        :value="item.value"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                        <el-form-item
+                    label=" 分支机构 ："
+                    prop="ricd"
+                  >
+                    <el-select
+                      style="width:100%"
+                      v-model="form.ricd"
+                      placeholder="请选择机构"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item,index) in localBankArr"
+                        :key="index"
+                        :value="item.codeId"
+                        :label="item.codeName"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                  <!-- <el-form-item
+                    label=" 分支机构："
+                    prop="ricd"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.ricd"
+                      placeholder="请输入分支行名称,最长50字符"
+                      
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item> -->
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item
+                    label="审核人： "
+                    prop="auditingUser"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.auditingUser"
+                      placeholder="请输入审核人,最长20字符"
+                      
+                      maxlength="20"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="审核日期：" prop="updateDate">
+                    <el-date-picker
+                      v-model="form.updateDate"
+                      type="daterange"
+                      range-separator="至"
+                      value-format="yyyy-MM-dd"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item
+                    label="分析员："
+                    prop="updateUser"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.updateUser"
+                      placeholder="请输入分析员,最长20字符"
+                      
+                      maxlength="20"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item label="分析处室：" prop="createDate">
+                    <el-select v-model="form.createDate" placeholder="请选择" clearable>
+                      <el-option
+                        v-for="(item, index) in AnalyticalData"
+                        :key="index"
+                        :value="item.value"
+                        :label="item.label"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item label="分析日期：" prop="analysisDate">
+                    <el-date-picker
+                      v-model="form.analysisDate"
+                      type="daterange"
+                      value-format="yyyy-MM-dd"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item
+                    label="填报人： "
+                    prop="createUser"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.createUser"
+                      placeholder="请输入填报人,最长20字符"
+                      
+                      maxlength="20"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="提交日期：" prop="submitTime">
+                    <el-date-picker
+                      v-model="form.submitTime"
+                      type="daterange"
+                      value-format="yyyy-MM-dd"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item label="分发日期：" prop="distributeDate">
+                    <el-date-picker
+                      v-model="form.distributeDate"
+                      type="daterange"
+                      value-format="yyyy-MM-dd"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item label="分配日期：" prop="allocationDate">
+                    <el-date-picker
+                      v-model="form.allocationDate"
+                      type="daterange"
+                      value-format="yyyy-MM-dd"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="提交审核日期：" prop="submitCheckTime">
+                    <el-date-picker
+                      v-model="form.submitCheckTime"
+                      type="daterange"
+                      value-format="yyyy-MM-dd"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item label="办理日期：" prop="manageTime">
+                    <el-date-picker
+                      v-model="form.manageTime"
+                      type="daterange"
+                      value-format="yyyy-MM-dd"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item label="分析研判意见：" prop="analyseOpinion">
+                    <el-select v-model="form.analyseOpinion" placeholder="请选择" clearable>
+                      <el-option
+                        v-for="item in form.clueData1"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                      ></el-option>
+                    </el-select>
+                    <!-- <el-input v-model="form.analyseOpinionOther" v-if="form.analyseOpinion=='5'" placeholder="分析研判意见其他输入项"></el-input> -->
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item label="审核意见：" prop="reviewOpinion">
+                    <el-select v-model="form.reviewOpinion" placeholder="请选择" clearable> 
+                      <el-option
+                        v-for="(item, index) in form.clueData1"
+                        :key="'审核意见'+index"
+                        :label="item.label"
+                        :value="item.value"
+                      ></el-option>
+                    </el-select>
+                    <!-- <el-input v-model="form.reviewOpinionOther" v-if="form.reviewOpinion=='5'" placeholder="审核意见其他输入项"></el-input> -->
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item
+                    label="审核与分析研判是否意见一致："
+                    class="searchBlock_special_formIten"
+                    prop="roac"
+                  >
+                    <el-select v-model="form.roac" placeholder="请选择" clearable>
+                      <el-option label="是" value="1"></el-option>
+                      <el-option label="否" value="2"></el-option>
+                      <el-option label="其他" value="3"></el-option>
+                    </el-select>
+                    <!-- <el-input v-if="form.roac=='5'" v-model="form.roacOther" placeholder="审核与分析研判是否意见一致其他输入项"></el-input> -->
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item
+                    label="分析研判意见其他输入项："
+                    prop="analyseOpinionOther"
+                    class="searchBlock_special_formIten"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.analyseOpinionOther"
+                      placeholder="请输入对应意见的其他输入项,最长100字符"
+                      
+                      maxlength="100"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label="审核意见其他输入项："
+                    prop="reviewOpinionOther"
+                    class="searchBlock_special_formIten"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.reviewOpinionOther"
+                      placeholder="请输入对应意见的其他输入项,最长100字符"
+                      
+                      maxlength="100"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label="审核意见与分析研判意见是否一致其他输入项："
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                    prop="roacOther"
+                    class="searchBlock_special_formIten"
+                  >
+                    <el-input
+                      v-model="form.roacOther"
+                      placeholder="请输入对应意见的其他输入项,最长100字符"
+                      
+                      maxlength="100"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row class="toggle" :gutter="10">
+                <el-col :span="8">
+                  <el-form-item label="分析触发点：" prop="triggerPoint">
+                    <el-select v-model="form.triggerPoint" placeholder="请选择">
+                      <el-option value="1" label="可疑交易报告"></el-option>
+                      <el-option value="2" label="行政调查"></el-option>
+                      <el-option value="3" label="现场检查"></el-option>
+                      <el-option value="4" label="举报"></el-option>
+                      <el-option value="5" label="其他"></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20" class="toggle">
+                <el-col>
+                  <div>
+                    <el-form-item label="涉罪类型：" prop="judge">
+                      <el-select
+                        filterable
+                        v-model="form.judge"
+                        multiple
+                        placeholder="请选择"
+                        @change="replenish"
+                      >
+                        <el-option
+                          v-for="(item,index) in dialogJudgmentData"
+                          :key="index"
+                          :label="item.codeName"
+                          :value="item.codeId"
+                        ></el-option>
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item
+                      v-if="isReplenishOne"
+                      prop="supplementOne"
+                      :rules="[{required:true, validator: szisValidInput1, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        maxlength="100"
+                        v-model="supplementOne"
+                        placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充"
+                      ></el-input>
+                    </el-form-item>
+                    <el-form-item
+                      v-if="isReplenishTwo"
+                      prop="supplementTwo"
+                      :rules="[{required:true, validator: szisValidInput2, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        maxlength="100"
+                        v-model="supplementTwo"
+                        placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充"
+                      ></el-input>
+                    </el-form-item>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="24" style="textAlign:right">
+                  <el-button type="primary" @click="onSubmit">查 询</el-button>
+                  <el-button  type="primary"
+                  plain @click="cleanUp">清 空</el-button>
+                  <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch=true">收起</el-button>
+                </el-col>
+              </el-row>
+            </template>
+          </el-form>
+        </div>
+      </div>
+
+      <div class="taleBlock">
+        <el-alert title type="primary" :closable="false">
+          <template>
+            <span>
+              <i class="el-icon-info" style="color:#1890ff"></i>
+              已选择
+              <a style="color:#1890ff">{{delArr.length}}</a> 项
+            </span>
+            <el-button type="text" style="margin-left:18px" @click="exportExcel" >导出列表</el-button>
+            <el-button type="text" v-if="this.flag==='1'&&!this.director"  @click="distribute">分 发</el-button>
+            <el-button type="text"  v-if="this.flag==='0'&&!this.director"  @click="distribution">分 配</el-button>
+          </template>
+        </el-alert>
+        <!-- {{tableData[0].reportLeads.list[0].clueNo}} -->
+        <el-table :data="tableData" tooltip-effect="dark" @selection-change="handleChange">
+          <el-table-column type="selection" width="60" fixed="left"></el-table-column>
+          <el-table-column type="index" label="序号" width="60" fixed="left"></el-table-column>
+          <el-table-column prop="clueNo" label="线索编号" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="clueName" label="线索名称" min-width="130" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <el-button type="text" @click="Initiate(scope)">{{scope.row.clueName}}</el-button>
+              <!-- <router-link v-else to="analyzeManage/subsequent">
+                <el-button type="text">{{scoped.row.clueName}}</el-button>
+              </router-link>-->
+            </template>
+          </el-table-column>
+          <el-table-column prop="ricd" label="分支机构名称" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="clewState" label="线索状态" min-width="100"></el-table-column>
+          <el-table-column prop="judge" label="涉罪可疑交易行为" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="judgecode" label="涉罪可疑交易代码" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="area" label="交易发生地" min-width="100" show-overflow-tooltip></el-table-column>
+          <el-table-column
+            prop="triggerPoint"
+            label="监测分析触发点"
+            min-width="140"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="reportingBody"
+            label="上报金融机构"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="reportAnalyze.moneyRmb"
+            label="涉及金额（万元）"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column prop="commitTime" label="中心接收时间" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="allocationDate" label="分配日期" min-width="100"></el-table-column>
+          <el-table-column prop="reportAnalyze.updateUser" label="分析员名称" min-width="100"></el-table-column>
+          <el-table-column prop="reportAnalyze.updateDate" label="提交分析研判意见时间" min-width="200"></el-table-column>
+          <el-table-column
+            prop="reportAnalyze.analyseOpinion"
+            label="分析研判意见"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column prop="reportAudit.reviewDate" label="评审时间" min-width="100"></el-table-column>
+          <el-table-column
+            prop="reportAudit.meetingName"
+            label="评审会名称"
+            min-width="100"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="reportAudit.reviewOpinion"
+            label="评审结果"
+            min-width="100"
+            show-overflow-tooltip
+          ></el-table-column>
+          <!-- <el-table-column prop="remarks" label="备注" min-width="100"></el-table-column>
+          <el-table-column prop="relevanceClues" label="关联线索" min-width="100"></el-table-column> -->
+          <el-table-column prop="reportFollowups[0].transferNumber" label="中心线索文号" min-width="120"></el-table-column>
+          <el-table-column prop="reportFollowups[0].transferDirection" label="承办单位" min-width="120"></el-table-column>
+          <!-- <el-table-column prop="handlingResult" label="办理结果" min-width="100"></el-table-column>
+          <el-table-column prop="clueCharacteristics" label="线索特点" min-width="100"></el-table-column> -->
+          <el-table-column  label="操作" min-width="200" fixed="right">
+            <template    slot-scope="scope">
+              <el-button
+               v-if="!director"
+              :disabled="(!(scope.row.reportAudit.reviewOpinion==='中心-移送'||scope.row.reportAudit.reviewOpinion==='中心-通报'||scope.row.reportAudit.reviewOpinion==='中心-继续关注'))||scope.row.clewState!=='已审核'"
+                type="text"
+                @click="Initiate1(scope)"
+              >发起移送流程</el-button>
+              <el-button type="text" @click="Exprots(scope)">导出线索</el-button>
+              
+                <el-button
+                :disabled="scope.row.clewState!=='已移送'"
+                v-if="scope.row.reportAudit.reviewOpinion==='中心-移送'||scope.row.reportAudit.reviewOpinion==='中心-通报'||scope.row.reportAudit.reviewOpinion==='中心-继续关注'||scope.row.Opinion==='其他'"
+                 type="text" @click="handleFeedView(scope)">查看反馈信息</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-size="pageInfo.pagesize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.total"
+          background
+        ></el-pagination>
+      </div>
+      <monitor-workflow @userInformation="userInformation"></monitor-workflow>
+    </el-card>
+
+    <!-- 弹出框 -->
+    <el-dialog title="任务提交" :visible.sync="dialogVisible" width="600px" class="dialog-block">
+      <div class="task">
+        <div class="title">任务流向：</div>
+        <el-row>
+          <el-col :span="24">
+            <el-radio v-model="radio" label="1">送分析负责人审核</el-radio>
+            <el-radio v-model="radio" label="2">不同意，退回</el-radio>
+          </el-col>
+        </el-row>
+      </div>
+      <el-row style="marginBottom:20px">
+        <el-col :span="23" :offset="1">
+          <el-transfer v-model="value1" :data="transferData" :titles="['待选用户', '已选用户']"></el-transfer>
+        </el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="24">
+          <div class="title">意见：</div>
+          <el-input v-model="advice" type="textarea" placeholder></el-input>
+        </el-col>
+      </el-row>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="dialogVisible = false">确 定</el-button>
+      </div>
+    </el-dialog>
+
+     <el-dialog title="" :visible.sync="dialogFeedVisible" width="90%">
+        <div class="inputwrap">
+          <div class="modeltitle">反馈信息</div>
+          <div class="flex-modelmain">
+            <el-form :model="dialogFeedForm" ref="dialogFeedForm">
+              <div class="flex-col-1 table-title">案件基本信息</div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">主体名称：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.subjectname}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">主体证件号码：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.subjectnum}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">主体原工作单位职务或职级：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.subjectduty}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">立案时间：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.createcasetime}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">侦结时间：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.endcasetime}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">起诉时间：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.prosecutetime}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">判决时间：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.panjuecasetime}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">判决罪名：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.panjuecharge}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">判决金额：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.panjuesum}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">判决刑罚：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.panjuepenal}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">挽回经济损失：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.recoverEconomicLosses}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">抓获嫌疑人数量：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.arrestnum}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">案情简介：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.introductionCase}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-col-1 table-title">线索使用评价</div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">是否有助于侦查方向：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpdirection}}</span>
+                    <!-- <span>{{dialogFeedForm.helpdirection === '' ? '' :dialogFeedForm.helpdirection === '0' ?'是' : '否'}}</span> -->
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">是否有助于发现新证据：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpevidence}}</span>
+                    <!-- <span>{{dialogFeedForm.helpevidence === '' ? '' :dialogFeedForm.helpevidence === '0' ?'是' : '否'}}</span> -->
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">是否有助于确定赃款去向：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpmoneyto}}</span>
+                    <!-- <span>{{dialogFeedForm.helpmoneyto === '' ? '' :dialogFeedForm.helpmoneyto === '0' ?'是' : '否'}}</span> -->
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">发现新线索的数量：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpdiscoverednum}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">对线索数据质量的整体评价：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.evaluationclues}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">对可疑报告的评价：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.evaluationSuspiciousReports}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">备注：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.remark}}</span>
+                  </div>
+                </div>
+              </div>
+            </el-form>
+          </div>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="primary" plain @click="dialogFeedVisible = false">取 消</el-button>
+        </div>
+      </el-dialog>
+  </div>
+</template>
+
+<script>
+import { commonPattern } from '@/utils/formValidate'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/crimeInvolved.vue'
+import { getList, getParams, goTransfer, opAuth, getFeedData } from '@/api/sys-monitoringAnalysis/judgedClues/center.js'
+import { getToken } from '@/utils/auth'
+import { updateForms, updateForms2 } from '@/api/sys-monitoringAnalysis/judgedClues/branch.js'
+import { mapGetters } from 'vuex'
+import { branch } from '@/api/sys-monitoringAnalysis/conjointAnalysis/list.js'
+export default {
+  data() {
+    const generateData = _ => {
+      const data = []
+      for (let i = 1; i <= 3; i++) {
+        data.push({
+          key: i,
+          label: `分析${i}处 `
+        })
+      }
+      return data
+    }
+    return {
+
+      director: false,
+      localBankArr: [],
+      loading: false,
+      toggleSearch: true,
+      isdisabled: true,
+      judgmentInp1: '', // 初步判断1401 input
+      judgmentInp2: '', // 初步判断1402 input
+      reportCluePreJudgment: [], // 回显的数据
+      dialogJudgmentData: [],
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      supplementOne: '',
+      supplementTwo: '',
+      dialogFeedVisible: false,
+      dialogFeedForm: {
+        laiwenNcard: '',
+        laiwenDept: '',
+        laiwenDate: '',
+        centerNum: '',
+        evokeNum: '',
+        evokename: '',
+        banlichu: '',
+        analyst: '',
+        evokejudge: '',
+        keyinum: '',
+        subjectname: '',
+        subjectnum: '',
+        createcasetime: '',
+        endcasetime: '',
+        prosecutetime: '',
+        panjuecasetime: '',
+        panjuecharge: '',
+        panjuesum: '',
+        panjuepenal: '',
+        recoverEconomicLosses: '',
+        arrestnum: '',
+        subjectduty: '',
+        relateType: '',
+        introductionCase: '',
+        helpdirection: '',
+        helpevidence: '',
+        helpmoneyto: '',
+        helpdiscoverednum: '',
+        evaluationclues: '',
+        evaluationSuspiciousReports: '',
+        remark: ''
+      },
+      AnalyticalData: [
+        {
+          label: '分析一处',
+          value: '分析一处'
+        },
+        {
+          label: '分析二处',
+          value: '分析二处'
+        },
+        {
+          label: '分析三处',
+          value: '分析三处'
+        },
+        {
+          label: '分析四处',
+          value: '分析四处'
+        },
+        {
+          label: '协查一处',
+          value: '协查一处'
+        },
+        {
+          label: '协查二处',
+          value: '协查二处'
+        },
+        {
+          label: '移送处',
+          value: '移送处'
+        }
+      ],
+      flag: '',
+      form: {
+        initJudge: [],
+        judge: [],
+        clueName: '',
+        clueNo: '',
+        clewState: '',
+        clueData1: [
+          {
+            label: '中心-移送',
+            value: '0'
+          },
+          {
+            label: '中心-通报',
+            value: '1'
+          },
+          {
+            label: '中心-继续关注',
+            value: '2'
+          },
+          {
+            label: '分支机构-移送',
+            value: '10'
+          },
+          {
+            label: '分支机构-通报',
+            value: '11'
+          },
+          {
+            label: '分支机构-继续关注',
+            value: '12'
+          },
+          {
+            label: '其他',
+            value: '15'
+          }
+        ],
+        clueData: [
+          {
+            label: '已保存',
+            value: '已保存'
+          },
+          // {
+          //   label: '行内审批',
+          //   value: '行内审批'
+          // },
+          {
+            label: '已提交',
+            value: '已提交'
+          },
+          {
+            label: '已分发',
+            value: '已分发'
+          },
+          {
+            label: '已分配',
+            value: '已分配'
+          },
+          {
+            label: '待审核',
+            value: '待审核'
+          },
+          {
+            label: '已分析',
+            value: '已分析'
+          },
+          {
+            label: '已审核',
+            value: '已审核'
+          },
+          {
+            label: '移送中',
+            value: '移送中'
+          },
+          {
+            label: '已移送',
+            value: '已移送'
+          },
+          {
+            label: '仅报告',
+            value: '仅报告'
+          },
+          {
+            label: '立案',
+            value: '立案'
+          },
+          {
+            label: '结案',
+            value: '结案'
+          },
+          {
+            label: '撤案',
+            value: '撤案'
+          },
+          {
+            label: '不予立案',
+            value: '不予立案'
+          },
+          {
+            label: '已退回',
+            value: '已退回'
+          }
+          // {
+          //   label: '有效',
+          //   value: '有效'
+          // },
+          // {
+          //   label: '无效',
+          //   value: '无效'
+          // }
+        ],
+        pSClueId: '',
+        analyzeArr: [
+          {
+            value: '1',
+            label: '0101：涉嫌与毒品犯罪相关的可疑交易行为'
+          },
+          {
+            value: '2',
+            label: '0401：涉嫌与走私犯罪相关的可疑交易行为'
+          },
+          {
+            value: '3',
+            label: '0501：涉嫌行贿、受贿的可疑交易行为'
+          },
+          {
+            value: '4',
+            label: '0601：涉嫌非国家工作人员商业贿赂的可疑交易行为'
+          },
+          {
+            value: '5',
+            label: '0602：涉嫌非法关联经营的可疑交易行为'
+          }
+        ],
+        ricd: '',
+        auditingUser: '',
+        createUser: '',
+        submitTime: '',
+
+        createDate: '',
+        triggerData: [
+          {
+            value: '1',
+            label: '可疑交易报告'
+          },
+          {
+            value: '2',
+            label: '行政调查'
+          },
+          {
+            value: '3',
+            label: '现场调查'
+          },
+          {
+            value: '4',
+            label: '举报'
+          },
+          {
+            value: '5',
+            label: '其他信息来源'
+          }
+        ],
+        workFlowparams: [],
+        updateUser: '',
+        analysisDate: '',
+        distributeDate: '',
+        allocationDate: '',
+        submitCheckTime: '',
+        updateDate: '',
+        manageTime: '',
+        analyseOpinion: '',
+        analyseOpinionOther: '',
+        reviewOpinion: '',
+        reviewOpinionOther: '',
+        roac: '',
+        roacOther: ''
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      Newcenter: {
+        configCode: 'reportLeads',
+        pageNum: 1,
+        pageSize: 10
+      },
+      token: getToken(),
+      tableData: [],
+      currentPage: 1,
+      pagesize: 10,
+      delArr: [],
+      dialogVisible: false,
+      radio: '1',
+      transferData: generateData(),
+      value1: [1, 4],
+      advice: '',
+      nextUser: [] // 工作流中的已选
+    }
+  },
+  mounted() {
+    this.orgn()
+    // this.initList(this.Newcenter)
+    this.initList(this.searchParams)
+    this.getDictionary('TOSC')
+    // this.getDictionary('FZJGD')
+    this.getBranch()
+  },
+  components: {
+    preliminaryJudgment
+  },
+  computed: {
+    ...mapGetters(['businessFlag', 'formContent', 'workFlow2business', 'userInfo', 'institution']),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    },
+    searchParams() {
+      if (sessionStorage.getItem('searchData')) {
+        const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+        if (searchData.pageName === this.$route.name && searchData.ifReview) {
+          this.pageInfo = searchData.pageInfo
+          this.form = searchData.searchFrom
+        }
+      }
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.clueData
+      delete obj.clueData1
+      delete obj.triggerData
+      delete obj.analyzeArr
+      delete obj.total
+      delete obj.updateDate
+      delete obj.analysisDate
+      delete obj.submitTime
+      delete obj.allocationDate
+      delete obj.distributeDate
+      delete obj.submitCheckTime
+      delete obj.manageTime
+
+      // delete obj.initJudge
+      // obj.pSClueId = this.form.initJudge.join(',')
+      delete obj.judge
+      if (this.form.judge) {
+        for (var i = 0; i < this.form.judge.length; i++) {
+          if (this.form.judge[i].indexOf('1401') !== -1) {
+            this.form.judge[i] = '1401-' + this.supplementOne
+          }
+          if (this.form.judge[i].indexOf('1402') !== -1) {
+            this.form.judge[i] = '1402-' + this.supplementTwo
+          }
+        }
+        obj.pSClueId = this.form.judge.join(',')
+      }
+
+      if (this.form.updateDate) {
+        obj.updateDateStartDate = this.form.updateDate[0]
+        obj.updateDateEndDate = this.form.updateDate[1]
+      }
+      if (this.form.analysisDate) {
+        obj.analysisbeginTime = this.form.analysisDate[0]
+        obj.analysisoutTime = this.form.analysisDate[1]
+      }
+      if (this.form.submitTime) {
+        obj.minDate = this.form.submitTime[0]
+        obj.maxDate = this.form.submitTime[1]
+      }
+      if (this.form.distributeDate) {
+        obj.distributeDatebeginTime = this.form.distributeDate[0]
+        obj.distributeDateoutTime = this.form.distributeDate[1]
+      }
+      if (this.form.allocationDate) {
+        obj.allocationDatebeginTime = this.form.allocationDate[0]
+        obj.allocationDateoutTime = this.form.allocationDate[1]
+      }
+      if (this.form.submitCheckTime) {
+        obj.submitCheckTimebeginTime = this.form.submitCheckTime[0]
+        obj.submitCheckTimeoutTime = this.form.submitCheckTime[1]
+        // obj.analysisbeginTime = this.form.analysisDate[0]
+        // obj.analysisoutTime = this.form.analysisDate[1]
+      }
+      if (this.form.manageTime) {
+        obj.manageTimebeginTime = this.form.manageTime[0]
+        obj.manageTimeoutTime = this.form.manageTime[1]
+      }
+      return obj
+    }
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  methods: {
+    orgn() {
+      opAuth().then(res => {
+        if (res.code === 200) {
+          this.director = res.data
+        }
+      }
+      )
+    },
+    userInformation(val) {
+      this.nextUser = val
+    },
+    // initLists(params) {
+    //   getList(params).then(res => {
+    //     if (res.code === 200) {
+    //       this.pageInfo.total = res.data.total
+    //       const arry = res.data.list
+    //       const arr = []
+    //       arry.forEach(el => {
+    //         const obj = {}
+    //         if (el.reportLeads) {
+    //           if (el.reportLeads.list.length > 0) {
+    //             obj.clueId = el.reportLeads.list[0].clueId // ID
+    //             obj.clueNo = el.reportLeads.list[0].clueNo // 线索编号
+    //             obj.clueName = el.reportLeads.list[0].clueName // 线索名称
+    //             obj.ricd = el.reportLeads.list[0].ricd // 分支机构
+    //             obj.linkId = el.reportLeads.list[0].linkId // 关联移送记录
+    //             obj.clewState = el.reportLeads.list[0].clewState // 线索状态
+    //             obj.cart = el.reportLeads.list[0].cart // 交易累计金额
+    //             obj.psclueId = el.reportLeads.list[0].psclueId // 交易代码
+    //             obj.updateDate = el.reportLeads.list[0].reportAnalyze.updateDate
+    //             const ary = []
+    //             el.reportLeads.list[0].rcriminalType.forEach(item => {
+    //               ary.push(item.preliminaryJudgme)
+    //             })
+    //             obj.judge = ary.join(',') // 初步判断
+    //             obj.area = el.reportLeads.list[0].rdesignArea.district // 地区
+    //             obj.reportingBody = el.reportLeads.list[0].reportingBody // 报告机构
+    //             obj.submissionDate = el.reportLeads.list[0].commitTime // 提交日期
+    //             obj.tradeStartDate = el.reportLeads.list[0].tradeStartDate
+    //             obj.isdisabled = el.reportLeads.list[0].clewState !== '已审核'
+    //             switch (
+    //               el.reportLeads.list[0].triggerPoint // 分析触发点
+    //             ) {
+    //               case '1':
+    //                 obj.triggerPoint = '可疑交易报告'
+    //                 break
+    //               case '2':
+    //                 obj.triggerPoint = '行政调查'
+    //                 break
+    //               case '3':
+    //                 obj.triggerPoint = '现场调查'
+    //                 break
+    //               case '4':
+    //                 obj.triggerPoint = '举报'
+    //                 break
+    //               case '5':
+    //                 obj.triggerPoint = '其他'
+    //                 break
+    //               default:
+    //                 break
+    //             }
+    //             arr.push(obj)
+    //           }
+    //         }
+    //       })
+    //       this.tableData = arr
+    //     }
+    //   })
+    // },
+    // 批量分发的新增
+    // initLists(params) {
+    //   getList(params).then(res => {
+    //     this.pageInfo.total = res.data.total
+    //     const arry = res.data.list
+    //     console.log(arry)
+    //     // arry.forEach(el => {
+    //     //   const obj = {}
+    //     //   console.log(el, 888)
+    //     //   const workFolwArr = []
+    //     //   if (el.reportLeads.list.length !== 0) {
+    //     //     const workFolwObj = {}
+    //     //     workFolwObj.actDefId = el.actDefId
+    //     //     workFolwArr.push(workFolwObj)
+    //     //     obj.workFolw = workFolwArr
+    //     //     obj.clueId = el.reportLeads.list[0].clueId // ID
+    //     //     obj.clueNo = el.reportLeads.list[0].clueNo // 线索编号
+    //     //     obj.clueName = el.reportLeads.list[0].clueName // 线索名称
+    //     //     obj.branch = el.reportLeads.list[0].ricd // 分支机构
+    //     //     obj.linkId = el.reportLeads.list[0].linkId // 关联移送记录
+    //     //     obj.clewState = el.reportLeads.list[0].clewState // 线索状态
+    //     //     obj.cart = el.reportLeads.list[0].cart // 交易累计金额
+    //     //     const ary = []
+    //     //     el.reportLeads.list[0].rcriminalType.forEach(item => {
+    //     //       ary.push(item.preliminaryJudgme)
+    //     //     })
+    //     //     obj.judge = ary.join(',') // 初步判断
+    //     //     obj.area = el.reportLeads.list[0].rdesignArea.district // 地区
+    //     //     obj.reportingBody = el.reportLeads.list[0].reportingBody // 报告机构
+    //     //     obj.submissionDate = el.reportLeads.list[0].commitTime // 提交日期
+    //     //     switch (
+    //     //       el.reportLeads.list[0].triggerPoint // 分析触发点
+    //     //     ) {
+    //     //       case '1':
+    //     //         obj.triggerPoint = '可疑交易报告'
+    //     //         break
+    //     //       case '2':
+    //     //         obj.triggerPoint = '行政调查'
+    //     //         break
+    //     //       case '3':
+    //     //         obj.triggerPoint = '现场调查'
+    //     //         break
+    //     //       case '4':
+    //     //         obj.triggerPoint = '举报'
+    //     //         break
+    //     //       case '5':
+    //     //         obj.triggerPoint = '其他'
+    //     //         break
+    //     //       default:
+    //     //         break
+    //     //     }
+    //     //     arr.push(obj)
+    //     //   }
+    //     // })
+    //     this.tableData = arry
+    //   })
+    // },
+    // 获取列表数据方法
+    initList(params) {
+      this.loading = true
+      getList(params).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.pageInfo.total = res.data.total
+          const ary = res.data.list ? res.data.list : []
+          ary.forEach((el, index) => {
+            const preliminaryJudgmeArr = []
+            const codeArr = []
+            el.rcriminalType.forEach(item => {
+              preliminaryJudgmeArr.push(item.preliminaryJudgme)
+              codeArr.push(item.psclueId)
+            })
+            const reportArr = []
+            el.reportingBodies.forEach(item => {
+              reportArr.push(item.reportingBody)
+            })
+            const obj = {}
+            const cityArr = []
+            el.rdesignAreas.forEach(item => {
+              cityArr.push(item.district)
+            })
+            obj.area = cityArr.join(',')// 地区
+
+            obj.isdisabled = el.clewState !== '已审核'
+            switch (
+              el.reportAnalyze.analyseOpinion // 分析研判意见
+            ) {
+              case '0':
+                el.reportAnalyze.analyseOpinion = '中心-移送'
+                break
+              case '1':
+                el.reportAnalyze.analyseOpinion = '中心-通报'
+                break
+              case '2':
+                el.reportAnalyze.analyseOpinion = '中心-继续关注'
+                break
+              case '11':
+                el.reportAnalyze.analyseOpinion = '分支机构-通报'
+                break
+              case '10':
+                el.reportAnalyze.analyseOpinion = '分支机构-移送'
+                break
+              case '12':
+                el.reportAnalyze.analyseOpinion = '分支机构-继续关注'
+                break
+              case '15':
+                if (el.reportAnalyze.analyseOpinionOther == null) {
+                  el.reportAnalyze.analyseOpinion = '其他'
+                } else {
+                  el.reportAnalyze.analyseOpinion = '其他' + el.reportAnalyze.analyseOpinionOther
+                }
+
+                break
+              default:
+                break
+            }
+            switch (
+              el.reportAudit.reviewOpinion // 评审结果
+            ) {
+              case '0':
+                el.reportAudit.reviewOpinion = '中心-移送'
+                break
+              case '1':
+                el.reportAudit.reviewOpinion = '中心-通报'
+                break
+              case '2':
+                el.reportAudit.reviewOpinion = '中心-继续关注'
+                break
+              case '11':
+                el.reportAudit.reviewOpinion = '分支机构-通报'
+                break
+              case '10':
+                el.reportAudit.reviewOpinion = '分支机构-移送'
+                break
+              case '12':
+                el.reportAudit.reviewOpinion = '分支机构-继续关注'
+                break
+              case '15':
+                if (el.reportAudit.reviewOpinionOther) {
+                  el.reportAudit.reviewOpinion = '其他' + el.reportAudit.reviewOpinionOther
+                } else {
+                  el.reportAudit.reviewOpinion = '其他'
+                }
+                el.Opinion = '其他'
+                break
+              default:
+                break
+            }
+            switch (
+              el.triggerPoint // 分析触发点
+            ) {
+              case '1':
+                el.triggerPoint = '可疑交易报告'
+                break
+              case '2':
+                el.triggerPoint = '行政调查'
+                break
+              case '3':
+                el.triggerPoint = '现场调查'
+                break
+              case '4':
+                el.triggerPoint = '举报'
+                break
+              case '5':
+                el.triggerPoint = '其他' + el.triggerOther
+                break
+              default:
+                break
+            }
+            ary[index].judgecode = codeArr.join(',')
+            ary[index].judge = preliminaryJudgmeArr.join(',')
+            ary[index].reportingBody = reportArr.join(',')
+            ary[index].area = obj.area
+            ary[index].isdisabled = obj.isdisabled
+            if (el.reportAnalyze.updateDate) {
+              ary[index].reportAnalyze.updateDate = el.reportAnalyze.updateDate.substr(0, 10)
+            }
+            if (el.allocationDate) {
+              ary[index].allocationDate = el.allocationDate.substr(0, 10)
+            }
+            if (el.commitTime) {
+              ary[index].commitTime = el.commitTime.substr(0, 10)
+            }
+            if (el.reportAudit.reviewDate) {
+              ary[index].reportAudit.reviewDate = el.reportAudit.reviewDate.substr(0, 10)
+            }
+          })
+          const searchData = {
+            pageName: this.$route.name,
+            pageInfo: this.pageInfo,
+            searchFrom: this.form
+          }
+          sessionStorage.setItem('searchData', JSON.stringify(searchData))
+          this.tableData = ary
+          this.flag = this.tableData[0].analyst
+        } else {
+          this.loading = false
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    // 查询
+    // onSubmits() {
+    //   getList(this.searchParams).then(res => {
+    //     if (res.code === 200) {
+    //       this.pageInfo.total = res.data.total
+    //       const arry = res.data.list
+    //       const arr = []
+    //       arry.forEach(el => {
+    //         const obj = {}
+    //         if (el.reportLeads) {
+    //           if (el.reportLeads.list.length > 0) {
+    //             obj.clueId = el.reportLeads.list[0].clueId // ID
+    //             obj.clueNo = el.reportLeads.list[0].clueNo // 线索编号
+    //             obj.clueName = el.reportLeads.list[0].clueName // 线索名称
+    //             obj.ricd = el.reportLeads.list[0].ricd // 分支机构
+    //             obj.linkId = el.reportLeads.list[0].linkId // 关联移送记录
+    //             obj.clewState = el.reportLeads.list[0].clewState // 线索状态
+    //             obj.cart = el.reportLeads.list[0].cart // 交易累计金额
+    //             obj.psclueId = el.reportLeads.list[0].psclueId // 交易代码
+    //             const ary = []
+    //             el.reportLeads.list[0].rcriminalType.forEach(item => {
+    //               ary.push(item.preliminaryJudgme)
+    //             })
+    //             obj.judge = ary.join(',') // 初步判断
+    //             obj.area = el.reportLeads.list[0].rdesignArea.district // 地区
+    //             obj.reportingBody = el.reportLeads.list[0].reportingBody // 报告机构
+    //             obj.submissionDate = el.reportLeads.list[0].commitTime // 提交日期
+    //             obj.tradeStartDate = el.reportLeads.list[0].tradeStartDate
+    //             obj.isdisabled = el.reportLeads.list[0].clewState !== '已审核'
+    //             switch (
+    //               el.reportLeads.list[0].triggerPoint // 分析触发点
+    //             ) {
+    //               case '1':
+    //                 obj.triggerPoint = '可疑交易报告'
+    //                 break
+    //               case '2':
+    //                 obj.triggerPoint = '行政调查'
+    //                 break
+    //               case '3':
+    //                 obj.triggerPoint = '现场调查'
+    //                 break
+    //               case '4':
+    //                 obj.triggerPoint = '举报'
+    //                 break
+    //               case '5':
+    //                 obj.triggerPoint = '其他'
+    //                 break
+    //               default:
+    //                 break
+    //             }
+    //             arr.push(obj)
+    //           }
+    //         }
+    //       })
+    //       this.tableData = arr
+    //     }
+    //   })
+    // },
+    // 查询
+    onSubmit() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          getList(this.searchParams)
+            .then(res => {
+              this.loading = false
+              if (res.code === 200) {
+                this.pageInfo.total = res.data.total
+                const ary = res.data.list
+                // 获取省份
+                ary.forEach((el, index) => {
+                  const preliminaryJudgmeArr = []
+                  const codeArr = []
+                  el.rcriminalType.forEach(item => {
+                    preliminaryJudgmeArr.push(item.preliminaryJudgme)
+                    codeArr.push(item.psclueId)
+                  })
+                  const reportArr = []
+                  el.reportingBodies.forEach(item => {
+                    reportArr.push(item.reportingBody)
+                  })
+                  const obj = {}
+                  const cityArr = []
+                  el.rdesignAreas.forEach(item => {
+                    cityArr.push(item.district)
+                  })
+                  obj.area = cityArr.join(',')// 地区
+                  obj.isdisabled = el.clewState !== '已审核'
+                  switch (
+                    el.reportAnalyze.analyseOpinion // 分析研判意见
+                  ) {
+                    case '0':
+                      el.reportAnalyze.analyseOpinion = '中心-移送'
+                      break
+                    case '1':
+                      el.reportAnalyze.analyseOpinion = '中心-通报'
+                      break
+                    case '2':
+                      el.reportAnalyze.analyseOpinion = '中心-继续关注'
+                      break
+                    case '11':
+                      el.reportAnalyze.analyseOpinion = '分支机构-通报'
+                      break
+                    case '10':
+                      el.reportAnalyze.analyseOpinion = '分支机构-移送'
+                      break
+                    case '12':
+                      el.reportAnalyze.analyseOpinion = '分支机构-继续关注'
+                      break
+                    case '15':
+                      if (el.reportAnalyze.analyseOpinionOther) {
+                        el.reportAnalyze.analyseOpinion = '其他' + el.reportAnalyze.analyseOpinionOther
+                      } else {
+                        el.reportAnalyze.analyseOpinion = '其他'
+                      }
+                      break
+                    default:
+                      break
+                  }
+                  switch (
+                    el.triggerPoint // 分析触发点
+                  ) {
+                    case '1':
+                      el.triggerPoint = '可疑交易报告'
+                      break
+                    case '2':
+                      el.triggerPoint = '行政调查'
+                      break
+                    case '3':
+                      el.triggerPoint = '现场调查'
+                      break
+                    case '4':
+                      el.triggerPoint = '举报'
+                      break
+                    case '5':
+                      el.triggerPoint = '其他' + el.triggerOther
+                      break
+                    default:
+                      break
+                  }
+                  switch (
+                    el.reportAudit.reviewOpinion // 评审结果
+                  ) {
+                    case '0':
+                      el.reportAudit.reviewOpinion = '中心-移送'
+                      break
+                    case '1':
+                      el.reportAudit.reviewOpinion = '中心-通报'
+                      break
+                    case '2':
+                      el.reportAudit.reviewOpinion = '中心-继续关注'
+                      break
+                    case '11':
+                      el.reportAudit.reviewOpinion = '分支机构-通报'
+                      break
+                    case '10':
+                      el.reportAudit.reviewOpinion = '分支机构-移送'
+                      break
+                    case '12':
+                      el.reportAudit.reviewOpinion = '分支机构-继续关注'
+                      break
+                    case '15':
+                      if (el.reportAudit.reviewOpinionOther) {
+                        el.reportAudit.reviewOpinion = '其他' + el.reportAudit.reviewOpinionOther
+                      } else {
+                        el.reportAudit.reviewOpinion = '其他'
+                      }
+                      el.Opinion = '其他'
+                      break
+                    default:
+                      break
+                  }
+                  ary[index].judgecode = codeArr.join(',')
+                  ary[index].judge = preliminaryJudgmeArr.join(',')
+                  ary[index].reportingBody = reportArr.join(',')
+                  ary[index].area = obj.area
+                  ary[index].isdisabled = obj.isdisabled
+                  if (el.reportAnalyze.updateDate) {
+                    ary[index].reportAnalyze.updateDate = el.reportAnalyze.updateDate.substr(0, 10)
+                  }
+                  if (el.allocationDate) {
+                    ary[index].allocationDate = el.allocationDate.substr(0, 10)
+                  }
+                  if (el.commitTime) {
+                    ary[index].commitTime = el.commitTime.substr(0, 10)
+                  }
+                  if (el.reportAudit.reviewDate) {
+                    ary[index].reportAudit.reviewDate = el.reportAudit.reviewDate.substr(0, 10)
+                  }
+                })
+                const searchData = {
+                  pageName: this.$route.name,
+                  pageInfo: this.pageInfo,
+                  searchFrom: this.form
+                }
+                sessionStorage.setItem('searchData', JSON.stringify(searchData))
+                this.tableData = ary
+                this.flag = this.tableData[0].analyst
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          this.$message({
+            message: '查询条件需符合检验',
+            type: 'warning',
+            duration: 6000
+          })
+        }
+      })
+    },
+    handleFeedView(scope) { // 查看反馈
+      // const fkId = scope.row.clueNo
+      // const obj = {
+      //   // transferNumber: scope.row.reportFollowups[0].transferNumber
+      //   clueId: scope.row.clueId
+      // }
+      var clueId = scope.row.clueId
+      this.dialogFeedVisible = true
+      getFeedData(clueId).then(res => {
+        if (res.code === 200) {
+          if (res.data.feedbackafterList) {
+            this.dialogFeedForm = res.data.feedbackafterList[0]
+          }
+        }
+      }).catch()
+    },
+    Exprots(scope) {
+      this.ides = scope.row.clueId
+      location.href = `/monitor/reportLeads/export?clueId=${this.ides}&token=${this.token}`
+    },
+    // 批量导出
+    exportExcel() {
+      if (this.delArr.length > 0) {
+        const ids = []
+        this.delArr.forEach(el => {
+          ids.push(el.clueId)
+        })
+        location.href = `/monitor/reportLeads/exportBatchCenter?clueId=${ids.join(',')}&token=${
+          this.token
+        }`
+        // location.href = `${
+        //   process.env.BASE_API
+        // }/monitor/reportLeads/exportBatchCenter?clueId=${ids.join(',')}&token=${this.token}`
+      } else {
+        this.$message({
+          message: '请至少选择一条的线索！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 获取分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.localBankArr = res.data.list
+        }
+      })
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.form.judge.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.form.judge.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    // 获取涉案类型其他
+    getJudgmentOther(val1, val2) {
+      this.form.preliminaryJudgmentInp1 = val1
+      this.form.preliminaryJudgmentInp2 = val2
+    },
+    // 获取子组件发射的信息  ---涉案类型
+    getJudgment(val) {
+      this.form.initJudge = val
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialCharInQuery.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    iseras(rule, value, callback) {
+      if (value === '') {
+        callback(new Error('请选择地区'))
+      } else {
+        if (this.form.districtFlag === '1') {
+          if (this.form.city === '') {
+            callback()
+          } else {
+            if (!commonPattern.spaceBar.test(this.form.city)) {
+              callback(new Error('内容不能含有空格'))
+            } else if (
+              commonPattern.specialChar.test(this.form.city) ||
+              commonPattern.specialEng.test(this.form.city)
+            ) {
+              callback(new Error('内容不能填写特殊字符'))
+            } else {
+              callback()
+            }
+          }
+        } else if (this.form.districtFlag === '2') {
+          callback()
+        }
+      }
+    },
+    Initiate(scope) {
+      this.$router.push({
+        name: 'judgedClues_add',
+        params: {
+          id: scope.row.clueId,
+          clewStates: scope.row.clewState,
+          sign: '查看'
+        }
+      })
+    },
+    Initiate1(scope) {
+      var obj = {}
+      obj.clueId = scope.row.clueId
+      goTransfer(obj).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            message: '发起移送成功',
+            type: 'success',
+            duration: 6000
+          })
+        }
+        this.onSubmit()
+      })
+    },
+    cleanUp() {
+      this.$refs.searchForm.resetFields()
+      this.supplementTwo = ''
+      this.supplementOne = ''
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+      this.form.clewState = ''
+      this.form.ricd = ''
+      this.form.auditingUser = ''
+      this.form.updateDate = ''
+      this.form.updateUser = ''
+      this.form.createDate = []
+      this.form.analysisDate = ''
+      this.form.createUser = ''
+      this.form.submitTime = ''
+      this.form.distributeDate = ''
+      this.form.allocationDate = ''
+      this.form.submitCheckTime = ''
+      this.form.manageTime = ''
+      this.form.analyseOpinion = []
+      this.form.reviewOpinion = ''
+      this.form.roac = ''
+      this.form.analyseOpinionOther = ''
+      this.form.reviewOpinionOther = ''
+      this.form.roacOther = ''
+      this.form.triggerPoint = []
+      this.form.judge = []
+    },
+    distribution() {
+      if (this.delArr.length > 0) {
+        var step = 0
+        const arr = []
+        this.delArr.forEach((el, index) => {
+          if (el.clewState === '已分发') {
+            step++
+            arr.push(el.clueId)
+            if (step === this.delArr.length) {
+              // 判断是中心用户还是分支机构用户
+              if (this.isCenter) {
+                this.loading = true
+                const str = arr.join(',')
+                getParams(str).then(res => {
+                  if (res.code === 200) {
+                    this.loading = false
+                    this.workFlowparams = res.data
+                  }
+                }).then(() => {
+                  this.callWorkFlow()
+                }).catch(() => {
+                  this.loading = false
+                })
+              }
+            }
+          } else {
+            this.$message({
+              message: '请选择已分发的线索！',
+              type: 'warning',
+              duration: 6000
+            })
+            return
+          }
+        })
+      } else {
+        this.$message({
+          message: '请选择要分配的线索！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    distribute() {
+      if (this.delArr.length > 0) {
+        var step = 0
+        const arr = []
+        this.delArr.forEach((el, index) => {
+          if (el.clewState === '已提交') {
+            step++
+            arr.push(el.clueId)
+            if (step === this.delArr.length) {
+              // 判断是中心用户还是分支机构用户
+              if (this.isCenter) {
+                this.loading = true
+                const str = arr.join(',')
+                getParams(str).then(res => {
+                  if (res.code === 200) {
+                    this.loading = false
+                    this.workFlowparams = res.data
+                  }
+                }).then(() => {
+                  this.callWorkFlow()
+                }).catch(() => {
+                  this.loading = false
+                })
+              }
+            }
+          } else {
+            this.$message({
+              message: '请选择已提交的线索！',
+              type: 'warning'
+            })
+            return
+          }
+        })
+      } else {
+        this.$message({
+          message: '请选择要分发的线索！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 调取工作流
+    callWorkFlow() {
+      this.$store.dispatch('openWorkFlow', true)
+      this.$store.dispatch('workFlow',
+        { configCode: 'reportLeads', configId: this.workFlowparams[0].configId, workitemId: '', proInstId: this.workFlowparams[0].proInstId, proDirId: this.workFlowparams[0].proDirId, actInstId: this.workFlowparams[0].id, actDefId: this.workFlowparams[0].actDefId })
+    },
+    nextStep() {
+      const reportLeads = {}
+      const arr = []
+      this.delArr.forEach(el => {
+        arr.push(el.clueId)
+      })
+      reportLeads.clueId = arr.join(',')
+
+      var fenfa = 0
+      var fenpei = 0
+      this.delArr.forEach(el => {
+        if (el.clewState === '已提交') {
+          fenfa++
+        }
+        if (el.clewState === '已分发') {
+          fenpei++
+        }
+      })
+      if (fenfa === this.delArr.length) {
+        this.loading = true
+        updateForms(reportLeads, this.workFlow2business).then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.$message({
+              type: 'success',
+              message: '提交成功',
+              duration: 6000
+            })
+            this.initList(this.searchParams)
+          } else {
+            this.$message({
+              type: 'error',
+              message: '提交失败',
+              duration: 6000
+            })
+            this.loading = false
+          }
+        }).catch(() => {
+          this.loading = false
+        })
+      }
+      if (fenpei === this.delArr.length) {
+        this.loading = true
+        updateForms2(reportLeads, this.workFlow2business).then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.$message({
+              type: 'success',
+              message: '提交成功',
+              duration: 6000
+            })
+            this.initList(this.searchParams)
+          } else {
+            this.loading = false
+            this.$message({
+              type: 'error',
+              message: '提交失败',
+              duration: 6000
+            })
+          }
+        }).catch(() => {
+          this.loading = false
+        })
+      }
+    },
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.initList(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initList(this.searchParams)
+    }
+  }
+}
+</script>
+
+<style  lang="scss">
+$margin: 20px;
+$c: #fff;
+$border: 1px solid #ccc;
+
+@mixin marginBottom($margin) {
+  margin-bottom: $margin;
+}
+@mixin color($color) {
+  color: $color;
+}
+@mixin padding($t, $l) {
+  padding: $t $l;
+}
+.judgedClues_manage {
+  .historyBlock {
+    margin-bottom: 14px;
+    .label {
+      @include marginBottom(10px);
+    }
+    .searchBlock {
+      .el-select {
+        width: 100%;
+      }
+      .toggleBtn {
+        bottom: -16px;
+        left: 50%;
+      }
+      .el-range-editor {
+        max-width: 100%;
+      }
+      .searchBlock_special_formIten {
+        .el-form-item__label {
+          line-height: inherit;
+        }
+      }
+      .el-range-editor--small.el-input__inner {
+        height: 33.5px;
+          min-width: 100%;
+      }
+    }
+  }
+  .itemline {
+    font-size: 16px;
+    color: #409eff;
+    padding: 0 4px 0 8px;
+  }
+  .dialog-block {
+    .title {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .task {
+      margin-bottom: 30px;
+      .title {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 10px;
+      }
+    }
+    .el-transfer__button.el-button--primary {
+      min-width: 32px;
+      min-height: 32px;
+    }
+  }
+   .inputwrap {
+    .flex-modelmain {
+      border-left: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+    }
+    .flex-row {
+      width: 100%;
+      display: flex;
+      justify-content: center; /*x轴对齐方式*/
+    }
+    .row-header-column {
+      display: flex;
+      flex: 0 0 30%;
+      margin-bottom: 10px;
+
+      span {
+        flex: 0 0 120px;
+        text-align: right;
+        align-self: center;
+      }
+      .el-input {
+        flex: 1;
+      }
+    }
+    .flex-col-1 {
+      flex: 1;
+      display: flex;
+      border-top: 1px solid #ccc;
+      border-right: 1px solid #ccc;
+    }
+
+    .flex-col-2 {
+      flex: 2;
+      display: flex;
+      border-top: 1px solid #ccc;
+      border-right: 1px solid #ccc;
+    }
+
+    .flex-col-end {
+      flex: 1;
+      display: flex;
+      border-top: 1px solid #ccc;
+    }
+    .flex-label {
+      justify-content: center;
+      flex: 0 0 224px;
+      -webkit-flex: 0 0 224px;
+      -ms-flex: 0 0 183px;
+      padding: 10px 20px;
+      text-align: right;
+      border-right: 1px solid #ccc;
+      // flex垂直居中的方法
+      display: flex;
+      align-items: center;
+      background-color: #f5f7fa;
+    }
+    .flex-label-first {
+      justify-content: center;
+      flex: 0 0 150px;
+      padding: 10px 8px;
+      text-align: right;
+      border-right: 1px solid #ccc;
+      // flex垂直居中的方法
+      display: flex;
+      align-items: center;
+    }
+    .flex-input {
+      flex: 1;
+      padding: 10px 20px;
+      font-size: 14px;
+      align-self: center;
+    }
+    .txt-row .flex-input {
+      align-self: center;
+    }
+    .table-title {
+      padding: 10px 20px;
+      font-weight: bold;
+      background-color: #f5f7fa;
+    }
+    .modeltitle {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  }
+  // @media screen and(max-width: 1450px) {
+  //   .toggle {
+  //     .el-col-8 {
+  //       width: 50%;
+  //     }
+  //   }
+  // }
+}
+</style>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: lightblue;
+            font-size: 38px;
+            text-shadow: 0px 0px 7px #fff;
+        }
+
+        .pannel {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            opacity: 0;
+            z-index: 99;
+        }
+
+        .pannel span {
+            display: inline-block;
+            text-align: right;
+            width: 50px;
+        }
+
+        .pannel .common {
+            width: 100px;
+        }
+
+        .pannel .title {
+            width: 300px;
+            text-align: right;
+        }
+
+        .pannel .day_common {
+            width: 346px;
+            text-align: right;
+        }
+
+        .date {
+            text-align: center;
+        }
+
+        .time {
+            text-align: center;
+        }
+
+        .back {
+            margin-left: -114px;
+        }
+
+        @keyframes moveChange {
+            0% {
+                transform: translateY(0);
+            }
+
+            10% {
+                transform: translateY(-6px);
+            }
+
+            20% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-6px);
+            }
+
+            40% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+
+            60% {
+                transform: translateY(0);
+            }
+
+            70% {
+                transform: translateY(-6px);
+            }
+
+            80% {
+                transform: translateY(0);
+            }
+
+            90% {
+                transform: translateY(-6px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+        #time_canvas {
+            display: block;
+            position: absolute;
+            bottom: 0;
+            transition: all .2s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pannel">
+        <div class="date">
+            <span class="year common"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">年</span>
+            <span class="month"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">月</span>
+            <span class="day"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">日</span>
+        </div>
+        <div class="time">
+            <span class="hour common"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">时</span>
+            <span class="mimute"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">分</span>
+            <span class="second"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">秒</span>
+        </div>
+        <div class="back">
+            <span class="title">距下班倒计时:</span>
+            <div class="back_time" style="display: inline-block;">
+                <span class="back_hour common"></span>
+                <span class="sign" onmouseover="mouseoverChange(this)">时</span>
+                <span class="back_mimute"></span>
+                <span class="sign" onmouseover="mouseoverChange(this)">分</span>
+                <span class="back_second"></span>
+                <span class="sign" onmouseover="mouseoverChange(this)">秒</span>
+            </div>
+            <div class="back_alt" style="display: none;">
+                <span style="width: 406px; text-align: right;">已下班</span>
+            </div>
+        </div>
+        <div class="newYear back">
+            <span class="title">距元旦倒计日:</span>
+            <span class="newYear_day day_common"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">天</span>
+        </div>
+        <div class="chuXi back">
+            <span class="title">距除夕倒计日:</span>
+            <span class="chuXi_day day_common"></span>
+            <span class="sign" onmouseover="mouseoverChange(this)">天</span>
+        </div>
+    </div>
+    <canvas id="time_canvas"></canvas>
+</body>
+
+</html>
+
+
+<script src="./dateTransForm.js"></script>
+<script src="./qipaoCanvas.js"></script>
+<script>
+    const pannel = document.getElementsByClassName('pannel')[0]
+    const year = document.getElementsByClassName('year')[0]
+    const month = document.getElementsByClassName('month')[0]
+    const day = document.getElementsByClassName('day')[0]
+    const hour = document.getElementsByClassName('hour')[0]
+    const mimute = document.getElementsByClassName('mimute')[0]
+    const second = document.getElementsByClassName('second')[0]
+    const back_hour = document.getElementsByClassName('back_hour')[0]
+    const back_mimute = document.getElementsByClassName('back_mimute')[0]
+    const back_second = document.getElementsByClassName('back_second')[0]
+    const back_time = document.getElementsByClassName('back_time')[0]
+    const back_alt = document.getElementsByClassName('back_alt')[0]
+    const newYear_day = document.getElementsByClassName('newYear_day')[0]
+    const chuXi_day = document.getElementsByClassName('chuXi_day')[0]
+
+    // const moveFunc = e =>  {
+    //     e.style.transform = 'translateY(-6px)'
+    //     e.style.transition = 'transform .3s ease .1s'
+    //     let transTime = setTimeout(() => {
+    //         e.style.transform = 'translateY(0)'
+    //         e.style.transition = 'transform .3s ease-out .1s'
+    //         transTime = null
+    //     }, 600);
+    // }
+
+    const mouseoverChange = e => {
+        // for (let i = 1; i < 4; i++) {
+        //     setTimeout(() => {
+        //         moveFunc(e)
+        //     }, i * 1200);
+        // }
+        e.style.animation = 'moveChange 2s ease-out .5s 1 normal'
+        let moveTime = setTimeout(() => {
+            e.style.animation = null
+            moveTime = null
+        }, 2500);
+    }
+
+    let time = setTimeout(() => {
+        pannel.style.opacity = 1
+        pannel.style.transition = 'opacity 2s ease 1s'
+        time = null
+    }, 100);
+
+    setInterval(() => {
+        const nowTime = new Date()
+        const nowYear = nowTime.getFullYear()
+        const nowMonth = Number(nowTime.getMonth()) + 1
+        const nowDay = nowTime.getDate()
+        // 日期
+        year.innerHTML = nowYear
+        month.innerHTML = nowMonth
+        day.innerHTML = nowDay
+        // 时间
+        hour.innerHTML = nowTime.getHours()
+        mimute.innerHTML = nowTime.getMinutes()
+        second.innerHTML = nowTime.getSeconds()
+        // 下班倒计时
+        const onTime = new Date(`${Number(nowYear)}-${nowMonth}-${nowDay} 09:00:00`).getTime()
+        const offTime = new Date(`${Number(nowYear)}-${nowMonth}-${nowDay} 17:30:00`).getTime()
+        const backH = Math.floor(Math.abs(nowTime.getTime() - offTime) / 1000 / 60 / 60)
+        const backM = Math.floor(Math.abs(nowTime.getTime() - offTime) / 1000 / 60)
+        const backS = Math.floor(Math.abs(nowTime.getTime() - offTime) / 1000)
+        back_hour.innerHTML = backH
+        back_mimute.innerHTML = backM - backH * 60
+        back_second.innerHTML = backS - backM * 60
+        if (nowTime.getTime() - offTime > 0 || nowTime.getTime() - onTime < 0) {
+            back_time.style.display = 'none'
+            back_alt.style.display = 'inline-block'
+        } else {
+            back_alt.style.display = 'none'
+            back_time.style.display = 'inline-block'
+        }
+        // 元旦倒计天数
+        const newYear = new Date(`${Number(nowYear) + 1}-01-01`).getTime()
+        newYear_day.innerHTML = Math.floor(Math.abs(nowTime.getTime() - newYear) / 1000 / 60 / 60 / 24)
+        // 除夕倒计日
+        const chuXi = LunarCalendar.lunarToSolar(Number(nowYear), 13, 30)
+        console.log(chuXi,'cx');
+        const chuXiStr = `${chuXi.year}-${chuXi.month}-${chuXi.day}`
+        const chuXiTime = new Date(chuXiStr).getTime()
+        chuXi_day.innerHTML = Math.floor(Math.abs(nowTime.getTime() - chuXiTime) / 1000 / 60 / 60 / 24)
+    }, 1000);
+</script>

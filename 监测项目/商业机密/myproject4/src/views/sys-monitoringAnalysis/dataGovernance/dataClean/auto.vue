@@ -1,0 +1,293 @@
+<template>
+  <div class="autowrap">
+    <el-card>
+      <div slot="header">执行清理</div>
+      <el-row>
+        <el-form :model="form" ref="form" :rules="rules" label-width="120px">
+          <el-col :span="8">
+            <el-form-item label="报告机构：" prop="organ">
+             <!-- <el-select v-model="form.organ" placeholder="报告机构" filterable clearable>
+                <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd"></el-option>
+              </el-select> -->
+              <el-autocomplete v-model="form.organ" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmSelect"></el-autocomplete>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="清理来源：" prop="source">
+              <el-select v-model="form.source" style="width:100%" placeholder="清理来源" clearable>
+                <el-option label="全部" value=""></el-option>
+                <el-option label="规则扫描" value="0"></el-option>
+                <el-option label="数据抽样" value="1"></el-option>
+                <el-option label="跨机构比对" value="2"></el-option>
+                <!-- <el-option label="定点监测" value="3"></el-option> -->
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="审批状态：" prop="state">
+              <el-select v-model="form.state" style="width:100%" clearable>
+                <el-option label="全部" value=""></el-option>
+                <el-option label="未审批" value="0"></el-option>
+                <el-option label="审批中" value="1"></el-option>
+                <el-option label="审批通过" value="2"></el-option>
+                <el-option label="审批不通过" value="3"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="清理申请人：" prop="applicant">
+              <el-input v-model="form.applicant"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="16" class="btnalign">
+            <el-button type="primary" @click="handleQuery" :loading="loading">查询</el-button>
+            <el-button type="primary" plain @click="resetForm('form')">清 空</el-button>
+          </el-col>
+        </el-form>
+      </el-row>
+
+      <div style=" marginBottom: 10px; marginTop: 10px;">
+        <span>待执行清理数据列表：</span>
+        <el-button type="primary" plain @click="handleExecute" :loading="oneKeyLoading">一键执行自动清理</el-button>
+      </div>
+      <el-table style="width: 100%" :data="list" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" width="55" :selectable="checkSelectable"></el-table-column>
+        <el-table-column type="index" label="序号" min-width="55"></el-table-column>
+        <el-table-column prop="approvalId" label="清理ID" min-width="110"></el-table-column>
+        <el-table-column prop="tradeId" label="交易ID" min-width="110"></el-table-column>
+        <el-table-column prop="tradeType" label="交易类型" min-width="140">
+          <template slot-scope="scope">
+            {{scope.row.tradeType === '0'? '大额':'可疑'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="reportName" label="报告机构" min-width="110"></el-table-column>
+        <el-table-column prop="origin" label="清理来源" min-width="100"></el-table-column>
+        <el-table-column prop="planName" label="清理方案" min-width="120"></el-table-column>
+        <el-table-column prop="creUser" label="清理申请人" min-width="100"></el-table-column>
+        <el-table-column prop="state" label="审批状态" min-width="100"></el-table-column>
+        <el-table-column fixed="right" label="操作" min-width="80">
+          <template slot-scope="scope">
+            <router-link :to="{name:'dataGovernance_tradeDetail_tradeDetail', query: {tradeId: scope.row.tradeId, type: scope.row.type  }}">
+              <el-button type="text">查看</el-button>
+            </router-link>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { getList, getExecute } from '@/api/sys-monitoringAnalysis/dataGovernance/dataClean/auto.js'
+
+export default {
+  name: 'auto',
+  data() {
+    return {
+      oneKeyLoading: false,
+      rinmOptions: [], // 报告机构列表
+      value: '',
+      form: {
+        organ: '',
+        id: '',
+        applicant: '',
+        source: '',
+        state: ''
+      },
+      rules: {
+        applicant: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ],
+        organ: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      markVisible: false, // 取消标注提示框参数
+      multipleSelection: [],
+      list: [],
+      total: 0,
+      listLoading: false,
+      loading: false,
+      // 每页显示条数
+      pageInfo: {
+        pageNum: 1, // 分页当前页面
+        pageSize: 10
+      },
+      tradeIdList: [],
+      reportRicd: ''
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    getData() {
+      const paramsObj = {
+        reportName: this.form.organ,
+        origin: this.form.source,
+        state: this.form.state,
+        applyName: this.form.applicant,
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      this.listLoading = true
+      getList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.listLoading = false
+          this.loading = false
+          this.list = res.data.list
+          this.total = res.data.total
+          if (res.data.list !== 0) {
+            res.data.list.forEach(e => {
+              if (e.state !== null) {
+                switch (e.state) {
+                  case '0':
+                    e.state = '未审批'
+                    break
+                  case '1':
+                    e.state = '审批中'
+                    break
+                  case '2':
+                    e.state = '审批通过'
+                    break
+                  case '3':
+                    e.state = '审批不通过'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.origin !== null) {
+                switch (e.origin) {
+                  case '0':
+                    e.origin = '规则扫描'
+                    break
+                  case '1':
+                    e.origin = '数据抽样'
+                    break
+                  case '2':
+                    e.origin = '跨机构比对'
+                    break
+                  default:
+                    break
+                }
+              }
+            })
+          }
+        } else {
+          this.listLoading = false
+          this.loading = false
+        }
+      }).catch(() => {
+        this.listLoading = false
+        this.loading = false
+      })
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    handleRinmSelect(val) {
+      if (val) {
+        this.reportRicd = val.ricd
+      }
+    },
+    handleQuery() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.loading = true
+          this.getData()
+        } else {
+          return false
+        }
+      })
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    checkSelectable(row) {
+      return row.state === '审批通过'
+    },
+    handleExecute() {
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const tradeIdList = []
+        this.multipleSelection.map(item => {
+          tradeIdList.push(item.approvalId)
+        })
+        const params = tradeIdList.join(',')
+        // 一键清理
+        if (params) {
+          this.oneKeyLoading = true
+          getExecute(params)
+            .then(res => {
+              if (res.code === 200) {
+                this.oneKeyLoading = false
+                this.getData()
+                this.$message({
+                  type: 'success',
+                  message: '一键执行清理成功！'
+                })
+              } else {
+                this.oneKeyLoading = false
+                this.$message({
+                  type: 'error',
+                  message: res.message
+                })
+              }
+            })
+            .catch(() => {
+              this.oneKeyLoading = false
+            })
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.autowrap {
+  .handleBtn {
+    padding-bottom: 10px;
+  }
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

@@ -1,0 +1,445 @@
+<template>
+  <div class="intelligentAnalyzeManage">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>宏观分析报告管理</span>
+        <div style="float: right;" v-if="(isShow||isGl)">
+          <!-- <router-link to="reportManage/waningRule">
+            <el-button  type="text">创建预警规则</el-button>
+          </router-link>-->
+          <!-- dialogVisible=true -->
+          <router-link :to="{ name: 'macroAnalysis_add' }">
+            <el-button type="text">创建</el-button>
+          </router-link>
+        </div>
+      </div>
+
+      <div class="serachBlock">
+        <el-form :model="form" :inline="true" ref="form" :rules="rules">
+          <el-form-item label="标题" prop="title">
+            <el-input v-model="form.title" placeholder="最长50字符数" maxlength="50"  style="width:200px"></el-input>
+          </el-form-item>
+          <el-form-item label="发布状态" v-if="(isShow||isGl)" prop="state">
+            <el-select v-model="form.state" placeholder="请选择" clearable>
+              <el-option label="已提交" value="1"></el-option>
+              <el-option label="已发布" value="2"></el-option>
+              <el-option label="已保存" value="0"></el-option>
+              <el-option label="已退回" value="4"></el-option>
+            </el-select>
+          </el-form-item> 
+          <el-form-item>
+             <div style="textAlign:right; margin-bottom:10px">
+            <el-button :loading="loadingA" type="primary"  @click="query('cx')">查询</el-button>
+             <el-button type="primary" plain @click="clearForm">清空</el-button>
+          </div>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div class="listBlock" style="marginBottom:30px">
+        <el-table 
+      v-loading="loadingA"
+      element-loading-text="拼命加载中"
+      element-loading-spinner="el-icon-loading"
+      element-loading-background="rgba(0, 0, 0, 0.1)"
+        :data="tableData" 
+        @selection-change="handleChange"
+        > 
+          <el-table-column type="selection" :selectable="isDisableda"></el-table-column>
+          <el-table-column label="序号" type="index" width="60"></el-table-column>
+          <el-table-column label="标题" prop="title" min-width="160" show-overflow-tooltip >
+            <template slot-scope="scope">
+               <el-button @click="handleClick(scope.row.id,scope.row.state)" type="text" size="small">{{scope.row.title}}</el-button>
+           </template>
+          </el-table-column>
+          <el-table-column label="创建者" prop="auther" min-width="100" show-overflow-tooltip></el-table-column>
+          <!-- <el-table-column label="创建部门" prop="department" min-width="120"></el-table-column> -->
+          <el-table-column label="创建时间" prop="date" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column label="状态" prop="state" min-width="100" v-if="(isShow||isGl)" show-overflow-tooltip></el-table-column>
+          <el-table-column label="发布对象" width="120" v-if="(isShow||isGl)" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <span>{{scope.row.publish}}</span>
+            </template>
+          </el-table-column>
+          <el-table-column fixed="right" label="操作" width="120">
+          <template slot-scope="scope">
+            <!-- v-if="!isGl" -->
+              <el-button type="text"  @click="handleClicka(scope.row.id)" :disabled="isDisabled(scope.row.state,scope.row.auther)">编辑</el-button>
+              <el-button type="text" v-if="isGl" @click="multiDelA(scope.row.id)">删除</el-button>
+              <el-button type="text" v-else @click="multiDelA(scope.row.id)" :disabled="isDisabled(scope.row.state,scope.row.auther)">删除</el-button>
+          </template>
+        </el-table-column>
+        </el-table>
+        <el-row>
+          <el-col :span="12" style="paddingTop:10px" v-if="(isShow||isGl)">
+            <el-button type="primary" plain @click="multiDel">批量删除</el-button>
+          </el-col>
+        </el-row>
+      </div>
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pageInfo.pageNum"
+        :page-size="pageInfo.pagesize"
+        :page-sizes="[10, 20, 30, 40]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pageInfo.total"
+        background
+      ></el-pagination>
+    </el-card>
+    <!-- 新建 dialog -->
+    <el-dialog :visible.sync="dialogVisible">
+      <el-form :model="dialogForm" label-width="140px">
+        <el-row>
+          <el-col :span="20">
+            <el-form-item label="分析报告类型：">
+              <el-select v-model="dialogForm.type" placeholder="请选择">
+                <el-option label="灰皮书" value="1"></el-option>
+                <el-option label="红皮书" value="2"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="20">
+            <el-form-item label="标题：">
+              <el-input v-model="dialogForm.title" placeholder="请输入标题"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="20">
+            <el-form-item label="内容：">
+              <el-input v-model="dialogForm.content" type="textarea" placeholder="请输入内容"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="20">
+            <el-form-item label="附件：">
+              <el-upload class="upload-demo" action drag multiple>
+                <i class="el-icon-upload"></i>
+                <div class="el-upload__text">
+                  将文件拖到此处，或
+                  <em>点击上传</em>
+                </div>
+              </el-upload>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="发布对象：">
+          <el-checkbox-group v-model="dialogForm.publishObj">
+            <el-checkbox label="中心用户">中心用户</el-checkbox>
+            <el-checkbox label="分支机构用户">分支机构用户</el-checkbox>
+            <el-checkbox label="反洗钱局">反洗钱局</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="dialogVisible = false">提交审核</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 发布 dialog -->
+    <!-- <el-dialog :visible.sync="dialogVisible2">
+      <el-form :model="dialogForm2" label-width="140px">
+        <el-row>
+          <el-col :span="20">
+            <el-form-item label="指定对象：">
+              <el-checkbox-group v-model="dialogForm2.obj">
+                <el-checkbox label="中心用户"></el-checkbox>
+                <el-checkbox label="分支机构"></el-checkbox>
+                <el-checkbox label="反洗钱局"></el-checkbox>
+              </el-checkbox-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible2 = false">取 消</el-button>
+        <el-button type="primary" @click="dialogVisible2 = false">发 布</el-button>
+      </div>
+    </el-dialog>-->
+  </div>
+</template>
+
+<script>
+// import UpLoad from '@/components/FileUpload/index.vue'
+import { mapGetters } from 'vuex'
+import { ValidQueryInput } from '@/utils/formValidate'
+import { getList, delReport } from '@/api/sys-monitoringAnalysis/reportManage/index.js'
+export default {
+  components: {
+    // UpLoad
+  },
+  data() {
+    return {
+      jurisdiction: 'monitor:analysisReportManageBj', // 编辑标示
+      jurisdictionGl: 'monitor:analysisReportManageGl', // 管理标示
+      jurisdictionCk: 'monitor:analysisReportManageCk', // 查看标示
+      userName: '',
+      isShow: false, // 判断权限
+      isShowDelete: false, // 判断权限
+      isGl: false, // 判断是不是管理员
+      loadingA: true,
+      form: {
+        title: '',
+        apple: '',
+        state: ''
+      },
+      tableData: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 10
+      },
+      dialogVisible: false,
+      dialogForm: {
+        type: '',
+        content: '',
+        title: '',
+        publishObj: ['中心用户', '反洗钱局']
+      },
+      dialogVisible2: false,
+      dialogForm2: {
+        type: '灰皮书',
+        title: '3号令实施后可疑数据报送质量提升',
+        obj: []
+      },
+      arr1: [],
+      arr2: [],
+      arr3: [],
+      delArr: [],
+      rules: {
+        // 非必填
+        // title: [{ validator: adminisValidInput, trigger: 'blur' }]
+        title: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  // 列表查询参数
+  computed: {
+    searchParams() {
+      const obj = Object.assign({}, this.pageInfo)
+      delete obj.total
+      obj.title = this.form.title
+      obj.status = this.form.state
+      obj.apple = this.form.apple
+      return obj
+    },
+    pageInfos() {
+      const obj = Object.assign({}, this.pageInfo)
+      delete obj.total
+      obj.apple = this.form.apple
+      return obj
+    },
+    ...mapGetters(['permissions_routers'])
+  },
+  created() {
+    if (sessionStorage.getItem('searchData')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+      if (searchData.pageName === this.$route.name && searchData.ifReview) {
+        this.pageInfo = searchData.pageInfo
+        this.form = searchData.searchForm
+      }
+    }
+  },
+  mounted() {
+    this.judge()
+  },
+  methods: {
+    clearForm() {
+      this.form.title = ''
+      this.form.state = ''
+      this.$refs.form.clearValidate()
+    },
+    isDisableda(row, index) {
+      if (this.isShowDelete) {
+        if ((row.state === '已保存' || row.state === '已退回') && this.userName === row.auther) {
+          return true
+        } else {
+          return false
+        }
+      } else {
+        return true
+      }
+    },
+    isDisabled(state, auther) {
+      if ((state === '已保存' || state === '已退回') && this.userName === auther) {
+        return false
+      } else {
+        return true
+      }
+    },
+    // 查看详情
+    handleClick(uid, state) {
+      if (this.isGl && state === '已发布') {
+        this.$router.push({ name: 'macroAnalysis_reportManage_modification', query: { id: uid }})
+      } else {
+        this.$router.push({ name: 'macroAnalysis_reportManage_detail', query: { id: uid }})
+      }
+    },
+    handleClicka(uid) {
+      this.$router.push({ name: 'macroAnalysis_add', query: { id: uid }})
+    },
+    // 判断权限
+    judge() {
+      this.userName = sessionStorage.getItem('name') // 获取登陆人的用户名
+      if (this.permissions_routers.indexOf(this.jurisdictionGl) !== -1) {
+        this.isShowDelete = false
+        this.isGl = true // 判断是不是管理员
+        this.form.apple = 'monitor:analysisReportManageGl'
+        this.query()
+      } else if (this.permissions_routers.indexOf(this.jurisdiction) !== -1) {
+        this.isShow = true// 控制创建
+        this.isShowDelete = true // 判断权限控制删除是删除自己的，还是可以全部删除
+        this.form.apple = 'monitor:analysisReportManageBj'
+        this.query()
+      } else if (this.permissions_routers.indexOf(this.jurisdictionCk) !== -1) {
+        this.form.apple = 'monitor:analysisReportManageCk'
+        this.query()
+      }
+    },
+    // 点击查询
+    query(obj) {
+      this.$refs.form.validate(val => {
+        if (val) {
+          this.loadingA = true
+          if (obj === 'cx') {
+            this.pageInfo.pageNum = 1
+          }
+          getList(this.searchParams).then(res => {
+            if (res.code === 200) {
+              this.loadingA = false
+              this.pageInfo.total = res.data.total
+              const arry = res.data.list // 获取的数据
+              const arr = []
+              arry.forEach(el => {
+                const obj = {}
+                obj.auther = el.name
+                obj.title = el.title
+                obj.id = el.id
+                switch (el.status) {
+                  case '1':
+                    obj.state = '已提交'
+                    break
+                  case '2':
+                    obj.state = '已发布'
+                    break
+                  case '0':
+                    obj.state = '已保存'
+                    break
+                  case '4':
+                    obj.state = '已退回'
+                    break
+                  default:
+                    break
+                }
+                obj.date = el.creationTime
+                if (el.publishName !== null) {
+                  this.arr3 = el.publishName.split(',').map(item => {
+                    if (item === '0') {
+                      item = '中心用户'
+                    }
+                    if (item === '1') {
+                      item = '分支机构用户'
+                    }
+                    if (item === '2') {
+                      item = '反洗钱局'
+                    }
+                    return item
+                  })
+                  obj.publish = this.arr3.join(',')
+                }
+                arr.push(obj)
+              })
+              this.tableData = arr
+              const searchData = {
+                pageName: this.$route.name,
+                pageInfo: this.pageInfo,
+                searchForm: this.form
+              }
+              sessionStorage.setItem('searchData', JSON.stringify(searchData))
+            }
+          }).catch(() => {
+            this.loadingA = false
+          })
+        }
+      })
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.query()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.query()
+    },
+    // 选择要删的数据
+    handleChange(val) {
+      this.delArr = []
+      if (val) {
+        val.forEach(row => {
+          if (row) {
+            this.delArr.push(row.id)
+          }
+        })
+      }
+    },
+    // 批量删除
+    multiDel() {
+      if (this.delArr.length > 0) {
+        this.$confirm('确定要删除数据吗 ？', '提示', {
+          confirmButtonText: '确认',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+          .then(() => {
+            delReport(this.delArr).then(res => {
+              this.$message({
+                message: '删除成功！',
+                type: 'success',
+                duration: 6000
+              })
+              this.query()
+            })
+          })
+          .catch(() => {})
+      } else {
+        this.$message({
+          message: '请选择要删除的数据！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 删除
+    multiDelA(id) {
+      delReport(id).then(res => {
+        this.$message({
+          message: '删除成功！',
+          type: 'success',
+          duration: 6000
+        })
+        this.query()
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.intelligentAnalyzeManage {
+  .el-dialog {
+    .el-upload {
+      width: 100%;
+      .el-upload-dragger {
+        width: 100%;
+      }
+    }
+  }
+}
+</style>

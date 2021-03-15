@@ -1,0 +1,858 @@
+<template>
+  <div class="analysisSpecial-clueSave">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>跨区域数据申请</span>
+        <div style="float:left"></div>
+      </div>
+      <el-form
+        ref="form"
+        :model="form"
+        label-width="170px"
+        class="formBlock"
+        :disabled="isDisabled"
+      >
+        <el-row>
+          <el-col :span="20">
+            <el-form-item
+              label="线索名称："
+              prop="clueName"
+              :rules="[{ required:true, message: '请输入线索名称',trigger: 'blur'}, { validator: validateAgentName, trigger: 'blur' }]"
+            >
+              <el-input v-model="form.clueName" maxlength="50" placeholder="请输入线索名称, 最多可输入50位"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="20">
+            <el-form-item
+              label="线索来源："
+              prop="clueSource"
+              :rules="[{ required:true, message: '请输入线索来源',trigger: 'blur'}, { validator: validateAgentName, trigger: 'blur' }]"
+            >
+              <el-input v-model="form.clueSource" maxlength="50" placeholder="请输入线索来源, 最多可输入50位"></el-input>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="10">
+            <el-form-item
+              label="专项类别："
+              prop="applyType"
+              :rules="[{ required:true, message: '请选择专项类别',trigger: 'change'}]"
+            >
+              <el-select
+                style="width:100% !important;"
+                clearable
+                v-model="form.applyType"
+                placeholder="请选择"
+                @change="getValue"
+              >
+                <el-option
+                  v-for="(item,index) in special"
+                  :key="index"
+                  :label="item.codeName"
+                  :value="item.codeId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col> -->
+
+          <!-- <el-col :span="10" v-if="textInp" label="">
+            <el-input v-model="form.text" placeholder="请输入内容"></el-input>
+          </el-col>-->
+          <!-- <el-col :span="20" v-if="textInp">
+            <el-form-item
+              label
+              prop="applyType"
+              :rules="[{ validator: validateAgentName, trigger: 'blur' }]"
+            >
+              <el-input v-model="form.text" maxlength="50" placeholder="请输入内容, 最多可输入50位"></el-input>
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="20" >
+            <el-form-item
+              label="专项类别："
+              prop="text"
+              :rules="[{validator: validateAgentName, trigger: 'blur' },{ required:true, message: '请输入专项类别',trigger: 'blur'}]"
+            >
+              <el-input v-model="form.text" maxlength="50" placeholder="请输入内容, 最多可输入50位"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="20">
+            <el-form-item
+              label="线索描述："
+              prop="clueDes"
+              :rules="[{ required:true, message: '请输入线索描述',trigger: 'blur'}]"
+            >
+              <el-input
+                type="textarea"
+                v-model="form.clueDes"
+                maxlength="500"
+                placeholder="请输入线索描述, 最多可输入500位"
+              ></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="20">
+            <el-form-item
+              label="部门负责人审批意见："
+              prop="deptOpinion"
+              :rules="[{ required: true, message: '请输入部门负责人审批意见', trigger: 'blur' }]"
+            >
+              <el-input
+                type="textarea"
+                v-model="form.deptOpinion"
+                maxlength="500"
+                placeholder="请输入部门负责人审批意见, 最多可输入500位"
+              ></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="20">
+            <el-form-item label="附件：">
+              <el-upload
+                :beforeUpload="beforeAvatarUpload3"
+                class="upload-demo"
+                :file-list="fileList"
+                :action="updataUrl1"
+                :on-success="upSuccess"
+                :on-remove="handleRemove"
+                :on-preview="downloadResult"
+              >
+                <el-button type="primary" plain>点击上传</el-button>
+              </el-upload>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div style="margin-bottom:30px">
+          <div style="margin-bottom:10px">
+            <strong>批量导入主体或账户信息</strong>
+            <el-upload
+              :disabled="isDisabled"
+              :action="updataUrl2"
+              :on-success="handleSuccess"
+              style="display: inline-block;marginLeft:20px"
+            >
+              <el-button :disabled="isDisabled" slot="trigger" type="primary" plain>选取文件</el-button>
+              <el-button
+                :disabled="isDisabled"
+                plain
+                type="primary"
+                style="marginLeft:10px"
+                icon="el-icon-download"
+                @click="download"
+              >模板下载</el-button>
+              <el-button
+                :disabled="isDisabled"
+                style="margin-left:0;"
+                type="primary"
+                plain
+                @click="addSingle"
+              >添加一行</el-button>   
+            </el-upload>
+          </div>
+          <el-row>
+            <el-col :span="22" :offset="1">
+              <el-table :data="form.tableData" max-height="500px" border>
+            <el-table-column type="index" label="序号" width="80" ></el-table-column>
+            <el-table-column label="主体名称" min-width="150" prop="name"></el-table-column>
+            <el-table-column label="证件类型" min-width="150"  prop="certificateTypeName"></el-table-column>
+            <el-table-column label="证件号码" min-width="150"  prop="certificateNum"></el-table-column>
+            <el-table-column label="账户" min-width="150"  prop="accountNum"></el-table-column>
+            <el-table-column label="开户行" min-width="150"  prop="openBank"></el-table-column>
+            <!-- <el-table-column label="负责分析的分支行" min-width="150"  prop="branchBankName"></el-table-column>                            -->
+            <el-table-column
+              label="操作"
+              min-width="200"
+            >
+              <template slot-scope="scope">
+                <el-button
+                :disabled="isDisabled"
+                  type="text"
+                  @click="editItem(scope.$index,scope.row)"
+                >编辑</el-button>
+                <el-button
+                :disabled="isDisabled"
+                  type="text"
+                  @click="delItem(scope.$index,scope.row)"
+                >删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+            </el-col>
+          </el-row>
+        </div>
+      </el-form>
+      <el-dialog title="主体账户信息" :visible.sync="editVisible" width="60%">
+            <el-form ref="formMain" :model="formMain">
+              <el-form-item label="主体名称：" label-width="200px" prop="name" :rules="[{validator: delDataValidInput, trigger: 'blur'}]">
+                  <el-input v-model="formMain.name" maxlength="50"  placeholder="请输入主体名称,最多输入50字符"></el-input>
+              </el-form-item>
+              <el-form-item label="证件类型：" label-width="200px">
+                  <el-select
+                    clearable
+                    filterable
+                    v-model="formMain.certificateType"
+                    placeholder="请选择"
+                    style="width:100%"
+                  >
+                    <el-option
+                      v-for="(item,index) in typeId"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    >
+                    </el-option>
+                  </el-select>
+              </el-form-item>
+              <el-form-item label="证件号码：" label-width="200px" prop="certificateNum" :rules="[{validator: validateAgentNum, trigger: 'blur'}]">
+                  <el-input v-model="formMain.certificateNum" maxlength="128"  placeholder="请输入证件号码,最多输入128字符"></el-input>
+              </el-form-item>
+              <el-form-item label="账号：" label-width="200px" prop="accountNum" :rules="[{validator: onlyNumberValidate, trigger: 'blur'}]">
+                  <el-input v-model="formMain.accountNum" maxlength="30"  placeholder="请输入账号,最多输入30字符"></el-input>
+              </el-form-item>
+              <el-form-item label="开户行：" label-width="200px" prop="openBank" :rules="[{validator: isValidInput, trigger: 'blur'}]">
+                  <el-input v-model="formMain.openBank" maxlength="50"  placeholder="请输入开户行,最多输入50字符"></el-input>
+              </el-form-item>
+                <!--  <el-form-item label="负责分析的分支行：" label-width="200px" prop="branchBank" :rules="[{required: true, message: '分支行不能为空', trigger: 'change'}]">
+                  <el-select
+                    filterable
+                    v-model="formMain.branchBank"
+                    clearable
+                    placeholder="请选择"
+                  >
+                    <el-option
+                      v-for="(item,index) in organDoListData"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    >
+                    </el-option>
+                  </el-select>
+              </el-form-item> -->
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="editVisible = false">取 消</el-button>
+                <el-button type="primary" @click="saveEdit('formMain')">确 定</el-button>
+            </span>
+        </el-dialog>
+      <el-button :disabled="allShow" plain type="primary" @click="downAccount">主体账户信息下载</el-button>
+      <div v-if="www" style="overflow:hidden;margin-top:10px;">
+        <span style="display:block;float:left;padding-top: 8px;margin-right:10px;">分析结果：</span>
+        <el-upload
+        style="float:left;"
+        :beforeUpload="beforeAvatarUpload3"
+        disabled
+        :action="updataUrl3"
+        :file-list="fileListResult"
+        :on-success="upSuccess1"
+        :on-preview="downloadResult"
+      >
+        <el-button disabled type="primary" plain>选择文件</el-button>
+      </el-upload>
+      </div>
+      <el-form label-width="160px">
+        <!-- {{isPublish}} -->
+        <el-form-item v-if="isPublish" label="分析结果：" required>
+          <el-upload
+            :beforeUpload="beforeAvatarUpload3"
+            :disabled="!isPublish"
+            :action="updataUrl3"
+            :on-success="upSuccess1"
+            :file-list="fileListResult"
+            :on-remove="handleRemove1"
+          >
+            <el-button :disabled="!isPublish" type="primary" plain>选择文件</el-button>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <div style="text-align: center">
+          <el-button
+          v-if="isSave"
+            type="primary"
+            @click="submitChange()"
+            :loading="loading"
+          >保存</el-button>          
+        </div>
+    </el-card>
+    
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import { getToken } from '@/utils/auth'
+import { delAttach, save } from '@/api/sys-monitoringAnalysis/analysisSpecial/index.js'
+import { newBranch } from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+import { branch, updateForm } from '@/api/sys-monitoringAnalysis/analysisSpecial/index.js'
+import { commonPattern } from '@/utils/formValidate'
+export default {
+  data() {
+    return {
+      formMain: {
+        accountNum: '',
+        branchBank: '',
+        branchBankName: '',
+        certificateNum: '',
+        certificateType: '',
+        certificateTypeName: '',
+        name: '',
+        openBank: ''
+      },
+      www: false,
+      editVisible: false,
+      isEdit: false,
+      idx: -1,
+      loading: false,
+      isSave: false,
+      chinaNull: /[\u4e00-\u9fa5]/, // 校验中文
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      englishNull: /[abcdefghijklmnopqrstuvwxyz]/im, // 校验英文
+      numberNull: /[1234567890]/im, // 校验数字
+      blankSpace: /[ ]/im, // 校验空格
+      allShow: false,
+      organDoListData: [],
+      isDisabled: true,
+      isPublish: false,
+      token: getToken(),
+      textInp: false,
+      fileList: [],
+      form: {
+        clueName: '',
+        clueSource: '',
+        applyType: '6',
+        applyType1: '',
+        text: '',
+        clueDes: '',
+        deptOpinion: '',
+        result: '',
+        accountDoList: [], // 主体信息
+        mainDoList: [], // 账户信息
+        applyId: '',
+        tableData: []
+      },
+      fxjg: 0,
+      fileListResult: [],
+      ref: {
+        applyId: ''
+      },
+      url: '',
+      urldata: '',
+      typeId: [],
+      special: []
+    }
+  },
+  computed: {
+    ...mapGetters(['businessFlag', 'workFlow2business', 'formContent', 'buttonData']),
+    updataUrl1() {
+      return `/monitor/special-apply/upAttach?applyId=${this.urldata}&token=${this.token}`
+    },
+    updataUrl2() {
+      return `/monitor/special-apply/upFile?token=${this.token}`
+    },
+    updataUrl3() {
+      return `/monitor/special-apply/upAttachResult?applyId=${this.urldata}&token=${this.token}`
+    }
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.updateForm()
+      this.$store.dispatch('changeFlag', false)
+    },
+    formContent: {
+      handler(newVal, oldVal) {
+        for (var key in newVal) {
+          this.form[key] = newVal[key]
+        }
+        // console.log(newVal, 987)
+        // this.form = newVal
+        this.form.tableData = newVal.mainDoList
+        this.taskId = newVal.workflow.pkId
+        if (newVal.attachDoList != null) {
+          newVal.attachDoList.forEach(el => {
+            var obj = {}
+            obj.name = el.attachName
+            obj.id = el.attachId
+            this.fileList.push(obj)
+          })
+        }
+        if (newVal.attachDoListResult != null) {
+          newVal.attachDoListResult.forEach(item => {
+            var obj1 = {}
+            obj1.name = item.attachName
+            obj1.id = item.attachId
+            // obj.noteId = el.noteId
+            this.fileListResult.push(obj1)
+          })
+          this.fxjg = this.fxjg + this.fileListResult.length
+        }
+        this.urldata = this.form.applyId
+        if (this.form.applyType.indexOf('6') === 0) {
+          this.textInp = true
+          const arr = this.form.applyType.split('-')
+          this.form.applyType = arr[0]
+          this.form.text = arr[1]
+        }
+        if (newVal.workflow.nodeAttributes != null) {
+          if (
+            newVal.workflow.nodeAttributes[0].extendKey === 'editFlag' &&
+          newVal.workflow.nodeAttributes[0].extendValue === 'Y'
+          ) {
+            this.isDisabled = false
+            this.isSave = true
+          } else {
+            this.isDisabled = true
+            this.isSave = false
+          }
+          if (
+            newVal.workflow.nodeAttributes[1].extendKey === 'uploadFlag' &&
+          newVal.workflow.nodeAttributes[1].extendValue === 'Y'
+          ) {
+            this.isPublish = true
+          } else {
+            this.isPublish = false
+          }
+        }
+        if (newVal.clueState === '4') {
+          this.isPublish = true
+        }
+        if (newVal.clueState === '6') {
+          this.www = true
+        }
+      }
+    }
+  },
+  methods: {
+    // 下载附件
+    downloadResult(file) {
+      location.href = '/file-service/upload/download/' + file.id + '?moduleName=' + encodeURI('跨区域数据申请')
+    },
+    // 新增保存
+    saveEdit(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          const object = this.typeId.find(item => item.codeId === this.formMain.certificateType)
+          this.formMain.certificateTypeName = object ? object.codeName : ''
+          this.organDoListData.forEach(el => {
+            if (el.codeId === this.formMain.branchBank) {
+              this.formMain.branchBankName = el.codeName
+              return
+            }
+          })
+          const obj = Object.assign({}, this.formMain)
+          if (this.isEdit) {
+            this.$set(this.form.tableData, this.idx, obj)
+            this.$message.success(`编辑主体账户信息第 ${this.idx + 1} 行成功`)
+            this.isEdit = false
+          } else {
+            this.form.tableData.unshift(obj)
+          }
+          this.editVisible = false
+        } else {
+          return false
+        }
+      })
+    },
+    // 添加一条主体账户信息
+    addSingle() {
+      this.editVisible = true
+      this.$refs.formMain.clearValidate()
+      this.$refs.formMain.resetFields()
+      this.formMain = {
+        accountNum: '',
+        branchBank: '',
+        branchBankName: '',
+        certificateNum: '',
+        certificateType: '',
+        certificateTypeName: '',
+        name: '',
+        openBank: ''
+      }
+    },
+
+    // 修改一条主体账户信息
+    editItem(index, item) {
+      this.editVisible = true
+      this.isEdit = true
+      this.idx = index
+      this.formMain = {
+        accountNum: item.accountNum,
+        branchBank: item.branchBank,
+        branchBankName: item.branchBankName,
+        certificateNum: item.certificateNum,
+        certificateType: item.certificateType,
+        certificateTypeName: item.certificateTypeName,
+        name: item.name,
+        openBank: item.openBank
+      }
+    },
+    delItem(index) {
+      this.$confirm('确定要删除选中的数据 ?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.form.tableData.splice(index, 1)
+          this.$message({
+            message: '删除成功',
+            type: 'success'
+          })
+        })
+        .catch(() => {})
+    },
+    beforeAvatarUpload3(file) {
+      const isLt2M = file.size / 1024 / 1024 < 100
+      if (!isLt2M) {
+        this.$message({
+          message: '上传文件大小不能超过 100MB!',
+          type: 'warning'
+        })
+      }
+      return isLt2M
+    },
+    // 获取分支机构
+    getBranch() {
+      branch({ typeId: 'FZJG' }).then(res => {
+        if (res.code === 200) {
+          this.organDoListData = res.data.list
+        }
+      })
+    },
+    validateAgentName(rule, value, callback) {
+      if (value !== '' && value !== null && value !== undefined) {
+        if (this.blankSpace.test(value)) {
+          callback(new Error('禁止输入空格'))
+        } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+          callback(new Error('禁止输入特殊字符'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 校验身份证号位数及特殊字符空格中英文
+    validateAgentNum(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (
+          this.formMain.certificateType === '110001' ||
+          this.formMain.certificateType === '110003'
+        ) {
+          if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else if (value.length !== 15 && value.length !== 18) {
+            callback(new Error('身份证件格式标准为15及18位'))
+          } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+            callback(new Error('内容不能填写特殊字符'))
+          } else {
+            callback()
+          }
+        } else {
+          if (value.length <= 5 || value.length >= 129) {
+            callback(new Error('内容应在6-128位之间'))
+          } else if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    isValidInput(rule, value, callback) {
+      if (value !== '' && value !== null && value !== undefined) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    // 数字检查
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // isUpLoad() {
+    //   console.log(this.buttonData, 888)
+    //   this.buttonData.forEach(el => {
+    //     if (el.operation === 'uploadAttachment') {
+    //       this.isPublish = true
+    //     }
+    //   })
+    //   console.log(this.isPublish, 3242432)
+    // },
+    // 下拉框选中触发
+    getValue(value) {
+      this.form.text = ''
+      if (this.form.applyType.indexOf('6') === 0) {
+        this.textInp = true
+      } else {
+        this.textInp = false
+      }
+    },
+    handleRemove(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.response) {
+          this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+        } else if (file.id) {
+          this.delUrl = 'file-service/upload/delete-attach/' + file.id
+        }
+        delAttach('', this.delUrl).then(res => {
+          this.$message({
+            message: '删除附件成功',
+            type: 'success'
+          })
+        })
+      }
+    },
+    handleRemove1(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.response) {
+          this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+        } else if (file.id) {
+          this.delUrl = 'file-service/upload/delete-attach/' + file.id
+        }
+        delAttach('', this.delUrl).then(res => {
+          this.$message({
+            message: '删除附件成功',
+            type: 'success'
+          })
+          this.fxjg = this.fxjg - 1
+        })
+      }
+    },
+    submitChange() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.loading = true
+          if (this.form.applyType.indexOf('6') === 0) {
+            this.form.applyType = this.form.applyType + '-' + this.form.text
+          }
+          this.form.mainDoList = this.form.tableData
+          this.form.mark = 0
+          save(this.form).then(res => {
+            if (res.code === 200) {
+              this.loading = false
+              this.$router.push({ name: 'home' })
+              this.$message({
+                message: '修改成功',
+                type: 'success'
+              })
+            } else {
+              this.loading = false
+              this.$message({
+                message: res.message,
+                type: 'warning'
+              })
+            }
+          })
+        } else {
+          this.$message({
+            message: '请输入正确的表单内容',
+            type: 'warning'
+          })
+          return false
+        }
+      })
+    },
+    updateForm() {
+      if (this.isPublish === true) {
+        if (this.fxjg > 0) {
+          this.$refs.form.validate(valid => {
+            if (valid) {
+              if (this.form.applyType.indexOf('6') === 0) {
+                this.form.applyType = this.form.applyType + '-' + this.form.text
+              }
+              this.form.mainDoList = this.form.tableData
+              updateForm(this.form, this.workFlow2business).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    message: '提交成功',
+                    type: 'success'
+                  })
+                  // this.$store.dispatch('changeFlag', false)
+                  setTimeout(() => {
+                    this.$router.push({ name: 'home' })
+                  }, 1000)
+                }
+              })
+            } else {
+              this.$message({
+                message: '请输入正确的表单内容',
+                type: 'warning'
+              })
+            }
+          })
+        } else {
+          this.$message({
+            message: '流程结束前必须上传分析结果',
+            type: 'error'
+          })
+        }
+      } else {
+        this.$refs.form.validate(valid => {
+          if (valid) {
+            if (this.form.applyType.indexOf('6') === 0) {
+              this.form.applyType = this.form.applyType + '-' + this.form.text
+            }
+            this.form.mainDoList = this.form.tableData
+            updateForm(this.form, this.workFlow2business).then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  message: '提交成功',
+                  type: 'success'
+                })
+                // this.$store.dispatch('changeFlag', false)
+                setTimeout(() => {
+                  this.$router.push({ name: 'home' })
+                }, 1000)
+              }
+            })
+          } else {
+            this.$message({
+              message: '请输入正确的表单内容',
+              type: 'warning'
+            })
+          }
+        })
+      }
+    },
+    // 获取数字字典：专项类别
+    getSpecial() {
+      branch({ typeId: 'ZXLB' }).then(res => {
+        if (res.code === 200) {
+          this.special = res.data.list
+        }
+      })
+    },
+    // 获取证件类型
+    getTypeId() {
+      newBranch('SFZJ').then(res => {
+        if (res.code === 200) {
+          this.typeId = res.data
+        }
+      })
+    },
+    // 上传文件
+    upSuccess(res, file) {
+      if (res.code === 200) {
+        this.form.applyId = res.data.noteId
+        this.$message({
+          message: '上传成功！',
+          type: 'success'
+        })
+        this.$forceUpdate()
+      } else {
+        this.$message({
+          message: res.msg,
+          type: 'error'
+        })
+      }
+    },
+    upSuccess1(res, file) {
+      if (res.code === 200) {
+        this.form.applyId = res.data.noteId
+        this.$message({
+          message: '上传成功！',
+          type: 'success'
+        })
+        this.fxjg = this.fxjg + 1
+        this.$forceUpdate()
+      } else {
+        this.$message({
+          message: res.msg,
+          type: 'error'
+        })
+      }
+    },
+    // 下载模板
+    download() {
+      window.location.href = '/monitor/special-apply/download?token=' + this.token
+    },
+    downAccount() {
+      window.location.href =
+        '/monitor/special-apply/output?token=' + this.token + '&applyId=' + this.form.applyId
+    },
+    // 选择文件
+    handleSuccess(res, file) {
+      if (res.code === 200) {
+        this.form.tableData = this.form.tableData.concat(res.data.mainDoList)
+
+        // this.form.mainDoList.forEach(el => {
+        //   this.form.tableData.push(el)
+        // })
+        this.$message({
+          message: '上传成功！',
+          type: 'success'
+        })
+      } else {
+        this.$message({
+          message: res.msg,
+          type: 'error'
+        })
+      }
+    }
+  },
+  created() {},
+
+  mounted() {
+    this.getSpecial()
+    this.getTypeId()
+    this.getBranch()
+  }
+}
+</script>
+
+<style lang="scss">
+.analysisSpecial-clueSave {
+  .formBlock {
+    margin-bottom: 20px;
+    .el-select {
+      width: 100%;
+    }
+  }
+  .dialog-block {
+    .title {
+      // font-size: 16px;
+      // color: #333;
+      margin-bottom: 10px;
+    }
+    .task {
+      margin-bottom: 30px;
+      // .title {
+      //   font-size: 16px;
+      //   color: #333;
+      //   margin-bottom: 10px;
+      // }
+    }
+    // .el-transfer__button.el-button--primary {
+    //   min-width: 32px;
+    //   min-height: 32px;
+    // }
+  }
+  //   .el-form-item--small.el-form-item{
+  //   margin-bottom:0;
+  //  }
+}
+</style>

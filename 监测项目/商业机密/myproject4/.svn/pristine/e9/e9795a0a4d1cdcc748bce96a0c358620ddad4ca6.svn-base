@@ -1,0 +1,206 @@
+<template>
+  <div>
+    <el-card>
+      <el-form :model="form" ref="form">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="评价任务名称：">
+              <span>{{form.evaluationTaskName}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="评价时间：">
+              <span>{{form.evaluationDate}}</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-table :data="trialTabData" :span-method="objectSpanMethod" border>
+          <el-table-column prop="assignationOrganization" label="评价机构名称" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="firstTargetName" label="一级指标" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="targetName" label="二级指标" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="targetType" label="指标类型" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="giftWeight" label="权重" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <div v-if="$route.query.quanzhong === '1'">
+                <el-input v-model="scope.row.giftWeight" style="width:80%;" maxlength="3" @blur="giftWeightBlur"></el-input>%
+              </div>
+              <span v-else>
+                {{ scope.row.giftWeight + '%' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="评价结果" prop="evaluationResult" show-overflow-tooltip></el-table-column>
+          <el-table-column label="得分" prop="score" show-overflow-tooltip></el-table-column>
+          <el-table-column label="加权平均分" prop="weightAverage" show-overflow-tooltip></el-table-column>
+          <el-table-column label="总分" prop="sumScore" show-overflow-tooltip></el-table-column>
+        </el-table>
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-button v-if="$route.query.quanzhong === '1'" style="margin-top: 10px;" type="primary" @click="download2">下载</el-button>
+            <el-button v-if="$route.query.quanzhong !== '1' && type !== 'indicatorWay'" style="margin-top: 10px;" type="primary"  @click="download">下载</el-button>
+            <el-button style="margin-top: 10px;" type="primary" @click="returnBtn">返回</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+    </el-card>
+  </div>
+</template>
+<script>
+import { getToken } from '@/utils/auth'
+import { listTrial, listTrial2, listTrial3, alterWeight } from '@/api/sys-monitoringAnalysis/evaluate/receiveTaskController.js'
+export default {
+  data() {
+    return {
+      form: {
+        evaluationTaskName: '',
+        evaluationDate: ''
+      },
+      trialTabData: [],
+      spanArr: [],
+      pos: '',
+      spanArr2: [],
+      pos1: '',
+      type: '',
+      token: getToken()
+    }
+  },
+  mounted() {
+    if (this.$route.query.type === 'indicatorWay') {
+      this.type = 'indicatorWay'
+      this.initData2()
+    } else {
+      if (this.$route.query.quanzhong === '1') {
+        this.aaaaa()
+      } else {
+        this.initData()
+      }
+    }
+  },
+  destroyed() {
+    if (this.$route.name !== 'dataGovernance_qualityEvaluation_thinIndicator') {
+      if (sessionStorage.getItem('returnMemoryJyl')) {
+        sessionStorage.removeItem('returnMemoryJyl')
+      }
+    }
+  },
+  methods: {
+    returnBtn() {
+      if (sessionStorage.getItem('returnMemoryJyl')) {
+        const obj = JSON.parse(sessionStorage.getItem('returnMemoryJyl'))
+        obj.returnBtn = 'Y'
+        sessionStorage.setItem('returnMemoryJyl', JSON.stringify(obj))
+      }
+      this.$router.go(-1)
+    },
+    aaaaa() {
+      listTrial2(this.$route.query.evaluationTaskName, this.$route.query.officeStaffId, this.$route.query.evaluationTaksId).then(res => {
+        if (res.code === 200) {
+          this.spanArr = []
+          this.pos = ''
+          this.spanArr2 = []
+          this.pos1 = ''
+          let arr = []
+          this.form.evaluationTaskName = res.data[res.data.length - 1][0].evaluationTaskName
+          this.form.evaluationDate = res.data[res.data.length - 1][0].evaluationDate
+          res.data.pop()
+          res.data.forEach(item => {
+            arr = (arr.concat(item))
+          })
+          this.trialTabData = arr
+          this.getSpanArr(this.trialTabData)
+        }
+      })
+    },
+    giftWeightBlur() {
+      alterWeight(this.trialTabData).then(res => {
+        if (res.code === 200) {
+          this.aaaaa()
+        } else {
+          this.$message({
+            type: 'warning',
+            message: res.message
+          })
+        }
+      })
+    },
+    // 下载
+    download() {
+      location.href = `monitor/receive/createExcel/${this.form.evaluationTaskName}/${this.$route.query.evaluationTaskId}?token=${this.token}`
+    },
+    download2() {
+      location.href = `monitor/integratedEvaluation/createExcel/${this.form.evaluationTaskName}/${this.$route.query.evaluationTaksId}/${this.$route.query.officeStaffId}?token=${this.token}`
+    },
+    initData() {
+      listTrial(this.$route.query.evaluationTaskName, this.$route.query.evaluationTaskId).then(res => {
+        if (res.code === 200) {
+          let arr = []
+          this.form.evaluationTaskName = res.data[res.data.length - 1][0].evaluationTaskName
+          this.form.evaluationDate = res.data[res.data.length - 1][0].evaluationDate
+          res.data.pop()
+          res.data.forEach(item => {
+            arr = (arr.concat(item))
+          })
+          this.trialTabData = arr
+          this.getSpanArr(this.trialTabData)
+        }
+      })
+    },
+    initData2() {
+      listTrial3(this.$route.query.evaluationTaskName, this.$route.query.evaluationTaskId).then(res => {
+        if (res.code === 200) {
+          let arr = []
+          this.form.evaluationTaskName = res.data[res.data.length - 1][0].evaluationTaskName
+          this.form.evaluationDate = res.data[res.data.length - 1][0].evaluationDate
+          res.data.pop()
+          res.data.forEach(item => {
+            arr = (arr.concat(item))
+          })
+          this.trialTabData = arr
+          this.getSpanArr(this.trialTabData)
+        }
+      })
+    },
+    // 根据相同属性值合并列
+    getSpanArr(val) {
+      for (var i = 0; i < val.length; i++) {
+        if (i === 0) {
+          this.spanArr.push(1)
+          this.pos = 0
+          this.spanArr2.push(1)
+          this.pos2 = 0
+        } else {
+          // 判断当前元素与上一个元素是否相同
+          if (val[i].firstTargetId === val[i - 1].firstTargetId && val[i].assignationOrganization === val[i - 1].assignationOrganization) {
+            this.spanArr[this.pos] += 1
+            this.spanArr.push(0)
+          } else {
+            this.spanArr.push(1)
+            this.pos = i
+          }
+          // if (val[i].firstTargetId === val[i - 1].firstTargetId) {
+          //   this.spanArr2[this.pos2] += 1
+          //   this.spanArr2.push(0)
+          // } else {
+          //   this.spanArr2.push(1)
+          //   this.pos2 = i
+          // }
+        }
+      }
+    },
+    // 初始化合并列
+    objectSpanMethod({ row, column, rowIndex, columnIndex }) {
+      if (columnIndex === 0 || columnIndex === 1 || columnIndex === 8) {
+        const _row = this.spanArr[rowIndex]
+        const _col = _row > 0 ? 1 : 0
+        return {
+          rowspan: _row,
+          colspan: _col
+        }
+      }
+    }
+  }
+}
+</script>
+<style lang="scss">
+  
+</style>

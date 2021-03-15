@@ -1,0 +1,499 @@
+<template>
+  <div class="forewarningTask-poup1" :key="1">
+    <!-- 弹框内容 -->
+    <div>
+      <el-form :model="dialogForm" :rules="rules" ref="searchForm" label-width="100px">
+        <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="主体名称：" prop="subjectName">
+                <el-input v-model="dialogForm.subjectName" placeholder="最长50字符数" maxlength="128"></el-input>
+              </el-form-item>
+            </el-col>
+           <el-col :span="8">
+            <el-form-item label="证件类型：" prop="subjectIType">
+              <el-select v-model="dialogForm.subjectIType" @change="certificate" placeholder="请选择" filterable clearable>
+                <el-option v-for="(item,index) in subjectITypeArr" :key="index" :value="item.codeId" :label="item.codeName"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="证件号码：" prop="subjectINum">
+              <el-input v-model="dialogForm.subjectINum"  placeholder="最长128字符数" maxlength="128"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="账户号码：" prop="accNum" >
+              <el-input v-model="dialogForm.accNum" placeholder="最长64字符数" maxlength="64"></el-input>
+            </el-form-item>
+          </el-col>
+
+           <el-col :span="8">
+              <el-form-item label=" 来源方向 ：" prop="sourceDire">
+                <el-select placeholder="请选择" v-model="dialogForm.sourceDire" clearable>
+                  <el-option
+                    v-for="(item,index) in sourceDireArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 来源业务 ：" prop="sourceBusiness">
+                <el-select placeholder="请选择" v-model="dialogForm.sourceBusiness" clearable>
+                  <el-option
+                    v-for="(item,index) in sourceBusinessArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="24">
+              <!-- <preliminary-judgment :lableWidth="114" ref="judgment"></preliminary-judgment> -->
+                <el-form-item label="涉罪类型：" prop="preliminaryJudgment" >
+                      <el-select
+                        filterable
+                        clearable
+                        v-model="dialogForm.preliminaryJudgment"
+                        multiple
+                        placeholder="请选择"
+                        @change="replenish"
+                      >
+                        <el-option
+                          v-for="(item,index) in dialogJudgmentData"
+                          :key="index"
+                          :label="item.codeName"
+                          :value="item.codeId"
+                        ></el-option>
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item
+                      v-if="isReplenishOne"
+                      prop="supplementOne"
+                      :rules="[{required:true, validator: szisValidInput1, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        maxlength="100"
+                        v-model="supplementOne"
+                        placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充"
+                      ></el-input>
+                    </el-form-item>
+                    <el-form-item
+                      v-if="isReplenishTwo"
+                      prop="supplementTwo"
+                      :rules="[{required:true, validator: szisValidInput2, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        maxlength="100"
+                        v-model="supplementTwo"
+                        placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充"
+                      ></el-input>
+                    </el-form-item>
+            </el-col>
+        </el-row>
+        <div style="textAlign:right" class="searchBtn">
+          <el-button type="primary" @click="queryData">查询</el-button>
+          <el-button type="primary" @click="cleanUp">清空</el-button>
+        </div>
+        <div>
+          <el-table 
+          v-loading="loading"
+          element-loading-text="拼命加载中"
+          element-loading-spinner="el-icon-loading"
+          element-loading-background="rgba(0, 0, 0, 0.1)"  
+          :data="tableData" 
+          @selection-change="handelSelect" 
+          style="margin-top:10px" 
+          ref="poupTable" 
+          :row-key="getRowKey">
+            <el-table-column type="selection" show-overflow-tooltip></el-table-column>
+            <el-table-column label="序号" type="index" fixed="left"></el-table-column>
+            <el-table-column prop="subjectName" label="主体名称" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="subjectINum" label="证件号码" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="sourceDire" label="来源方向" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="sourceBusiness" label="来源业务" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column label="账号" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">
+                <el-tooltip placement="top-start">
+                  <template slot="content">
+                    <div style="margin-bottom:10px" v-for="(item,index) in scope.row.charosterAccountDOS" :key="index">
+                      {{item.accountNum}}
+                      <br/>
+                    </div>
+                  </template>
+                  <span v-for="(item,index) in scope.row.charosterAccountDOS" :key="index">
+                    <span>{{item.accountNum}}</span>
+                    </span>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+             <el-table-column label="涉罪类型" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">
+                  <span v-for="(item,index) in scope.row.charosterPreliminaryJudgmentDOList" :key="index">{{item.preliminaryJudgme}}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background>
+          </el-pagination>
+        </div>
+      </el-form>
+      <div style="textAlign:right; paddingTop:20px">
+        <el-button type="primary" @click="add">添 加</el-button>
+        <el-button @click="clearSelect">返 回</el-button>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<script>
+import { centerRoster } from '@/api/sys-monitoringAnalysis/roster-warning/warning-task.js'
+import { getsourceBusinessArr } from '@/api/sys-monitoringAnalysis/roster-warning/levelConfiguration.js'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { commonPattern } from '@/utils/formValidate'
+export default {
+  data() {
+    return {
+      getRowKey(row) {
+        return row.lcnId
+      },
+      optionsOne: [],
+      typeId: 'TOSC',
+      dialogForm: {
+        subjectName: '',
+        subjectIType: '',
+        subjectINum: '',
+        sourceDire: '',
+        sourceBusiness: '',
+        preliminaryJudgment: [],
+        accNum: ''
+      },
+      options2: [],
+      options3: [],
+      loading: false,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      tableData: [],
+      selectArr: [],
+      params: {},
+      supplementOne: '',
+      supplementTwo: '',
+      sourceDireArr: [],
+      sourceBusinessArr: [],
+      dialogJudgmentData: [],
+      subjectITypeArr: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      rules: {
+        subjectName: [{ validator: this.delDataValidInput, trigger: 'blur' }],
+        accNum: [{ validator: this.onlyNumberValidate1, trigger: 'blur' }],
+        subjectINum: [{ max: 128, validator: this.onlyNumberValidate, trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    searchParams() {
+      const obj = Object.assign({}, this.dialogForm)
+      if (this.dialogForm.preliminaryJudgment) {
+        for (var i = 0; i < this.dialogForm.preliminaryJudgment.length; i++) {
+          if (this.dialogForm.preliminaryJudgment[i].indexOf('1401') !== -1) {
+            this.dialogForm.preliminaryJudgment[i] = '1401-' + this.supplementOne
+          }
+          if (this.dialogForm.preliminaryJudgment[i].indexOf('1402') !== -1) {
+            this.dialogForm.preliminaryJudgment[i] = '1402-' + this.supplementTwo
+          }
+        }
+        obj.preliminaryJudgment = this.dialogForm.preliminaryJudgment.join(',')
+      }
+
+      // if (this.dialogForm.preliminaryJudgment) {
+      //   for (var i = 0; i < this.dialogForm.preliminaryJudgment.length; i++) {
+      //     if (this.dialogForm.preliminaryJudgment[i].indexOf('1401') !== -1) {
+      //       this.dialogForm.preliminaryJudgment[i] = '1401-' + this.supplementOne
+      //     }
+      //     if (this.dialogForm.preliminaryJudgment[i].indexOf('1402') !== -1) {
+      //       this.dialogForm.preliminaryJudgment[i] = '1402-' + this.supplementTwo
+      //     }
+      //   }
+      //   obj.preliminaryJudgment = this.form.preliminaryJudgment.join(',')
+      // }
+      obj.accountNum = obj.accNum
+      delete obj.accNum
+
+      // const newObj = {
+      //   charosterNamesDO: obj.involvedType,
+      //   pageNum: obj.pageNum,
+      //   pageSize: obj.pageSize
+      // }
+      return obj
+    }
+  },
+  mounted() {
+    this.getDictionary('SCDT')
+    this.getDictionary('TOSC')
+    this.getDictionary('SFZJ')
+    this.getsourceBusinessArr()
+    this.fetchData()
+    this.dialogForm.involvedType = ''
+  },
+  methods: {
+    // 获取数据字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            // case 'SCDT':
+            //   this.sourceDireArr = res.data
+            //   break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            case 'SFZJ':
+              this.subjectITypeArr = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    getsourceBusinessArr() {
+      var paramsObj = {
+        pageNum: 1,
+        pageSize: 9999
+      }
+      getsourceBusinessArr(paramsObj, '0').then(res => {
+        if (res.code === 200) {
+          this.sourceBusinessArr = res.data.list
+        }
+      })
+      getsourceBusinessArr(paramsObj, '1').then(res => {
+        if (res.code === 200) {
+          this.sourceDireArr = res.data.list
+        }
+      })
+      // getsourceBusinessArr().then(res => {
+      //   if (res.code === 200) {
+      //     this.sourceBusinessArr = res.data
+      //   }
+      // })
+    },
+    onSubmit() {
+      console.log('submit!')
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData()
+      // console.log(`每页 ${size} 条`)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData()
+      // console.log(`当前页: ${currentPage}`)
+    },
+    queryData() {
+      this.pageInfo.pageNum = 1
+      this.params = Object.assign({}, this.searchParams, this.pageInfo)
+      this.fetchData()
+    },
+    // 请求数据
+    fetchData() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.params = Object.assign({}, this.params, this.pageInfo)
+          centerRoster(this.params).then(res => {
+            if (res.code === 200) {
+              this.tableData = res.data.pageInfo.list
+              this.tableData.forEach(res => {
+                res.iNum = res.subjectINum
+              })
+              this.pageInfo.total = res.data.pageInfo.total
+              this.loading = false
+            } else {
+              this.loading = false
+            }
+          })
+            .catch(err => {
+              this.loading = false
+              console.log(err)
+            })
+        }
+      })
+    },
+    // 勾选table
+    handelSelect(rows) {
+      this.selectArr = rows
+    },
+    add() {
+      if (this.selectArr.length > 0) {
+        this.dataFn()
+      } else {
+        this.dialogFormVisible = false
+        this.$emit('listFn', {
+          Visible: this.dialogFormVisible
+        })
+      }
+    },
+    clearSelect() {
+      this.dialogFormVisible = false
+      this.$refs.poupTable.clearSelection()
+      this.dataFn()
+    },
+    dataFn() {
+      this.selectArr.forEach(res => {
+        res.wType = 'center'
+      })
+      this.$emit('listFn', {
+        Visible: this.dialogFormVisible,
+        selectArr: this.selectArr,
+        showTableItem: 'center',
+        tableData: this.tableData
+      })
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.dialogForm.preliminaryJudgment.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.dialogForm.preliminaryJudgment.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    cleanUp() {
+      // this.$refs.searchForm.resetFields()
+      this.dialogForm = {
+        subjectName: '',
+        subjectIType: '',
+        subjectINum: '',
+        sourceDire: '',
+        sourceBusiness: '',
+        preliminaryJudgment: [],
+        accNum: ''
+      }
+      this.supplementTwo = ''
+      this.supplementOne = ''
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+    },
+    // 证件类型校验
+    certificate() {
+      switch (this.dialogForm.subjectIType) {
+        case '110003':
+          this.rules.subjectINum = [
+            { message: '请填正确的身份证号码', trigger: 'blur' },
+            { pattern: /^[a-zA-Z0-9]{15}$|^[a-zA-Z0-9]{18}$/, message: '请输入正确的身份证号码,15或18位', trigger: 'blur' }
+          ]
+          break
+        case '110001':
+          this.rules.subjectINum = [
+            { message: '请填正确的身份证号码', trigger: 'blur' },
+            { pattern: /^[a-zA-Z0-9]{15}$|^[a-zA-Z0-9]{18}$/, message: '请输入正确的身份证号码,15或18位', trigger: 'blur' }
+          ]
+          break
+        case '':
+          this.rules.subjectINum = [{ validator: this.onlyNumberValidate, trigger: 'blur' }]
+          break
+        default:
+          this.rules.subjectINum = [{ max: 128, validator: this.onlyNumberValidate, trigger: 'blur' }]
+          break
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.forewarningTask-poup1 {
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

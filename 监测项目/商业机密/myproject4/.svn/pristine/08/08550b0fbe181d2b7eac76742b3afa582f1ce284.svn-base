@@ -1,0 +1,329 @@
+<template>
+  <div class="attilicallogwrap">
+    <el-card>
+      <div slot="header">清理历史记录</div>
+      <el-form :model="searchForm" ref="searchForm" :rules="rules" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="报告机构：" prop="reportBody">
+              <!-- <el-select v-model="searchForm.reportBody" placeholder="报告机构" filterable clearable>
+                <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd"></el-option>
+              </el-select> -->
+              <el-autocomplete v-model="searchForm.reportBody" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmSelect"></el-autocomplete>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="清理来源：" prop="problemSource">
+              <el-select v-model="searchForm.problemSource" style="width:100%" placeholder="清理来源">
+                <el-option label="全部" value=""></el-option>
+                <el-option label="规则扫描" value="0"></el-option>
+                <el-option label="数据抽样" value="1"></el-option>
+                <el-option label="跨机构比对" value="2"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="交易ID：" prop="tradeId">
+              <el-input v-model="searchForm.tradeId"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="清理情况：" prop="planName">
+              <el-select v-model="searchForm.planName" style="width:100%" placeholder="清理情况">
+                <el-option label="全部" value=""></el-option>
+                <el-option label="未清理" value="0"></el-option>
+                <el-option label="已清理" value="1"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="清理申请人：" prop="analysisName">
+              <el-input v-model="searchForm.analysisName"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="申请清理时间：" prop="cleanDate">
+              <el-date-picker v-model="searchForm.cleanDate" style="width:100%!important" type="date" placeholder="选择日期" value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div style="text-align: right;">
+          <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+          <el-button type="primary" plain @click="resetForm">清 空</el-button>
+        </div>
+      </el-form>
+      <div class="handleBtn">
+        <span>清理历史列表：</span>
+        <el-button type="primary" plain style="margin-right: 10px;" @click="handleAllExport">批量导出</el-button>
+      </div>
+      <el-table style="width: 100%" :data="list" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" width="55" fixed></el-table-column>
+        <el-table-column type="index" label="序号" min-width="55" fixed></el-table-column>
+        <el-table-column prop="tradeId" label="交易ID" min-width="110"></el-table-column>
+        <el-table-column prop="tradeType" label="交易类型" min-width="110">
+          <template slot-scope="scope">
+            {{ scope.row.tradeType === '0' ? '大额': '可疑'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="reportName" label="报告机构" min-width="110"></el-table-column>
+        <el-table-column prop="origin" label="清理来源" min-width="140">
+          <!-- <template slot-scope="scope">
+            {{ scope.row.origin === '0'? '规则扫描' : (scope.row.origin === '1' ? '数据抽样': (scope.row.origin === '2' ? '跨机构比对': ''))}}
+          </template> -->
+        </el-table-column>
+        <el-table-column prop="planName" label="清理方案" min-width="110"></el-table-column>
+        <el-table-column prop="reason" label="清理原因" min-width="100"></el-table-column>
+        <el-table-column prop="state" label="审批状态" min-width="100"></el-table-column>
+        <el-table-column prop="result" label="清理情况" min-width="120">
+           <template slot-scope="scope">
+            {{ scope.row.result === '0'? '未清理' : '已清理'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="creDate" label="申请清理时间" min-width="140"></el-table-column>
+        <el-table-column prop="examTime" label="审批时间" min-width="120"></el-table-column>
+        <el-table-column prop="approvalTime" label="执行清理时间" min-width="120"></el-table-column>
+        <el-table-column prop="applyName" label="清理申请人" min-width="100"></el-table-column>
+        <el-table-column prop="examer" label="清理审批人" min-width="100"></el-table-column>
+        <el-table-column prop="opratorName" label="清理执行人" min-width="100"></el-table-column>
+        <el-table-column prop="option" fixed="right" label="操作" min-width="140">
+          <template slot-scope="scope">
+            <router-link :to="{name:'dataGovernance_tradeDetail_tradeDetail', query: {tradeId: scope.row.tradeId, type: scope.row.type }}">
+              <el-button type="text">查看</el-button>
+            </router-link>
+            <!-- <el-button type="text" @click="handleRecord(scope)">追溯对比</el-button> -->
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+    </el-card>
+
+     <!-- <el-dialog title="查看追溯对比" width="70%" :visible.sync="recordVisible">
+        <deleteRecord :recordVisible="recordVisible" :recordObj="recordObj" @setRecordVisible="getRecordVisible"></deleteRecord>
+      </el-dialog> -->
+  </div>
+</template>
+
+<script>
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getToken } from '@/utils/auth'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import deleteRecord from '@/views/sys-monitoringAnalysis/dataQuery/dataType/deleteRecord'
+import { getList } from '@/api/sys-monitoringAnalysis/dataGovernance/dataClean/history'
+
+export default {
+  name: 'correctionlog',
+  components: {
+    deleteRecord
+  },
+  data() {
+    return {
+      rinmOptions: [], // 报告机构列表
+      searchForm: {
+        reportBody: '',
+        problemSource: '',
+        tradeId: '',
+        analysisName: '',
+        cleanDate: '',
+        planName: ''
+      },
+      rules: {
+        analysisName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ],
+        tradeId: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ],
+        reportBody: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      multipleSelection: [],
+      list: [],
+      total: 1,
+      listLoading: false,
+      loading: false, // 查询loading
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      // recordObj: {}, // 查看追溯对比
+      reportRicd: '',
+      token: getToken()
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    getData() {
+      this.listLoading = true
+      const paramsObj = {
+        reportName: this.searchForm.reportBody,
+        origin: this.searchForm.problemSource,
+        tradeId: this.searchForm.tradeId,
+        applyName: this.searchForm.analysisName,
+        creDate: this.searchForm.cleanDate,
+        result: this.searchForm.planName,
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.listLoading = false
+          this.loading = false
+          this.list = res.data.list
+          res.data.list.forEach(e => {
+            if (e.state !== null) {
+              switch (e.state) {
+                case '0':
+                  e.state = '未审批'
+                  break
+                case '1':
+                  e.state = '审批中'
+                  break
+                case '2':
+                  e.state = '审批通过'
+                  break
+                case '3':
+                  e.state = '审批不通过'
+                  break
+                default:
+                  break
+              }
+            }
+
+            if (e.origin !== null) {
+              switch (e.origin) {
+                case '0':
+                  e.origin = '规则扫描'
+                  break
+                case '1':
+                  e.origin = '数据抽样'
+                  break
+                case '2':
+                  e.origin = '跨机构比对'
+                  break
+                case '3':
+                  e.origin = '定点监测'
+                  break
+                default:
+                  break
+              }
+            }
+          })
+          this.total = res.data.total
+        } else {
+          this.listLoading = false
+          this.loading = false
+        }
+      }).catch(() => {
+        this.listLoading = false
+        this.loading = false
+      })
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    handleRinmSelect(val) {
+      if (val) {
+        this.reportRicd = val.ricd
+      }
+    },
+    handleQuery() {
+      this.$refs.searchForm.validate((valid) => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.loading = true
+          this.getData()
+        } else {
+          return false
+        }
+      })
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    resetForm() {
+      // 重置清空操作
+      this.$refs.searchForm.resetFields()
+    },
+    handleAllExport() {
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const arr = []
+        this.multipleSelection
+          .map(function(item) {
+            arr.push(item.approvalId)
+          })
+          .toString()
+        const ids = arr.join(',')
+        if (ids) {
+          location.href = '/monitor/governance/approval/approval/history/' + ids + '?token=' + this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    getRecordVisible(val) {
+      this.recordVisible = val
+    }
+    // handleRecord(scope) { // 追溯对比
+    //   if (scope.row.type && scope.row.tradeId) {
+    //     this.recordObj = {
+    //       type: scope.row.type,
+    //       tradeId: scope.row.tradeId
+    //     }
+    //     this.recordVisible = true
+    //   } else {
+    //     this.$message.error('查不到相关交易信息')
+    //   }
+    // }
+  }
+}
+</script>
+
+<style lang="scss">
+.cleanlogwrap {
+  .handleBtn {
+    padding-bottom: 10px;
+  }
+  .attilicallogwrap {
+    padding-bottom: 10px;
+  }
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

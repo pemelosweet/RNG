@@ -1,0 +1,1540 @@
+<template>
+  <div class="rulewrap" ref="rulewrap">
+    <el-card>
+      <div slot="header">
+        <span>规则配置</span>
+        <div style="float:right">
+          <el-button type="text" @click="handleAdd($event, '4')" icon="el-icon-plus">新建规则</el-button>
+        </div>
+      </div>
+      <el-form :model="searchForm" ref="searchForm" :rules="rules" label-width="130px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="规则名称：" prop="srName">
+              <el-input v-model="searchForm.srName" placeholder="最大长度为50位" maxlength="50" style="width: 100%;"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="执行状态：" prop="srStateOfExecution">
+              <el-select v-model="searchForm.srStateOfExecution" placeholder="请选择执行状态" clearable style="width: 100%;">
+                <el-option v-for="(item, index) in executionList" :key="index" :label="item.label" :value="item.value"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="审批状态：" prop="srCurrentStatus">
+               <el-select v-model="searchForm.srCurrentStatus" placeholder="请选择审批状态" clearable style="width: 100%;">
+                <el-option v-for="(item, index) in currentStatusList" :key="index" :label="item.label" :value="item.value"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="创建时间：" prop="dateValue">
+              <el-date-picker v-model="searchForm.dateValue" type="daterange" range-separator="至" start-placeholder="开始日期" style="width: 100%;" end-placeholder="结束日期" value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="16" style="text-align: right;">
+            <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+            <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div v-loading="pageLoading" element-loading-text="禁用执行中，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table :data="list" style="width: 100%" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+          <el-table-column type="index" label="序号" width="55"></el-table-column>
+          <el-table-column prop="srName" label="规则名称" min-width="200px" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <el-tooltip class="item" effect="dark" placement="top-start">
+                <div slot="content">{{ scope.row.srName }}</div>
+                <el-button type="text" @click="getViewInfo(scope.row.srId, scope.row.stateOfApproval)">{{ scope.row.srName}}</el-button>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column prop="srStateOfExecution" label="执行状态" min-width="110px"></el-table-column>
+          <el-table-column prop="stateOfApproval" label="审批状态" min-width="120px"></el-table-column>
+          <el-table-column prop="creDate" label="创建时间" min-width="140px"></el-table-column>
+          <el-table-column label="操作" min-width="220px">
+            <template slot-scope="scope">
+              <!-- <el-button v-if="scope.$index === 0 &&pageInfo.pageNum ===1 " type="text" @click="handelUse(scope)">启用</el-button>
+              <el-button v-if="scope.$index === 0  &&pageInfo.pageNum ===1" type="text" @click="handelNoUse(scope)">禁用</el-button> -->
+              <!-- <el-button v-if="scope.$index !== 0" type="text" @click="handelStartStop(scope)" :disabled="start(scope)">启用</el-button>
+              <el-button v-if="scope.$index !== 0" type="text" @click="handelStartStop(scope)" :disabled="stop(scope)">禁用</el-button> -->
+              <el-button  type="text" @click="handelStartStop(scope)" :disabled="start(scope)">启用</el-button>
+              <el-button  type="text" @click="handelStartStop(scope)" :disabled="stop(scope)">禁用</el-button>
+              <el-button type="text" @click="historyView(scope)">历史查看</el-button>
+              <el-button type="text" @click="handleDel(scope, $event)" ref="delRules" :disabled="scope.row.stateOfApproval === '新增未审批'|| scope.row.stateOfApproval === '新增审批中'|| scope.row.stateOfApproval === '启用审批中' || scope.row.stateOfApproval === '删除审批中' || scope.row.stateOfApproval === '禁用审批中' || scope.row.stateOfApproval === '已删除' || scope.row.stateOfApproval === '删除审批不通过' || scope.$index === 0">删除规则</el-button>
+              <el-button type="text" @click="callWorkFlow(scope)" :disabled="scope.row.stateOfApproval !== '新增未审批'">提交审批</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-row style="margin-top: 10px; text-align: right;">
+          <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40, 50]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+          </el-pagination>
+        </el-row>
+      </div>
+    </el-card>
+
+    <!-- 规则弹框内容 -->
+    <el-dialog :title="title" :visible.sync="ruleVisible" @open="open" width="60%">
+      <el-form :model="dialogForm" ref="dialogForm" label-width="140px" :rules="dialogRules">
+        <el-row :span="24">
+          <el-form-item label="规则名称：" prop="srName" label-width="150px">
+            <el-input v-model="dialogForm.srName" :disabled="disabled" placeholder="最大长度为50位" maxlength="50"></el-input>
+          </el-form-item>
+        </el-row>
+        <el-row :span="24">
+          <el-form-item label="落地时间：" prop="dateValue" label-width="150px" style="width: 60%;">
+            <el-date-picker v-model="dialogForm.dateValue" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" :picker-options="pickerOptions" :disabled="disabled">
+            </el-date-picker>
+          </el-form-item>
+        </el-row>
+        <el-row :span="24">
+          <el-form-item label="返回问题数据条数：" prop="tradeNum" label-width="150px">
+            <el-input v-model="dialogForm.tradeNum" placeholder="请输入1000到10000之间的数值" style="width: 220px;" maxlength="5" :disabled="disabled"></el-input>
+          </el-form-item>
+        </el-row>
+        <div ref="dIndustryinfo" class="dIndustryinfo" v-for="(item, index) in dialogForm.ruleDetails" :key="index">
+          <i :class="disabled ? 'el-icon-close close-icon' : 'el-icon-close close-icon dIndCloseIcon' " v-if="index !== 0" @click.prevent="removeIndustry(index)"></i>
+          <el-form-item label="选择行业及报告类别：" :prop="'ruleDetails.' + index + '.rdIndustry'" :rules="dialogRules.rdIndustry" >
+            <el-select v-model="item.rdIndustry" :disabled="disabled || sqlDisabled" @change="handleRinmChange(item, index, 1)" filterable clearable>
+              <el-option v-for="(cItem, cIndex) in industryOptions" :label="cItem.codeName" :value="cItem.code" :key="cIndex" v-if="cItem.code!=='NCS'"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="字段要素：" class="element change_length" :prop="'ruleDetails.' + index + '.fieldFactors'" :rules="dialogRules.fieldFactors">
+            <el-select v-model="item.fieldFactors" placeholder="请选择字段要素" @change="clearYaosu(item.fieldFactors)" :disabled="disabled || sqlDisabled" multiple style="width: 78%;" filterable clearable>
+              <el-option v-for="(cItem, fIndex) in fileEleOPtions[index]" :label="cItem.property_name" :value="cItem.property" :key="fIndex" class="change_option"></el-option>
+            </el-select>
+          </el-form-item>
+        </div>
+        <el-button type="text" @click="addIndustry" icon="el-icon-plus" style="padding-bottom: 15px;" v-if="isShow" :disabled="sqlDisabled">添加行业</el-button>
+        <el-row>
+          <el-form-item label="要素之间关系：" class="element" prop="ffLink" :rules="dialogRules.ffLink">
+            <el-select style="width:16%;" v-model="dialogForm.ffLink" placeholder="请选择要素之间关系" :disabled="disabled || sqlDisabled || dialogFormRuleDetails" @change="handleChange">
+              <el-option label="并且" value="0"></el-option>
+              <el-option label="或者" value="1"></el-option>
+              <el-option label="相等" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-row>
+        <el-row>
+          <el-form-item label="判断符号1：" prop="judgementSymbol" :rules="dialogRules.judgementSymbol">
+            <el-select v-model="dialogForm.judgementSymbol" placeholder="请选择判断符号" :disabled="disabled || sqlDisabled || getEqual(dialogForm.ffLink, 0)" clearable>
+              <el-option label="大于" value="0"></el-option>
+              <el-option label="小于" value="1"></el-option>
+              <el-option label="大于等于" value="2"></el-option>
+              <el-option label="小于等于" value="3"></el-option>
+              <el-option label="等于" value="4"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-row>
+        <el-row>
+          <el-form-item label-width="0"  class="element" prop="rdNumberType" :rules="dialogRules.rdNumberType" style="float:left; width:140px;">
+            <span style="color: #F56C6C; margin-right: 4px;" v-show="dialogForm.ffLink === '0' || dialogForm.ffLink === '1'">*</span>
+            <el-select style="width:85%;" v-model="dialogForm.rdNumberType" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" clearable>
+              <el-option label="数值" value="0"></el-option>
+              <el-option label="位数" value="1"></el-option>
+              <el-option label="是否包含字符串" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="dialogForm.rdNumberType === '2'" label-width="0"  prop="rdNumber" :rules="[
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { max: 20, message: '最大长度为20位', trigger: 'blur' }]" style="float:left;">
+            <el-input v-model="dialogForm.rdNumber" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" placeholder="最大长度为20位" maxlength="20"></el-input>
+          </el-form-item>
+          <el-form-item v-else-if="dialogForm.rdNumberType === '1'" label-width="0"  prop="rdNumber" :rules="[
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' },
+          {pattern: /^[0-9]*$/,message: '请输入数字',trigger: 'blur'}]" style="float:left;">
+            <el-input v-model="dialogForm.rdNumber" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" placeholder="最大长度为16位" maxlength="16"></el-input>
+          </el-form-item>
+          <el-form-item v-else label-width="0"  prop="rdNumber"  :rules="[
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' },
+          {pattern: /^\d+(\.\d+)?$/,message: '请输入数字',trigger: 'blur'}]" style="float:left;">
+            <el-input v-model="dialogForm.rdNumber" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" placeholder="最大长度为16位" maxlength="16"></el-input>
+          </el-form-item>
+
+          <div style="clear: both;"></div>
+        </el-row>
+        <div>
+          <el-button type="primary" plain @click="handelShow" :disabled="disabled">自定义编辑sql</el-button>
+          <div v-show="isToggle">
+            <el-form-item label="" prop="customizeSql" label-width="0px">
+              <el-input type="textarea" v-model="dialogForm.customizeSql" style="margin: 10px 0;" :disabled="disabled" placeholder="最大长度为1000位" rows="5" maxlength="1000" show-word-limit></el-input>
+            </el-form-item>
+            <p style="line-height: 30px;"><span style="font-weight: bold;font-size: 16px;">sql说明: </span>  SELECT trade_id( 交易ID ), ricd( 报告机构编码 ), xml_name( 报文名称 ), ctid( 客户身份证件号码 ), ticd( 业务标识号 ), trcd( 交易发生地 ),  ctnm( 客户姓名 ), '0'( 交易类型(大额'0' 可疑 '1') ), tstm( 交易时间 ),redt( 落地日期 ) FROM 交易表 WHERE 1=1 and 查询条件 (注：交易表中没有的字段填' '(空字符串))
+            <span  style="display: inline-block;"><span style="font-weight: bold;font-size: 16px;display: inline-block;">大额表：</span> dwd.dwd_t_bh_trade, dwd.dwd_t_sh_trade, dwd.dwd_t_ih_trade, dwd.dwd_t_ch_trade, dwd.dwd_t_cm_ph_trade</span>
+            <span  style="display: inline-block;"><span style="font-weight: bold;font-size: 16px;display: inline-block;">可疑表：</span>wd.dwd_t_bs_trade, wd.dwd_t_ss_trade, wd.dwd_t_is_trade, dwd.dwd_t_cm_us_trade, dwd.dwd_t_cm_zs_trade, dwd.dwd_t_cm_ps_trade, dwd.dwd_t_cstr_rept</span></p>
+
+            <el-button type="primary" :disabled="disabled" v-if="isShow" @click="checkSql">检查sql</el-button>
+          </div>
+        </div>
+        <div class="divider divider-dashed"></div>
+        <el-form-item label="申请事项：" prop="srApplyInfo" label-width="150px">
+          <el-input type="textarea" v-model="dialogForm.srApplyInfo" resize="none" rows="4" placeholder="最大长度为100位" maxlength="100"
+      show-word-limit :disabled="applyDisabled"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="ruleVisible = false">取消</el-button>
+        <el-button v-if="!disabled" type="primary" @click="addSubmit" :loading="saveLoading">{{ this.title === '新建规则' ? '保存' : '修改'}}</el-button>
+        <el-button v-if="disabled && title === '规则信息'" type="primary" @click="delOrStartCallWorkFlow" :loading="saveLoading">提交审批</el-button>
+        <!-- 删除的提交审批 -->
+      </span>
+    </el-dialog>
+
+    <!--规则内容弹窗没有校验-->
+    <el-dialog :title="title" :visible.sync="ruleVisibleNoRule" @open="open" width="60%">
+      <el-form :model="dialogForm" ref="dialogForm" label-width="140px" :rules="dialogRules">
+        <el-row :span="24">
+          <el-form-item label="规则名称："  label-width="150px">
+            <el-input v-model="dialogForm.srName" :disabled="disabled" placeholder="最大长度为50位" maxlength="50"></el-input>
+          </el-form-item>
+        </el-row>
+        <el-row :span="24">
+          <el-form-item label="落地时间：" label-width="150px" style="width: 60%;">
+            <el-date-picker v-model="dialogForm.dateValue" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" :picker-options="pickerOptions" :disabled="disabled">
+            </el-date-picker>
+          </el-form-item>
+        </el-row>
+        <el-row :span="24">
+          <el-form-item label="返回问题数据条数：" label-width="150px">
+            <el-input v-model="dialogForm.tradeNum" placeholder="请输入1000到10000之间的数值" style="width: 220px;" maxlength="5" :disabled="disabled"></el-input>
+          </el-form-item>
+        </el-row>
+        <div ref="dIndustryinfo" class="dIndustryinfo" v-for="(item, index) in dialogForm.ruleDetails" :key="index">
+          <i :class="disabled ? 'el-icon-close close-icon' : 'el-icon-close close-icon dIndCloseIcon' " v-if="index !== 0" @click.prevent="removeIndustry(index)"></i>
+          <el-form-item label="选择行业及报告类别：" >
+            <el-select v-model="item.rdIndustry" :disabled="disabled || sqlDisabled" @change="handleRinmChange(item, index, 1)" filterable clearable>
+              <el-option v-for="(cItem, cIndex) in industryOptions" :label="cItem.codeName" :value="cItem.code" :key="cIndex" v-if="cItem.code!=='NCS'"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="字段要素：" class="element change_length" >
+            <el-select v-model="item.fieldFactors" placeholder="请选择字段要素" :disabled="disabled || sqlDisabled" multiple style="width: 78%;" filterable clearable>
+              <el-option v-for="(cItem, fIndex) in fileEleOPtions[index]" :label="cItem.property_name" :value="cItem.property" :key="fIndex" class="change_option"></el-option>
+            </el-select>
+          </el-form-item>
+        </div>
+        <el-button type="text" @click="addIndustry" icon="el-icon-plus" style="padding-bottom: 15px;" v-if="isShow" :disabled="sqlDisabled">添加行业</el-button>
+        <el-row>
+          <el-form-item label="要素之间关系：" class="element">
+            <el-select style="width:16%;" v-model="dialogForm.ffLink" placeholder="请选择要素之间关系" :disabled="disabled || sqlDisabled || dialogFormRuleDetails" @change="handleChange">
+              <el-option label="并且" value="0"></el-option>
+              <el-option label="或者" value="1"></el-option>
+              <el-option label="相等" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-row>
+        <el-row>
+          <el-form-item label="判断符号2：">
+            <el-select v-model="dialogForm.judgementSymbol" placeholder="请选择判断符号" :disabled="disabled || sqlDisabled || getEqual(dialogForm.ffLink, 0)" clearable>
+              <el-option label="大于" value="0"></el-option>
+              <el-option label="小于" value="1"></el-option>
+              <el-option label="大于等于" value="2"></el-option>
+              <el-option label="小于等于" value="3"></el-option>
+              <el-option label="等于" value="4"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-row>
+        <el-row>
+          <el-form-item label-width="0"  class="element" style="float:left; width:140px;">
+            <span style="color: #F56C6C; margin-right: 4px;" v-show="dialogForm.ffLink === '0' || dialogForm.ffLink === '1'">*</span>
+            <el-select style="width:85%;" v-model="dialogForm.rdNumberType" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" clearable>
+              <el-option label="数值" value="0"></el-option>
+              <el-option label="位数" value="1"></el-option>
+              <el-option label="是否包含字符串" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="dialogForm.rdNumberType === '2'" label-width="0" style="float:left;">
+            <el-input v-model="dialogForm.rdNumber" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" placeholder="最大长度为20位" maxlength="20"></el-input>
+          </el-form-item>
+          <el-form-item v-if="dialogForm.rdNumberType === '1'"  label-width="0" style="float:left;">
+            <el-input v-model="dialogForm.rdNumber" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" placeholder="最大长度为16位" maxlength="16"></el-input>
+          </el-form-item>
+          <el-form-item v-if="dialogForm.rdNumberType === '0'" label-width="0" style="float:left;">
+            <el-input v-model="dialogForm.rdNumber" :disabled="disabled || sqlDisabled|| getEqual(dialogForm.ffLink, 0)" placeholder="最大长度为16位" maxlength="16"></el-input>
+          </el-form-item>
+
+          <div style="clear: both;"></div>
+        </el-row>
+        <div>
+          <el-button type="primary" plain @click="handelShow" :disabled="disabled">自定义编辑sql</el-button>
+          <div v-show="isToggle">
+            <el-form-item label="" label-width="0px">
+              <el-input type="textarea" v-model="dialogForm.customizeSql" style="margin: 10px 0;" :disabled="disabled" placeholder="最大长度为1000位" rows="5" maxlength="1000" show-word-limit></el-input>
+            </el-form-item>
+            <el-button type="primary" :disabled="disabled" v-if="isShow" @click="checkSql">检查sql</el-button>
+          </div>
+        </div>
+        <div class="divider divider-dashed"></div>
+        <el-form-item label="申请事项：" prop="srApplyInfo" label-width="150px">
+          <el-input type="textarea" v-model="dialogForm.srApplyInfo" resize="none" rows="4" placeholder="最大长度为100位" maxlength="100"
+      show-word-limit :disabled="applyDisabled"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="ruleVisibleNoRule = false">取消</el-button>
+        <el-button v-if="!disabled" type="primary" @click="addSubmit" :loading="saveLoading">{{ this.title === '新建规则' ? '保存' : '修改'}}</el-button>
+        <el-button v-if="disabled && title === '规则信息'" type="primary" @click="delOrStartCallWorkFlowTs" :loading="saveLoading">提交审批</el-button>
+        <!-- 删除的提交审批 -->
+      </span>
+    </el-dialog>
+    <!-- 历史查看弹框内容 -->
+    <el-dialog title="查看历史" :visible.sync="historyVisible" width="60%">
+      <div>
+        <el-table :data="historyList">
+          <el-table-column prop="bsType" label="审批事项"></el-table-column>
+          <el-table-column prop="createDate" label="审批提交时间" min-width="150px"></el-table-column>
+          <el-table-column prop="title" label="审批结果"></el-table-column>
+          <el-table-column prop="updateDate" label="审批时间"></el-table-column>
+          <el-table-column prop="approver" label="审批人"></el-table-column>
+        </el-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" plain @click="historyVisible = false">返回</el-button>
+      </span>
+    </el-dialog>
+
+    <monitor-workflow></monitor-workflow>
+  </div>
+</template>
+
+<script>
+import { HOLIDAY } from '@/views/sys-monitoringAnalysis/dataGovernance/rule/holiday.js'
+import { mapGetters } from 'vuex'
+import { getList, addRuleData, approvalStaus, historyData, viewData, checkSql, startStatus, stopStatus, subApproval, delRuleList, getFiledEleList, getIndustry, updateRuleData } from '@/api/sys-monitoringAnalysis/dataGovernance/rule/index'
+import { isValidInput, delDataValidInput, ValidQueryInput } from '@/utils/formValidate.js'
+
+export default {
+  data() {
+    const noMinus_validatePass = (rule, value, callback) => {
+      const number = /^\d+(\.\d+)?$/
+      if (value !== null && value !== '') {
+        if (!number.test(value)) {
+          callback(new Error('必须输入数值'))
+        } else {
+          if (value < 1000) {
+            callback(new Error('数值不能小于1000'))
+          } else if (value > 10000) {
+            callback(new Error('数值不能大于10000'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    }
+    const isValidDate = (rule, value, callback) => {
+      if (value) {
+        const endTime = new Date(value[1])
+        const startTime = new Date(value[0])
+        const count = this.getTempDefaultDayNum(startTime, endTime)
+        if (count > 5) {
+          callback(new Error('时间跨度应为5天'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    }
+    return {
+      // tempWorkDate: ['2019-03-17', '2019-03-23', '2019-03-24', '2019-03-30', '2019-03-31', '2019-04-05', '2019-04-06', '2019-04-07', '2019-04-13', '2019-04-14', '2019-04-20', '2019-04-21', '2019-04-27', '2019-05-01', '2019-05-02', '2019-05-03', '2019-05-04', '2019-05-11', '2019-05-12', '2019-05-18', '2019-05-19', '2019-05-25', '2019-05-26', '2019-06-01', '2019-06-02', '2019-06-07', '2019-06-08', '2019-06-09', '2019-06-15', '2019-06-16', '2019-06-22', '2019-06-23', '2019-06-29', '2019-06-30', '2019-07-06', '2019-07-07', '2019-07-13', '2019-07-14', '2019-07-20', '2019-07-21', '2019-07-27', '2019-07-28', '2019-08-03', '2019-08-04', '2019-08-10', '2019-08-11', '2019-08-17', '2019-08-18', '2019-08-24', '2019-08-25', '2019-08-31', '2019-09-01', '2019-09-07', '2019-09-08', '2019-09-13', '2019-09-14', '2019-09-15', '2019-09-21', '2019-09-28', '2019-10-01', '2019-10-02', '2019-10-03', '2019-10-04', '2019-10-05', '2019-10-06', '2019-10-07', '2019-10-13', '2019-10-19', '2019-10-20', '2019-10-26', '2019-10-27', '2019-11-02', '2019-11-03', '2019-11-09', '2019-11-10', '2019-11-16', '2019-11-17', '2019-11-23', '2019-11-24', '2019-11-30', '2019-12-01', '2019-12-07', '2019-12-08', '2019-12-14', '2019-12-15', '2019-12-21', '2019-12-22', '2019-12-28', '2019-12-29', '2020-01-01', '2020-01-04', '2020-01-05', '2020-01-11', '2020-01-12'],
+      pickerOptions: {
+        disabledDate: this.computeDaysDelta
+      },
+      dialogFormRuleDetails: true,
+      applyDisabled: false,
+      temSrId: '', // 暂存srId修改规则用
+      timer: null, // 定时任务
+      pageLoading: false,
+      loading: false,
+      saveLoading: false,
+      industryOptions: [],
+      ruleVisible: false, // 弹框
+      ruleVisibleNoRule: false,
+      historyVisible: false, // 查看历史弹框
+      title: '', // 弹框title参数
+      isShow: false,
+      // isView: true,
+      isToggle: false,
+      listLoading: false, // 表格加载参数
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      total: 0,
+      disabled: false,
+      sqlDisabled: false, // 点击“自定义编辑"上面的所有内容清空数据并置灰，即”自定义编辑“和“添加行业”功能是互斥的
+      searchForm: {
+        // 查询form
+        srName: '',
+        srStateOfExecution: null,
+        srCurrentStatus: null,
+        dateValue: ''
+      },
+      executionList: [{
+        label: '未启用',
+        value: 0
+      }, {
+        label: '启用中',
+        value: 1
+      }, {
+        label: '禁用',
+        value: 2
+      }, {
+        label: '已删除',
+        value: 3
+      }, {
+        label: '执行失败',
+        value: 4
+      }],
+      currentStatusList:
+      [
+        {
+          label: '新增未审批',
+          value: 0
+        }, {
+          label: '新增审批中',
+          value: 41
+        }, {
+          label: '新增审批通过',
+          value: 42
+        }, {
+          label: '新增审批不通过',
+          value: 43
+        }, {
+          label: '启用审批中',
+          value: 11
+        }, {
+          label: '启用审批通过',
+          value: 12
+        }, {
+          label: '启用审批不通过',
+          value: 13
+        }, {
+          label: '禁用审批中',
+          value: 21
+        }, {
+          label: '禁用审批通过',
+          value: 22
+        }, {
+          label: '禁用审批不通过',
+          value: 23
+        }, {
+          label: '删除审批中',
+          value: 31
+        }, {
+          label: '删除审批通过',
+          value: 32
+        }, {
+          label: '删除审批不通过',
+          value: 33
+        }
+      ],
+      rules: {
+        srName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ]
+      },
+      dialogForm: {
+        srName: '',
+        dateValue: '',
+        tradeNum: 1000,
+        srId: '',
+        customizeSql: '',
+        srApplyInfo: '',
+        judgementSymbol: '', // 判断符号
+        rdNumberType: '',
+        rdNumber: '',
+        ffLink: '',
+        ruleDetails: [
+          {
+            fieldFactors: [],
+            judgementSymbol: '', // 判断符号
+            ffLink: '', // 关联词
+            rdIndustry: '',
+            rdJudgeSym: '',
+            rdNumber: '',
+            rdNumberType: '',
+            srId: ''
+          }
+        ]
+      },
+      applyInfo: '', // 申请事项
+      addOrDel: null,
+      dialogRules: {
+        // 检验规则
+        srName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ],
+        dateValue: [
+          { required: true, message: '内容不能为空', trigger: 'change' },
+          { validator: isValidDate, trigger: 'change' }
+        ],
+        tradeNum: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noMinus_validatePass, trigger: 'blur' }
+        ],
+        customizeSql: [{ max: 1000, message: '最大长度为1000位', trigger: 'blur' }],
+        srApplyInfo: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: delDataValidInput, trigger: 'blur' },
+          { max: 100, message: '最大长度为100位', trigger: 'blur' }
+        ],
+        rdIndustry: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        fieldFactors: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        ffLink: [{ required: false, message: '内容不能为空', trigger: 'change' }],
+        rdNumber: [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { pattern: /^\d+(\.\d+)?$/, message: '请输入数字', trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }],
+        rdNumberType: [
+          { required: false, message: '内容不能为空', trigger: 'change' }],
+        judgementSymbol: [
+          { required: false, message: '内容不能为空', trigger: 'change' }
+        ]
+      },
+      detailDialogForm: {
+        srName: '',
+        srId: '',
+        customizeSql: '',
+        srApplyInfo: '',
+        judgementSymbol: '', // 判断符号
+        rdNumberType: '',
+        rdNumber: '',
+        ffLink: '',
+        ruleDetails: [
+          {
+            fieldFactors: [],
+            judgementSymbol: '', // 判断符号
+            ffLink: '', // 关联词
+            rdIndustry: '',
+            rdJudgeSym: '',
+            rdNumber: '',
+            rdNumberType: '',
+            srId: ''
+          }
+        ]
+      },
+      detailRuleVisible: false,
+      tId: '',
+      list: [],
+      ruleId: '',
+      status: '',
+      historyList: [],
+      fileEleOPtions: [], // 字段要素
+      isEqual: '',
+      onleOne: false
+    }
+  },
+  mounted() {
+    this.dialogRules.judgementSymbol = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+    this.dialogRules.rdNumber = [{ required: false, message: '内容不能为空', trigger: 'blur' },
+      { validator: isValidInput, trigger: 'blur' },
+      { max: 16, message: '最大长度为16位', trigger: 'blur' }]
+    this.dialogRules.rdNumberType = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+    this.getData()
+  },
+  computed: {
+    ...mapGetters(['roles', 'businessFlag', 'workFlow2business'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    },
+    ruleVisible(val) {
+      if (val) this.getIndustry()
+    },
+    ruleVisibleNoRule(val) {
+      if (val) this.getIndustry()
+    },
+    dialogForm: {
+      handler(newName, oldName) {
+        for (let index = 0; index < newName.ruleDetails.length; index++) {
+          if (newName.ruleDetails[index].fieldFactors.length >= 2) {
+            this.dialogFormRuleDetails = false
+            break
+          } else {
+            this.dialogFormRuleDetails = true
+          }
+        }
+      },
+      deep: true
+    }
+  },
+  methods: {
+    clearYaosu(item) {
+      if (item.length === 1) {
+        this.dialogForm.ffLink = ''
+        this.dialogRules.judgementSymbol = [
+          { required: false, message: '内容不能为空', trigger: 'change' }
+        ]
+        this.dialogRules.rdNumberType = [
+          { required: false, message: '内容不能为空', trigger: 'change' }
+        ]
+        this.dialogRules.rdNumber = [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }
+        ]
+      }
+    },
+    onlyOneChange(item) {
+      console.log(item)
+    },
+    open() {
+      if (this.$refs.dialogForm) {
+        this.$refs.dialogForm.resetFields()
+      }
+    },
+    setTagTitle() {
+      var tagTextList = this.$refs.rulewrap.querySelectorAll('.el-select__tags-text')
+      tagTextList.forEach((item) => {
+        item.setAttribute('title', item.innerText)
+      })
+    },
+    callWorkFlow(scope) {
+      // 新增工作流
+      this.ruleId = scope.row.srId
+      this.addOrDel = 41
+      this.$store.dispatch('workFlow', { configCode: 'ruleAdd' })
+      this.$store.dispatch('openWorkFlow', true)
+    },
+    delOrStartCallWorkFlow() {
+      // 删除工作流
+      this.$refs['dialogForm'].validate(valid => {
+        if (valid) {
+          this.ruleVisible = false
+          this.applyInfo = this.dialogForm.srApplyInfo
+          if (this.addOrDel === 31) {
+            // 删除
+            this.$store.dispatch('workFlow', { configCode: 'ruleDeletion' })
+          } else if (this.addOrDel === 11) {
+            // 启用
+            this.$store.dispatch('workFlow', { configCode: 'ruleStart' })
+          } else if (this.addOrDel === 21) {
+            this.$store.dispatch('workFlow', { configCode: 'ruleDisable' })
+          }
+          this.$store.dispatch('openWorkFlow', true)
+        } else {
+          return false
+        }
+      })
+    },
+    // 特殊的数据
+    delOrStartCallWorkFlowTs() {
+      // 删除工作流
+      this.$refs['dialogForm'].validate(valid => {
+        if (valid) {
+          this.ruleVisibleNoRule = false
+          this.applyInfo = this.dialogForm.srApplyInfo
+          if (this.addOrDel === 31) {
+            // 删除
+            this.$store.dispatch('workFlow', { configCode: 'ruleDeletion' })
+          } else if (this.addOrDel === 11) {
+            // 启用
+            this.$store.dispatch('workFlow', { configCode: 'ruleStart' })
+          } else if (this.addOrDel === 21) {
+            this.$store.dispatch('workFlow', { configCode: 'ruleDisable' })
+          }
+          this.$store.dispatch('openWorkFlow', true)
+        } else {
+          return false
+        }
+      })
+    },
+    getData(row) {
+      // 获取列表
+      this.isEqual = ''
+      this.listLoading = true
+      this.saveLoading = false
+      const paramsObj = {
+        srName: this.searchForm.srName,
+        srCurrentStatus: this.searchForm.srCurrentStatus,
+        srStateOfExecution: this.searchForm.srStateOfExecution,
+        startDate: this.searchForm.dateValue ? this.searchForm.dateValue[0] : '',
+        endDate: this.searchForm.dateValue ? this.searchForm.dateValue[1] : '',
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.listLoading = false
+          if (this.pageInfo.pageNum === 1) {
+            const arr = Object.assign(res.data.list, [])
+            const tempList = []
+            let tempObj = {}
+            if (arr.length > 0) {
+              arr.forEach(item => {
+                if (item.srId !== '10b3984c381a47c9893388cb3444ea35') {
+                  tempList.push(item)
+                } else {
+                  tempObj = item
+                }
+              })
+            }
+            tempList.unshift(tempObj)
+            this.list = tempList
+          } else {
+            this.list = res.data.list
+          }
+          this.total = res.data.total
+          res.data.list.forEach((item, index) => {
+            const srStateOfExecution = item.srStateOfExecution
+            if (srStateOfExecution !== null) {
+              switch (srStateOfExecution) {
+                case 0:
+                  item.srStateOfExecution = '未启用'
+                  break
+                case 1:
+                  item.srStateOfExecution = '启用中'
+                  break
+                case 2:
+                  item.srStateOfExecution = '禁用'
+                  break
+                case 3:
+                  item.srStateOfExecution = '已删除'
+                  break
+                case 4:
+                  item.srStateOfExecution = '执行失败'
+                  break
+                default:
+                  item.srStateOfExecution = ''
+              }
+            }
+          })
+          if (row !== null || row !== undefined) {
+            if (this.list[row].srStateOfExecution !== '禁用') {
+              this.pageLoading = true
+              const _this = this
+              this.timer = setTimeout(() => {
+                _this.getData(row)
+              }, 30000)
+            } else {
+              this.pageLoading = false
+              clearInterval(this.timer)
+              this.$message.success('禁用成功！')
+            }
+          }
+        } else {
+          this.loading = false
+          this.listLoading = false
+        }
+      }).catch(() => {
+        this.loading = false
+        this.listLoading = false
+      })
+    },
+    getIndustry() {
+      getIndustry()
+        .then(res => {
+          // 所属行业
+          this.industryOptions = res.data
+        })
+        .catch()
+    },
+    handleQuery() {
+      // 查询列表
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.pageInfo.pageNum = 1
+          this.getData()
+        } else {
+          return false
+        }
+      })
+    },
+    start(scope) {
+      if ((scope.row.stateOfApproval === '新增审批不通过' && scope.row.srStateOfExecution === '未启用') || (scope.row.stateOfApproval === '禁用审批不通过' && scope.row.srStateOfExecution === '未启用') || (scope.row.stateOfApproval === '启用审批不通过' && scope.row.srStateOfExecution === '禁用') || (scope.row.stateOfApproval === '启用审批不通过' && scope.row.srStateOfExecution === '未启用') || (scope.row.stateOfApproval === '删除审批不通过' && scope.row.srStateOfExecution === '未启用') || (scope.row.stateOfApproval === '新增审批通过' && scope.row.srStatus === 0) || (scope.row.stateOfApproval === '启用审批通过' && scope.row.srStatus === 0) || (scope.row.stateOfApproval === '禁用审批通过' && scope.row.srStateOfExecution === '禁用')) {
+        return false
+      } else {
+        return true
+      }
+    },
+    stop(scope) {
+      if ((scope.row.stateOfApproval === '新增审批不通过' && scope.row.srStateOfExecution === '启用中') || (scope.row.stateOfApproval === '禁用审批不通过' && scope.row.srStateOfExecution === '启用中') || (scope.row.stateOfApproval === '启用审批不通过' && scope.row.srStateOfExecution === '启用中') || (scope.row.stateOfApproval === '删除审批不通过' && scope.row.srStateOfExecution === '启用中') || (scope.row.stateOfApproval === '禁用审批通过' && scope.row.srStatus === 1) || (scope.row.stateOfApproval === '新增审批通过' && scope.row.srStatus === 1) || (scope.row.stateOfApproval === '启用审批通过' && scope.row.srStateOfExecution === '启用中')) {
+        return false
+      } else {
+        return true
+      }
+    },
+    nextStep() {
+      this.saveLoading = true
+      const paramsObj = {
+        id: this.ruleId,
+        params: this.addOrDel,
+        applyInfo: this.applyInfo,
+        workflow: this.workFlow2business
+      }
+      approvalStaus(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.saveLoading = false
+            this.$message({
+              type: 'success',
+              message: '提交成功！'
+            })
+            this.getData()
+            this.ruleVisible = false
+          } else {
+            this.saveLoading = false
+          }
+        })
+        .catch(() => {
+          this.saveLoading = false
+        })
+    },
+    handleChange() { // 当要素之间的关系选择为“等于”，则判断符号置灰不可编辑
+      this.isEqual = this.dialogForm.ffLink
+      if (this.dialogForm.ffLink === '2') {
+        this.dialogRules.judgementSymbol = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        this.dialogRules.rdNumber = this.getRuleNumber(1)
+        this.dialogRules.rdNumberType = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+      } else {
+        this.dialogRules.judgementSymbol = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        this.dialogRules.rdNumber = this.getRuleNumber(2)
+        this.dialogRules.rdNumberType = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+      }
+    },
+    getRuleNumber(source) {
+      const R = []
+      if (source === 1) {
+        R.push(
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }
+        )
+      } else {
+        R.push(
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }
+        )
+      }
+      return R
+    },
+    getEqual(val, index) {
+      if (val) {
+        if (val !== '' || val !== null || val !== undefined) {
+          if (val === '2') {
+            this.dialogForm.judgementSymbol = ''
+            this.dialogForm.rdNumberType = ''
+            this.dialogForm.rdNumber = ''
+            return true
+          } else {
+            return false
+          }
+        } else {
+          return false
+        }
+      }
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handelShow() {
+      this.isToggle = !this.isToggle
+      // this.dialogForm.judgementSymbol = ''
+      // this.dialogForm.rdNumberType = ''
+      // this.dialogForm.rdNumber = ''
+      // this.dialogForm.ruleDetails = [
+      //   {
+      //     fieldFactors: [],
+      //     judgementSymbol: '', // 判断符号
+      //     ffLink: '', // 关联词
+      //     rdIndustry: '',
+      //     rdJudgeSym: '',
+      //     rdNumber: '',
+      //     rdNumberType: '',
+      //     srId: ''
+      //   }
+      // ]
+
+      if (this.isToggle) {
+        this.sqlDisabled = true
+        this.dialogRules.rdIndustry = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        this.dialogRules.fieldFactors = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        // this.dialogRules.ffLink = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        this.dialogRules.judgementSymbol = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        this.dialogRules.rdNumber = [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }]
+        this.dialogRules.rdNumberType = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+      } else {
+        this.sqlDisabled = false
+        this.dialogRules.rdIndustry = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        this.dialogRules.fieldFactors = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        // this.dialogRules.ffLink = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+      }
+      if (this.$refs.dIndustryinfo) {
+        this.$refs.dIndustryinfo.clearValidate()
+      }
+      // this.$refs.dialogForm.clearValidate()
+    },
+    checkSql() {
+      if (this.dialogForm.customizeSql === '') {
+        this.$message({ type: 'warning', message: '没有填写sql语句，无法校验！' })
+      } else {
+        const sql = this.dialogForm.customizeSql
+        checkSql(sql)
+          .then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: res.message
+              })
+            }
+          })
+          .catch()
+      }
+    },
+    handelStartStop(scope) {
+      // if (scope.$index === 0 && scope.row.srStatus === 0) { // 第一条特殊规则数据启用按钮显示
+      //   scope.row.oneStart = 0
+      // } else
+      // if (scope.$index === 0 && scope.row.srStatus === 1) {
+      //   scope.row.oneStart = 1
+      // }
+      // scope.row.oneStart = 1
+      // const paramsObj = {
+      //   scanRuleId: scope.row.srId,
+      //   status: scope.row.srStatus
+      // }
+      this.ruleId = scope.row.srId
+      // if (scope.row.oneStart === 0) {
+      //   // 第一次启用
+      //   startStatus(paramsObj)
+      //     .then(res => {
+      //       if (res.code === 200) {
+      //         this.getData()
+      //         this.$message({
+      //           type: 'success',
+      //           message: '启用成功！'
+      //         })
+      //       } else {
+      //         this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+      //           .then()
+      //           .catch()
+      //       }
+      //     })
+      //     .catch(() => {})
+      // } else {
+
+      // }
+      // 除第一次外的启用，还有禁用
+      if (scope.row.srStatus === 0) {
+        // 启用
+        if (scope.row.stateOfApproval === '启用审批通过') {
+          const paramsObj = {
+            scanRuleId: scope.row.srId,
+            status: 0
+          }
+          startStatus(paramsObj)
+            .then(res => {
+              if (res.code === 200) {
+                this.getData()
+                this.$message({
+                  type: 'success',
+                  message: '启用成功！'
+                })
+              } else {
+                this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+                  .then()
+                  .catch()
+              }
+            })
+            .catch(() => {})
+        } else {
+          this.addOrDel = 11
+          this.disabled = true
+          this.isShow = false
+          this.title = '规则信息'
+          this.getViewInfo(scope.row.srId, 'qy')
+        }
+      } else {
+        if (scope.row.stateOfApproval === '禁用审批通过') {
+          const paramsObj = {
+            scanRuleId: scope.row.srId,
+            status: 1
+          }
+          this.handleStopStatus(paramsObj, scope.$index)
+        } else {
+          this.addOrDel = 21
+          this.disabled = true
+          this.isShow = false
+          this.title = '规则信息'
+          this.getViewInfo(scope.row.srId, 'jy')
+          // if (scope.$index === 0) {
+          //   const paramsObj = {
+          //     scanRuleId: scope.row.srId,
+          //     status: 1
+          //   }
+          //   this.handleStopStatus(paramsObj, 0)
+          // } else {
+          //   this.addOrDel = 21
+          //   this.disabled = true
+          //   this.isShow = false
+          //   this.title = '规则信息'
+          //   this.getViewInfo(scope.row.srId, 'jy')
+          // }
+        }
+      }
+    },
+    handleStopStatus(paramsObj, row) {
+      stopStatus(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            if (res.data === '2') {
+              this.getData(row)
+            } else {
+              this.$message({
+                type: 'success',
+                message: '禁用成功！'
+              })
+              this.getData()
+            }
+          } else {
+            this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+              .then()
+              .catch()
+          }
+        })
+        .catch(() => {})
+    },
+    handelUse(scope) {
+      const paramsObj = {
+        scanRuleId: scope.row.srId,
+        status: 0
+      }
+      startStatus(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.getData()
+            this.$message({
+              type: 'success',
+              message: '启用成功！'
+            })
+          } else {
+            this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+              .then()
+              .catch()
+          }
+        })
+        .catch((res) => {
+          this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+            .then()
+            .catch()
+        })
+    },
+    handelNoUse(scope) {
+      const paramsObj = {
+        scanRuleId: scope.row.srId,
+        status: 1
+      }
+      this.handleStopStatus(paramsObj)
+    },
+    addIndustry() {
+      if (this.dialogForm.ruleDetails.length < 14) {
+        this.dialogForm.ruleDetails.push({
+          fieldFactors: [],
+          rdIndustry: '',
+          rdJudgeSym: '',
+          rdNumber: '',
+          rdNumberType: '',
+          srId: '',
+          key: Date.now()
+        })
+      } else {
+        this.$confirm('最多添加14条添加行业信息', '提示', {
+          confirmButtonText: '确定',
+          showCancelButton: false,
+          type: 'warning'
+        })
+      }
+    },
+    removeIndustry(id) {
+      this.$delete(this.dialogForm.ruleDetails, id)
+      this.isEqual.splice(id, 1)
+    },
+    handleRinmChange(item, index, source) {
+      // 根据不同行业获取字段要素
+      const type = item.rdIndustry
+      getFiledEleList(type)
+        .then(res => {
+          if (res.code === 200) {
+            this.$set(this.fileEleOPtions, index, res.data)
+          }
+        })
+        .catch()
+      if (source === 1) {
+        item.fieldFactors = []
+      }
+    },
+    handleAdd(e) {
+      this.disabled = false
+      this.sqlDisabled = false
+      this.isShow = true
+      this.applyDisabled = false
+      this.isToggle = false
+      this.ruleVisible = true
+      this.title = e.target.innerText
+      this.isEqual = []
+
+      this.dialogForm = {
+        srName: '',
+        dateValue: '',
+        tradeNum: 1000,
+        judgementSymbol: '',
+        rdNumberType: '',
+        rdNumber: '',
+        ffLink: '',
+        // srVerify: [],
+        srId: '',
+        customizeSql: '',
+        srApplyInfo: '',
+        ruleDetails: [
+          {
+            fieldFactors: [],
+            judgementSymbol: '', // 判断符号
+            ffLink: '', // 关联词
+            rdIndustry: '',
+            rdJudgeSym: '',
+            rdNumber: '',
+            rdNumberType: '',
+            srId: ''
+          }
+        ]
+      }
+      this.getIndustry()
+      const data1 = this.fmtDate(Date.now() - 1 * 24 * 60 * 60 * 1000)
+      const endTime = new Date(this.fmtDate(Date.now() - 1 * 24 * 60 * 60 * 1000)).getTime()
+      const startTime = new Date(this.fmtDate(Date.now() - 5 * 24 * 60 * 60 * 1000)).getTime()
+      const count = this.getTempDefaultDayNum(startTime, endTime)
+      let data2 = null
+      if (count < 5) {
+        data2 = this.fmtDate(Date.now() - ((5 - count) + 5) * 24 * 60 * 60 * 1000)
+      } else {
+        data2 = this.fmtDate(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      }
+      this.$set(this.dialogForm, 'dateValue', [data2, data1])
+    },
+    resetForm(formName) {
+      this.$refs[formName].resetFields()
+    },
+    addSubmit() {
+      this.$refs.dialogForm.validate(valid => {
+        if (valid) {
+          this.saveLoading = true
+          this.applyInfo = this.dialogForm.srApplyInfo
+          const obj = Object.assign(JSON.parse(JSON.stringify(this.dialogForm)))
+          if (this.title === '新建规则') {
+            if (obj.ruleDetails.length !== 0) {
+              obj.ruleDetails.map((el, index) => {
+                const fields = []
+                el.ffLink = this.dialogForm.ffLink
+                el.judgementSymbol = this.dialogForm.judgementSymbol
+                el.rdNumberType = this.dialogForm.rdNumberType
+                el.rdNumber = this.dialogForm.rdNumber
+                el.fieldFactors.map(e => {
+                  fields.push({ ffFactorType: e })
+                  el.fieldFactors = fields
+                })
+              })
+            }
+            const paramsObj = {
+              srName: obj.srName,
+              srId: '',
+              tradeNum: obj.tradeNum,
+              redtSt: obj.dateValue ? obj.dateValue[0] : '',
+              redtEnd: obj.dateValue ? obj.dateValue[1] : '',
+              customizeSql: obj.customizeSql,
+              srApplyInfo: obj.srApplyInfo,
+              ruleDetails: this.isToggle === true ? [
+                {
+                  fieldFactors: [],
+                  judgementSymbol: '', // 判断符号
+                  ffLink: '', // 关联词
+                  rdIndustry: '',
+                  rdJudgeSym: '',
+                  rdNumber: '',
+                  rdNumberType: '',
+                  srId: ''
+                }
+              ] : obj.ruleDetails
+              // ruleDetails: obj.ruleDetails
+            }
+            addRuleData(paramsObj)
+              .then(res => {
+                if (res.code === 200) {
+                  this.saveLoading = false
+                  this.pageInfo.pageNum = 1
+                  this.getData()
+                  this.ruleVisible = false
+                  this.$message({
+                    type: 'success',
+                    message: '新增成功！'
+                  })
+                } else {
+                  this.saveLoading = false
+                  this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+                    .then(() => {
+                    // 向请求服务端删除
+                    })
+                    .catch(() => {})
+                }
+              })
+              .catch(() => {
+                this.saveLoading = false
+              })
+          } else {
+            if (obj.ruleDetails.length !== 0) {
+              obj.ruleDetails.map((el, index) => {
+                const fields = []
+                el.ffLink = this.dialogForm.ffLink
+                el.judgementSymbol = this.dialogForm.judgementSymbol
+                el.rdNumberType = this.dialogForm.rdNumberType
+                el.rdNumber = this.dialogForm.rdNumber
+                el.fieldFactors.map((e, i) => {
+                  fields.push({ ffFactorType: e })
+                })
+                el.fieldFactors = fields
+                delete el.fieldFactor
+              })
+            }
+            const paramsObj = {
+              srName: obj.srName,
+              srId: this.temSrId,
+              tradeNum: obj.tradeNum,
+              redtSt: obj.dateValue ? obj.dateValue[0] : '',
+              redtEnd: obj.dateValue ? obj.dateValue[1] : '',
+              customizeSql: obj.customizeSql,
+              srApplyInfo: obj.srApplyInfo,
+              ruleDetails: this.isToggle === true ? [
+                {
+                  fieldFactors: [],
+                  judgementSymbol: '', // 判断符号
+                  ffLink: '', // 关联词
+                  rdIndustry: '',
+                  rdJudgeSym: '',
+                  rdNumber: '',
+                  rdNumberType: '',
+                  srId: ''
+                }
+              ] : obj.ruleDetails
+              // ruleDetails: obj.ruleDetails
+            }
+            updateRuleData(paramsObj)
+              .then(res => {
+                if (res.code === 200) {
+                  this.saveLoading = false
+                  this.pageInfo.pageNum = 1
+                  this.getData()
+                  this.ruleVisible = false
+                  this.$message({
+                    type: 'success',
+                    message: '修改成功！'
+                  })
+                } else {
+                  this.saveLoading = false
+                  this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+                    .then(() => {
+                    // 向请求服务端删除
+                    })
+                    .catch(() => {})
+                }
+              })
+              .catch(() => {
+                this.saveLoading = false
+              })
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    handleDel(scope, e, status) {
+      // 删除规则
+      this.status = status
+      this.disabled = true
+      this.isShow = false
+      this.ruleId = scope.row.srId
+      if (scope.row.stateOfApproval === '删除审批通过') {
+        delRuleList(this.ruleId)
+          .then(res => {
+            if (res.code === 200) {
+              this.$confirm('确定要删除此规则？', '提示', {
+                showCancelButton: false,
+                type: 'warning'
+              })
+                .then(() => {
+                  // 向请求服务端删除
+                  this.getData()
+                  this.$message({
+                    type: 'success',
+                    message: res.message
+                  })
+                })
+                .catch(() => {
+                  this.$message({
+                    type: 'success',
+                    message: '已取消删除！'
+                  })
+                })
+            }
+          })
+          .catch()
+      } else {
+        this.title = '规则信息'
+        this.text = e.target.innerText
+
+        this.addOrDel = 31 // 提交工作流标识
+        this.getViewInfo(this.ruleId, 'sc')
+      }
+    },
+    getViewInfo(ruleId, source) {
+      if (source === '新增未审批') { // 修改
+        this.temSrId = ruleId
+        this.title = '修改规则信息'
+        this.isShow = true
+        this.isToggle = false
+        this.disabled = false
+        this.applyDisabled = false
+      } else if (source === 'qy' || source === 'jy' || source === 'sc') { // 审批--查看（单可修改申请事项）
+        // this.title = '规则信息'
+        this.isShow = false
+        this.isToggle = true
+        this.disabled = true
+        this.applyDisabled = false
+      } else { // 查看
+        this.title = '查看规则信息'
+        this.isShow = false
+        this.isToggle = true
+        this.disabled = true
+        this.applyDisabled = true
+      }
+      this.getIndustry()
+      viewData(ruleId)
+        .then(res => {
+          if (res.code === 200) {
+            if (ruleId === '10b3984c381a47c9893388cb3444ea35') {
+              this.ruleVisibleNoRule = true
+              this.ruleVisible = false
+            } else {
+              this.ruleVisibleNoRule = false
+              this.ruleVisible = true
+            }
+
+            const obj = JSON.parse(JSON.stringify(res.data))
+            if (this.title === '规则信息') {
+              obj.srApplyInfo = ''
+            }
+            if (res.data.ruleDetails.length !== 0) {
+              console.log('res.data.', res.data)
+              res.data.ruleDetails.map((item, i) => {
+                this.handleChange(item, i)
+                this.handleRinmChange(item, i)
+                obj.ruleDetails[i].fieldFactor = item.fieldFactors
+                obj.ruleDetails[i].fieldFactors = item.fieldFactor
+                obj.ffLink = item.ffLink
+                obj.judgementSymbol = item.judgementSymbol
+                obj.rdNumberType = item.rdNumberType
+                obj.rdNumber = item.rdNumber
+              })
+            } else {
+              obj.ffLink = ''
+              obj.judgementSymbol = ''
+              obj.rdNumberType = ''
+              obj.rdNumber = ''
+              obj.ruleDetails = [{ rdId: '', srId: '', rdIndustry: '', rdJudgeSym: '', rdNumber: '', rdNumberType: '', fieldFactors: [{ ffId: '', rdId: '', ffFactorType: '' }, { ffId: '', rdId: '', ffFactorType: '' }] }]
+            }
+
+            this.dialogForm = obj
+            if (obj.redtSt && obj.redtEnd) {
+              this.$set(this.dialogForm, 'dateValue', [obj.redtSt, obj.redtEnd])
+            }
+            if (this.isToggle) {
+              this.sqlDisabled = true
+              this.dialogRules.rdIndustry = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+              this.dialogRules.fieldFactors = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+              // this.dialogRules.ffLink = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+              this.dialogRules.judgementSymbol = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+              this.dialogRules.rdNumber = [{ required: false, message: '内容不能为空', trigger: 'blur' },
+                { validator: isValidInput, trigger: 'blur' },
+                { max: 16, message: '最大长度为16位', trigger: 'blur' }]
+              this.dialogRules.rdNumberType = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+            } else {
+              this.sqlDisabled = false
+              this.dialogRules.rdIndustry = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+              this.dialogRules.fieldFactors = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+              // this.dialogRules.ffLink = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+            }
+          }
+        })
+        .catch(() => {})
+    },
+    delSubmit() {
+      this.$confirm('此操作将永久删除此规则' + ', 是否继续?', '提示', { type: 'warning' })
+        .then(() => {
+          // 向请求服务端删除
+          const id = this.tId
+          const type = 3
+          subApproval(id, type)
+            .then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  message: '提交成功！',
+                  type: 'success'
+                })
+              }
+            })
+            .catch()
+        })
+        .catch(() => {
+          this.$message.info('已取消操作!')
+        })
+      // })
+    },
+    historyView(scope) {
+      // 历史记录
+      const scanRuleId = scope.row.srId
+
+      historyData(scanRuleId).then(res => {
+        if (res.code === 200) {
+          this.historyVisible = true
+          this.historyList = res.data
+        }
+      })
+    },
+    fmtDate(date1) { // 时间格式化
+      const date = new Date(date1)
+      var y = 1900 + date.getYear()
+      var m = '0' + (date.getMonth() + 1)
+      var d = '0' + date.getDate()
+      return y + '-' + m.substring(m.length - 2, m.length) + '-' + d.substring(d.length - 2, d.length)
+    },
+    stringToDate(dateString) { // 转时间戳
+      dateString = this.fmtDate(dateString)
+      dateString = dateString.split('-')
+      return new Date(dateString[0], dateString[1] - 1, dateString[2])
+    },
+    computeDaysDelta(time) { // 核心计算函数
+      var superArr = HOLIDAY // 设置法定节假日
+      var superDate = this.fmtDate(time)
+      var status = superArr.indexOf(superDate)
+      if (status === -1) {
+        if (time.getTime() > Date.now() - 1 * 24 * 60 * 60 * 1000) {
+          return true
+        } else {
+          return false
+        }
+      } else if (status !== -1) {
+        return true
+      }
+    },
+    getTempDefaultDayNum(startTime, endTime) { // 落地时间字段--默认五个工作日
+      // const endTime = Date.now() - 1 * 24 * 60 * 60 * 1000
+      // const startTime = new Date() - 5 * 24 * 60 * 60 * 1000
+      const time = endTime - startTime// 计算两个时间的毫秒差
+      var days = parseInt(time / (1000 * 60 * 60 * 24))// 根据毫秒差计算得到相差天数
+      if (days < 0) { // 实际业务需要，某个时间不能小于某个时间，否则给出错误提示
+        return days
+      }
+      days += 1// 实际业务需要计算天数（当天也算一天）
+      for (var i = 0; i < HOLIDAY.length; i++) { // 获取两个时间之间的工作日天数
+        var holidaytime = new Date(HOLIDAY[i]).getTime()
+        if (holidaytime >= startTime && holidaytime <= endTime) { // 如果两个时间之间包含节假日期就减去那天，得到需要的工作日天数
+          days -= 1
+        }
+      }
+      return days
+    },
+    destoryed() {
+      clearInterval(this.timer)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.rulewrap {
+  .item { // 表格加省略号
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .title {
+    font-size: 16px;
+    font-weight: bold;
+  }
+  .itemline {
+    font-size: 16px;
+    color: #409eff;
+    padding: 0 3px 0 8px;
+  }
+  .btnalign {
+    text-align: right;
+  }
+  .dIndustryinfo {
+    // 弹框选择行业样式
+    position: relative;
+    border: 1px solid #dcdfe6;
+    padding: 10px;
+    margin-bottom: 6px;
+    // .dIndCloseIcon {
+
+    // }
+    .close-icon {
+      display: none;
+      cursor: pointer;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 20px;
+      height: 20px;
+      background-color: #606266;
+    }
+    .dIndCloseIcon {
+        display: block;
+      }
+    .el-icon-close:before {
+      line-height: 20px;
+      padding-left: 3px;
+      color: #fff;
+    }
+  }
+  .change_length {
+    .el-select__tags >span {
+      display: block!important;
+      width: 100%;
+    }
+    .el-form-item__content {
+      margin-left: 0!important;
+    }
+    .el-form-item__error {
+      margin-left: 120px!important;
+    }
+    .el-select__tags .is-small {
+      display: none;
+    }
+  }
+
+}
+</style>

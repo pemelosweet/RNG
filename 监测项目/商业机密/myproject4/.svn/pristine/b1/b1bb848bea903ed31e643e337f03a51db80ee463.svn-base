@@ -1,0 +1,228 @@
+<template>
+  <div class="receivewrap">
+    <el-card>
+      <div slot="header">
+        <span>接收监测任务</span>
+      </div>
+      <el-form ref="searchForm" :model="searchForm" label-width="110px" class="clearfix">
+        <el-col :span="8">
+          <el-form-item label="报告机构：" prop="receiver">
+            <el-autocomplete v-model="searchForm.receiver" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmChange" clearable @blur="blurFn"></el-autocomplete>
+          </el-form-item>
+        </el-col>
+        <!-- 第二行 -->
+        <el-col :span="8">
+          <el-form-item label="状态：" prop="status">
+            <el-select v-model="searchForm.status" style="width:100%;" clearable>
+              <el-option label="待反馈" value="4"></el-option>
+              <el-option label="已反馈" value="5"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="核对状态：" prop="checkResult">
+            <el-select v-model="searchForm.checkResult" style="width:100%;" clearable>
+              <el-option label="一致" value="一致"></el-option>
+              <el-option label="不一致" value="不一致"></el-option>
+              <el-option label="数据缺失" value="数据缺失"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="接收数据时间：" prop="dateValue">
+            <el-date-picker v-model="searchForm.dateValue" value-format="yyyy-MM-dd" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width:100% !important;">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+      </el-form>
+      <div class="btnalign">
+        <el-button type="primary" @click="handleQuery">查询</el-button>
+        <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+      </div>
+
+      <el-table :data="list">
+        <!-- <el-table-column type="selection"></el-table-column> -->
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="dataFrom" label="报告机构"></el-table-column>
+        <el-table-column prop="tradeNo" label="交易笔数"></el-table-column>
+        <el-table-column prop="createDate" label="接收数据时间"></el-table-column>
+        <el-table-column prop="status" label="状态">
+          <template slot-scope="scope">
+            {{scope.row.status === '0' ? '保存' : scope.row.status === '1' ? '待审批' : scope.row.status === '2' ? '审批通过' : scope.row.status === '3' ? '审批不通过' : scope.row.status === '4' ? '待反馈' : '已反馈'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkResult" label="核对状态"></el-table-column>
+        <el-table-column fixed="right" label="操作" width="100">
+          <template slot-scope="scope">
+            <router-link :to="{ name: 'dataGovernance_fixedPoint_receive_result', query: { id: scope.row.id, ricd: scope.row.createUser}}" v-if="scope.row.status === '5'">
+              <el-button type="text">查看</el-button>
+            </router-link>
+            <router-link :to="{ name: 'dataGovernance_fixedPoint_receive_result', query: { id: scope.row.id, ricd: scope.row.createUser}}" v-else>
+              <el-button type="text">对比</el-button>
+            </router-link>
+            <el-button type="text" @click="handleDownload(scope)">下载任务</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+<script>
+import { rinmList } from '@/api/common/industry'
+import { getList } from '@/api/sys-monitoringAnalysis/dataGovernance/fixedPoint/receive'
+import { getRinmList } from '@/api/common/industry'
+export default {
+  data() {
+    return {
+      ricdName: '',
+      receiverLoading: false,
+      searchForm: {
+        receiver: '',
+        dateValue: '',
+        status: '',
+        checkResult: ''
+      },
+      rinmOptions: [], // 报告机构列表
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      }
+    }
+  },
+  filters: {
+    statusFilter(status) {
+      const statusMap = {
+        published: 'success',
+        draft: 'gray',
+        deleted: 'danger'
+      }
+      return statusMap[status]
+    }
+  },
+  created() {
+    // this.getData()
+    this.getList()
+  },
+  methods: {
+    handleRinmChange(item) {
+      if (item) {
+        this.dataFormType = 'yes'
+        this.ricdName = item.ricd
+      }
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        this.dataFormType = ''
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    blurFn() {
+      if (this.dataFormType === '') {
+        this.searchForm.receiver = ''
+      }
+    },
+    getData() {
+      rinmList().then(res => {
+        if (res.code === 200) {
+          this.rinmOptions = res.data
+        } else {
+          res.message
+        }
+      }).catch()
+    },
+    getList() {
+      getList(this.searchForm, this.pageInfo).then(res => {
+        if (res.code === 200) {
+          console.log('res', res)
+          this.list = res.data.list
+          this.total = res.data.total
+          // res.data.list.forEach((item, index) => {
+          //   const status = item.status
+          //   if (status) {
+          //     switch (status) {
+          //       case '0':
+          //         item.status = '保存'
+          //         break
+          //       case '1':
+          //         item.status = '待审批'
+          //         break
+          //       case '2':
+          //         item.status = '审批通过'
+          //         break
+          //       case '3':
+          //         item.status = '审批不通过'
+          //         break
+          //       case '4':
+          //         item.status = '待反馈'
+          //         break
+          //       case '5':
+          //         item.status = '已反馈'
+          //         break
+          //       default:
+          //         item.status = ''
+          //     }
+          //   }
+          // const checkResult = item.checkResult
+          // if (checkResult) {
+          //   switch (checkResult) {
+          //     case '0':
+          //       item.checkResult = '不一致'
+          //       break
+          //     case '1':
+          //       item.checkResult = '一致'
+          //       break
+          //     case '2':
+          //       item.checkResult = '数据缺失'
+          //       break
+          //     default:
+          //       item.status = ''
+          //   }
+          // }
+          // })
+        }
+      })
+    },
+    handleQuery() { // 查询
+      this.getList()
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getList()
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    handleDownload(scope) { // 下载任务
+      const id = scope.row.id
+      location.href = '/monitor/governance/monitor/j-task/export?id=' + id
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.receivewrap {
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

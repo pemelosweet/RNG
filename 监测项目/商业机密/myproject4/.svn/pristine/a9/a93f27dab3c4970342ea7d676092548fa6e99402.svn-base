@@ -1,0 +1,1389 @@
+<template>
+  <div class="backInfoWrap">
+    <el-card>
+      <div slot="header">
+        <span>反馈信息查询</span> 
+      </div>
+      <!-- 查询 -->
+      <div class="allsearchBlock">
+        <el-form :model="form" ref="form" :rules="rule">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="查询方式：" label-width="100px" prop="queryType">
+                <el-select v-model="form.queryType" placeholder="查询方式" @change="toggleShow">
+                  <el-option label="精准查询" value="0"></el-option>
+                  <el-option label="模糊查询" value="1"></el-option>
+                  <!-- <el-option label="全文检索" value="2"></el-option> -->
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- <div class="divider divider-dashed"></div> -->
+          <div v-show="isShow2">
+            <!--全文查询-->
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="查询关键词：" label-width="100px">
+                  <!-- <el-input v-model="form."></el-input> -->
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-button type="primary">查 询</el-button>
+              </el-col>
+            </el-row>
+          </div>
+          <div v-show="isShow">
+            <!-- <el-row>
+              <el-form-item label="查询条件：" label-width="83px" style="margin-bottom: 0px;"></el-form-item>
+            </el-row> -->
+
+            <!-- <div class="queryTitle">线索基本情况：</div> -->
+            <div v-show="form.queryType === '' || form.queryType === '0'" style="margin-top:10px">
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="来文编号：" label-width="100px" prop="laiwenNcard">
+                    <el-input v-model="form.laiwenNcard" placeholder="来文编号"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="中心函号：" label-width="100px" prop="centerNum">
+                    <el-input v-model="form.centerNum" placeholder="中心函号"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="中心移送线索名称：" label-width="166px" prop="evokename">
+                    <el-input v-model="form.evokename" placeholder="中心移送线索名称"></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="来文部门：" label-width="100px" prop="laiwenDept">
+                    <el-input v-model="form.laiwenDept" placeholder="来文部门"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="办理处室：" label-width="100px" prop="banlichu">
+                    <el-input v-model="form.banlichu" placeholder="办理处室"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="中心移送线索编号：" label-width="166px" prop="evokeNum">
+                    <el-input v-model="form.evokeNum" placeholder="中心移送线索编号"></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="来文日期：" label-width="100px" prop="laiwenDate">
+                    <el-date-picker v-model="form.laiwenDate" type="date" placeholder="来文日期" value-format="yyyy-MM-dd"></el-date-picker>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="分析员：" label-width="100px" prop="analyst">
+                    <el-input v-model="form.analyst" placeholder="分析员"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="线索涉及可疑报告编号：" label-width="166px" prop="keyinum">
+                    <el-input v-model="form.keyinum" placeholder="线索涉及可疑报告编号"></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+            <!--模糊查询-->
+            <div v-show="form.queryType === '1'" style="margin-top:10px">
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="来文编号：" label-width="100px" prop="laiwenNcard2">
+                    <el-input v-model="form.laiwenNcard2" placeholder="来文编号"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="中心函号：" label-width="100px" prop="centerNum2">
+                    <el-input v-model="form.centerNum2" placeholder="中心函号"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="中心移送线索名称：" label-width="166px" prop="evokename2">
+                    <el-input v-model="form.evokename2" placeholder="中心移送线索名称"></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="来文部门：" label-width="100px" prop="laiwenDept2">
+                    <el-input v-model="form.laiwenDept2" placeholder="来文部门"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="中心移送线索编号：" label-width="166px" prop="evokeNum2">
+                    <el-input v-model="form.evokeNum2" placeholder="中心移送线索编号"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="线索涉及可疑报告编号：" label-width="166px" prop="keyinum2">
+                    <el-input v-model="form.keyinum2" placeholder="线索涉及可疑报告编号"></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+            <!-- <div class="queryTitle" v-show="form.queryType === '' || form.queryType === '0'">案情基本情况：</div> -->
+            <el-row :gutter="20" style="margin-top:10px" v-show="form.queryType === '' || form.queryType === '0'">
+              <el-col :span="12">
+                <el-form-item label="主体名称：" label-width="100px" prop="subjectname">
+                  <el-input v-model="form.subjectname" placeholder="主体名称"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="主体证件号码：" label-width="166px" prop="subjectnum">
+                  <el-input v-model="form.subjectnum" maxlength="128" placeholder="主体证件号码"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20" style="textAlign:right; margin-top: 10px;">
+              <el-button type="primary" :loading="loading" @click="handleQuery">查 询</el-button>
+              <el-button type="primary" plain @click="resetForm">清 空</el-button>
+            </el-row>
+          </div>
+        </el-form>
+      </div>
+
+      <div class="list listxtf">
+        <el-row style="margin-top:10px">
+          <span style="margin-right:10px">查询结果信息：</span>
+        </el-row>
+        <el-table :data="list" style="width: 100%" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询中，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+          <el-table-column prop="key" label="序号" fixed>
+            <template slot-scope="scope">
+              {{scope.$index+1}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="banlichu" label="办理处室" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.banlichu}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="analyst" label="分析员" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.analyst}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="warehouseTime" label="入库时间" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.warehouseTime}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="laiwenNcard" label="来文编号" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.laiwenNcard}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="laiwenDept" label="来文部门" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.laiwenDept}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="laiwenDate" label="来文日期" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.laiwenDate}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="centerNum" label="中心函号" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.centerNum}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="evokeNum" label="中心移送线索编号" width="140" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.evokeNum}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="evokename" label="中心移送线索名称" width="140" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.evokename}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="keyinum" label="线索涉及可疑报告编号" width="160" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.keyinum}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="subjectname" label="主体名称" width="160" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.subjectname}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="subjectnum" label="主体证件号码" width="180" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{scope.row.subjectnum}}
+            </template>
+          </el-table-column>
+          <el-table-column label="详细反馈信息" width="70" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" @click="handleFeedView(scope)" :disabled="!backRecord">查看</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column label="详细线索信息" width="70" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" @click="handleClueView(scope)" :disabled="!evokeRecord">查看</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column label="详细主体信息" width="70" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" @click="handleSubjectView(scope)" :disabled="!subjectRecord">查看</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="60" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" @click="handleExport(scope)">导出</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+      </div>
+
+      <el-dialog title="" :visible.sync="dialogFeedVisible" width="90%">
+        <div class="inputwrap">
+          <div class="modeltitle">反馈信息</div>
+          <div class="flex-modelmain">
+            <el-form :model="dialogFeedForm" ref="dialogFeedForm">
+              <div class="flex-col-1 table-title">线索基本信息</div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>来文编号：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.laiwenNcard}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>来文部门：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.laiwenDept}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>来文日期：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.laiwenDate}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>中心函号：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.centerNum}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>中心移送线索编号：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.evokeNum}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>中心移送线索名称：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.evokename}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>中心移动线索初步判断：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.evokejudge}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>办理处室：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.banlichu}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label"><span style="color: #f56c6c;">*</span>分析员：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.analyst}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">线索涉及可疑报告编号：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.keyinum}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-col-1 table-title">案件基本信息</div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">主体名称：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.subjectname}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">主体证件号码：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.subjectnum}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">主体原工作单位职务或职级：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.subjectduty}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">立案时间：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.createcasetime}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">侦结时间：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.endcasetime}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">起诉时间：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.prosecutetime}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">判决时间：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.panjuecasetime}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">判决罪名：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.panjuecharge}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">判决金额：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.panjuesum}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">判决刑罚：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogFeedForm.panjuepenal}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">挽回经济损失：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.recoverEconomicLosses}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">抓获嫌疑人数量：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.arrestnum}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">案情简介：</div>
+                  <div class="flex-input casewarp">
+                    <el-form-item label="" label-width="0">
+                      <el-input type="textarea" rows="5" maxlength="5000" resize="none" v-model="dialogFeedForm.introductionCase" placeholder="" readonly></el-input>
+                    </el-form-item>
+                    <div v-if="uploadDetial.length > 0">
+                      <div v-for="(item,idx) in uploadDetial" :key="idx">
+                        <span style="float:left;font-size:12px; margin-left:10px;">{{item.attachName}}</span>
+                        <el-button icon="el-icon-download" style="float:right; margin-right:30px;" type="text" @click="hanldDownload(item.attachId)">点击下载</el-button>
+                        <div style="clear:both"></div>
+                      </div>
+                    </div>
+                    <!-- <span>{{dialogFeedForm.introductionCase}}</span> -->
+                  </div>
+                </div>
+              </div>
+              <div class="flex-col-1 table-title">线索使用评价</div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">是否有助于侦查方向：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpdirection}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">是否有助于发现新证据：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpevidence}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">是否有助于确定赃款去向：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpmoneyto}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">发现新线索的数量：</div>
+                  <div class="flex-input">
+                    <span>{{dialogFeedForm.helpdiscoverednum}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">对线索数据质量的整体评价：</div>
+                  <div class="flex-input casewarp">
+                    <!-- <span>{{dialogFeedForm.evaluationclues}}</!-->
+                    <el-form-item label="" label-width="0">
+                      <el-input type="textarea" v-model="dialogFeedForm.evaluationclues" placeholder="" rows="5" maxlength="500" resize="none" readonly></el-input>
+                    </el-form-item>
+                    <div v-if="uploadEn.length > 0">
+                    <div v-for="(item,idx) in uploadEn" :key="idx">
+                      <span style="float:left;font-size:12px; margin-left:10px;">{{item.attachName}}</span>
+                      <el-button icon="el-icon-download" style="float:right; margin-right:30px;" type="text" @click="hanldDownload(item.attachId)">点击下载</el-button>
+                      <div style="clear:both"></div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">对可疑报告的评价：</div>
+                  <div class="flex-input casewarp">
+                    <!-- <span>{{dialogFeedForm.evaluationSuspiciousReports}}</span> -->
+                    <el-form-item label="" label-width="0">
+                      <el-input type="textarea" rows="5" maxlength="500" resize="none" v-model="dialogFeedForm.evaluationSuspiciousReports" placeholder="" readonly></el-input>
+                    </el-form-item>
+                    <div v-if="uploadSusp.length > 0">
+                    <div v-for="(item,idx) in uploadSusp" :key="idx">
+                      <span style="float:left;font-size:12px; margin-left:10px;">{{item.attachName}}</span>
+                      <el-button icon="el-icon-download" style="float:right; margin-right:30px;" type="text" @click="hanldDownload(item.attachId)">点击下载</el-button>
+                      <div style="clear:both"></div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">备注：</div>
+                  <div class="flex-input casewarp">
+                    <!-- <span>{{dialogFeedForm.remark}}</span> -->
+                    <el-form-item label="" label-width="0">
+                      <el-input type="textarea" rows="5" maxlength="500" resize="none" v-model="dialogFeedForm.remark" placeholder="" readonly></el-input>
+                    </el-form-item>
+                  </div>
+                </div>
+              </div>
+            </el-form>
+          </div>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="primary" plain @click="dialogFeedVisible = false">取 消</el-button>
+        </div>
+      </el-dialog>
+
+      <!-- 线索 -->
+      <el-dialog title="" :visible.sync="dialogClueVisible" width="65%" @close="closeClueDialog">
+        <div class="inputwrap">
+          <div class="modeltitle">{{suspFlag ? '可疑交易线索表':'可疑交易通报表'}}</div>
+          <div class="flex-modelmain">
+            <el-form :model="dialogClueForm" ref="dialogClueForm">
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">可疑交易名称</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.cdispose:adialogClueForm.adispose}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">关联移送记录</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.ctriggerMessage:adialogClueForm.triggerMessage}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">主要交易发生地</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.cbodyMessage:adialogClueForm.bodyMessage}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">交易时间段</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.cdealdate:adialogClueForm.aDealdate}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row txt-row">
+                <div class="flex-col-2">
+                  <div class="flex-label">累计交易金额</div>
+                  <div style="margin-top:4px;width:100%">
+                    <span style="padding-left:20px">人民币：约{{suspFlag ? dialogClueForm.crmb:adialogClueForm.armb}}万元</span>
+                    <div style="margin:5px 0;border-top:1px solid #ccc;"></div>
+
+                    <span style="padding-left:20px">外币：约{{suspFlag ? dialogClueForm.cyb:adialogClueForm.ayb}}万美元</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label" style="flex:0 0 100px;text-align: center;">涉及交易笔数</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.cnumber:adialogClueForm.anumber}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label" style="flex:0 0 100px">涉及主要账户个数</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.cmainnumber:adialogClueForm.amainnumber}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">初步判断</div>
+                  <div class="flex-input">
+                    <!-- <el-select v-model="dialogClueForm.cjudge" placeholder="请输入初步判断" multiple clearable style="width: 100%;" v-if="suspFlag">
+                      <el-option v-for="(item, index) in dialogJudgmentData" :label="item.codeName" :value="item.codeId" :key="index"></el-option>
+                    </el-select> -->
+                    <!-- <el-select v-model="adialogClueForm.ajudge" placeholder="请输入初步判断" multiple clearable style="width: 100%;" v-if="!suspFlag" disabled>
+                      <el-option v-for="(item, index) in dialogJudgmentData" :label="item.codeName" :value="item.codeId" :key="index"></el-option>
+                    </el-select> -->
+                    <span v-if="suspFlag">{{dialogClueForm.cjudge}}</span>
+                    <span v-if="!suspFlag">{{adialogClueForm.ajudge}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-input">
+                    <span>交易主体身份及相关信息：{{suspFlag ? dialogClueForm.csubject:adialogClueForm.asubject}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-input">
+                    <span>监测分析触发点：{{suspFlag ? dialogClueForm.cpoints : adialogClueForm.apoints }}</span>
+                  </div>
+                </div>
+              </div>
+              <!-- <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-input">
+                    <span>分析概述：{{suspFlag ? dialogClueForm.csummary : adialogClueForm.asummary}}</span>
+                  </div>
+                </div>
+              </div> -->
+
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">建议：</div>
+                  <div class="flex-input">
+                    <span>{{suspFlag ? dialogClueForm.csuggest:adialogClueForm.asuggest}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">分析概述：</div>
+                  <div class="flex-input">
+                    <el-button type="text" v-for="(item,idx) in adjunctDOList" :key="idx" @click="downLoad(item)">{{item.attachName}}</el-button>
+                  </div>
+                </div>
+              </div>
+            </el-form>
+          </div>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="primary" plain @click="dialogClueVisible = false">取 消</el-button>
+        </div>
+      </el-dialog>
+
+      <!-- <el-dialog title="" :visible.sync="dialogClueOtherVisible" width="90%">
+        <div class="inputwrap">
+          <div class="modeltitle">人民银行分支机构机上报分析申请</div>
+          <judgeCom :tmpInfoId="tmpInfoId"></judgeCom>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="primary" plain @click="dialogClueOtherVisible = false">取 消</el-button>
+        </div>
+      </el-dialog> -->
+      <!-- 主体 -->
+      <el-dialog title="主体信息" :visible.sync="dialogSubjectVisible" width="70%">
+        <div class="inputwrap">
+          <div class="flex-modelmain">
+            <el-form :model="dialogSubjectForm" ref="dialogSubjectForm">
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">身份证号：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.citizenidnumber}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">姓名：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogSubjectForm.name}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">性别：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.sexcode}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">民族：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogSubjectForm.nationcode}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">出生日期：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.birthdate}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">出生地：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogSubjectForm.birthregioncode}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">户籍地：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.infolevelcode}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">服务处所：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogSubjectForm.engageunit}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">婚姻状况：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.marriagerelationcode}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row txt-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">学历：</div>
+                  <div class="flex-input" style="">
+                    <span>{{dialogSubjectForm.educationdegreecode}}</span>
+                  </div>
+                </div>
+                <div class="flex-col-1">
+                  <div class="flex-label">死亡标识：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.birthregioncode}}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row">
+                <div class="flex-col-1">
+                  <div class="flex-label">实际居住地址：</div>
+                  <div class="flex-input">
+                    <span>{{dialogSubjectForm.residentaddr}}</span>
+                  </div>
+                </div>
+              </div>
+            </el-form>
+          </div>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="primary" plain @click="dialogSubjectVisible = false">取 消</el-button>
+        </div>
+      </el-dialog>
+
+      <!--导出弹框-->
+      <el-dialog title="选择导出的内容" :visible.sync="dialogExportVisible" @close="closeExportDialog">
+        <el-checkbox-group v-model="checkList">
+          <el-checkbox :disabled="!backRecord" label="1">反馈信息</el-checkbox>
+          <el-checkbox :disabled="!evokeRecord" label="2">线索信息</el-checkbox>
+          <el-checkbox :disabled="!subjectRecord" label="3">主体信息</el-checkbox>
+        </el-checkbox-group>
+        <div style="text-align:right">
+          <el-button @click="handlexportDoc" type="primary">确定</el-button>
+        </div>
+
+        <!-- <el-table :data="dialogList">
+          <el-table-column label="选择">
+            <template>
+              <el-checkbox :indeterminate="isAllIndeter[index]" v-model="checkAllList[index]" @change="handleCheckAllChange(item.scopeTableColumns, index, $event)">全选</el-checkbox>
+            </template>
+          </el-table-column>
+          <el-table-column label="序号" type="index"></el-table-column>
+          <el-table-column label="反馈信息">
+            <template>
+
+            </template>
+          </el-table-column>
+          <el-table-column label="线索信息">
+            <template>
+
+            </template>
+          </el-table-column>
+          <el-table-column label="主体信息">
+            <template>
+
+            </template>
+          </el-table-column>
+        </el-table> -->
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getList, getQueryList, getFeedData, getClueData, getSubjectData, dictionaryList } from '@/api/sys-monitoringAnalysis/cueManage/backInformation/index.js'
+import { getArea, country } from '@/api/common/citys'
+import { getToken } from '@/utils/auth'
+import { getfileListapi } from '@/api/sys-monitoringAnalysis/cueManage/dataEntry/approvalOrder.js'
+import judgeCom from '@/views/sys-monitoringAnalysis/cueManage/backInformation/components/index.vue'
+export default {
+  components: {
+    judgeCom
+  },
+  data() {
+    return {
+      loading: false,
+      cityListOptions: [],
+      countryData: [], // 国家数据
+      tmpInfoId: '',
+      form: {
+        queryType: '0',
+        laiwenNcard: '', // 来文编号
+        laiwenDept: '',
+        laiwenDate: '',
+        centerNum: '',
+        banlichu: '',
+        analyst: '',
+        evokename: '',
+        evokeNum: '',
+        keyinum: '',
+        subjectname: '',
+        subjectnum: '',
+        laiwenNcard2: '',
+        centerNum2: '',
+        evokename2: '',
+        laiwenDept2: '',
+        evokeNum2: '',
+        keyinum2: ''
+      },
+      rule: {
+        // laiwenDate: [{ required: false, message: '内容不能为空', trigger: 'change' }],
+        queryType: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        laiwenNcard: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        laiwenDept: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }],
+        centerNum: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        banlichu: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        analyst: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        evokename: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }],
+        evokeNum: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        keyinum: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 256, message: '最大长度为256位', trigger: 'blur' }],
+        subjectname: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 128, message: '最大长度为128位', trigger: 'blur' }],
+        subjectnum: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 128, message: '最大长度为128位', trigger: 'blur' }],
+        laiwenNcard2: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        centerNum2: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        evokename2: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 16, message: '最大长度为16位', trigger: 'blur' }],
+        evokeNum2: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 32, message: '最大长度为32位', trigger: 'blur' }],
+        laiwenDept2: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }],
+        keyinum2: [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 256, message: '最大长度为256位', trigger: 'blur' }]
+      },
+      isShow: true,
+      isShow2: false,
+      multipleSelection: [],
+      list: [],
+      listLoading: false,
+      handleState: '',
+      relateType: '',
+      pageInfo: {
+        pageSize: 10,
+        pageNum: 1
+      },
+      total: 0,
+      dialogFeedVisible: false, // 反馈
+      dialogClueVisible: false, // 线索
+      // dialogClueOtherVisible: false,
+      dialogSubjectVisible: false, // 主体
+      suspType: '', // 线索的类型
+      checkList: [], // 导出文件list
+      exportId: '', // 导出项的id
+      dialogFeedForm: {
+        laiwenNcard: '',
+        laiwenDept: '',
+        laiwenDate: '',
+        centerNum: '',
+        evokeNum: '',
+        evokename: '',
+        banlichu: '',
+        analyst: '',
+        evokejudge: '',
+        keyinum: '',
+        subjectname: '',
+        subjectnum: '',
+        createcasetime: '',
+        endcasetime: '',
+        prosecutetime: '',
+        panjuecasetime: '',
+        panjuecharge: '',
+        panjuesum: '',
+        panjuepenal: '',
+        recoverEconomicLosses: '',
+        arrestnum: '',
+        subjectduty: '',
+        relateType: '',
+        introductionCase: '',
+        helpdirection: '',
+        helpevidence: '',
+        helpmoneyto: '',
+        helpdiscoverednum: '',
+        evaluationclues: '',
+        evaluationSuspiciousReports: '',
+        remark: ''
+      },
+      dialogJudgmentData: [],
+      suspFlag: true,
+      // 可疑交易线索表
+      dialogClueForm: {
+        cdispose: '',
+        ctriggerMessage: '',
+        cbodyMessage: '',
+        cdealdate: '',
+        crmb: '',
+        cyb: '',
+        cnumber: '',
+        cmainnumber: '',
+        cjudge: [],
+        csubject: '',
+        cpoints: '',
+        csummary: '',
+        csuggest: ''
+      },
+      // 可疑交易通报表
+      adialogClueForm: {
+        adispose: '',
+        triggerMessage: '',
+        bodyMessage: '',
+        aDealdate: '',
+        armb: '',
+        ayb: '',
+        anumber: '',
+        amainnumber: '',
+        ajudge: [],
+        asubject: '',
+        apoints: '',
+        asummary: '',
+        asuggest: ''
+      },
+      adjunctDOList: [], // 线索附件
+      dialogSubjectForm: {
+        citizenidnumber: '', // 身份证号码
+        name: '', // 姓名
+        sexcode: '', // 性别
+        birthdate: '', // 出生日期
+        birthregioncode: '', // 出生地
+        deathcertificatenumber: '', // 死亡标识
+        educationdegreecode: '', // 学历
+        engageunit: '', // 服务处所
+        infolevelcode: '', // 户籍地
+        marriagerelationcode: '', // 婚姻状况
+        nationcode: '', // 民族
+        residentaddr: '' // 实际居住地址
+      },
+      checkAllList: [], // 全选绑值
+      isAllIndeter: [], // 控制全选参数
+      dialogExportVisible: false,
+      dialogList: [],
+      isViewArr: [],
+      backRecord: false,
+      evokeRecord: false,
+      subjectRecord: false,
+      // file
+      uploadDetial: [],
+      uploadEn: [],
+      uploadSusp: []
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    // 下载线索的 相关附件
+    downLoad(item) {
+      location.href = `/file-service/upload/download/${item.attachId}?token=${getToken()}`
+    },
+
+    getData() {
+      this.isViewArr = []
+      getList(this.pageInfo).then(res => {
+        if (res.code === 200) {
+          this.list = res.data.page.list
+          this.total = res.data.page.total
+          if (res.data.role.length !== 0) {
+            res.data.role.forEach(item => {
+              if (item === '反馈信息') {
+                this.backRecord = true
+              }
+              if (item === '线索') {
+                this.evokeRecord = true
+              }
+              if (item === '主体') {
+                this.subjectRecord = true
+              }
+            })
+          }
+        }
+      }).catch()
+    },
+
+    // 获取涉罪类型
+    getDictionary(params) {
+      dictionaryList(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'TOSC':
+              this.dialogJudgmentData = res.data.list
+              console.log('dialogJudgmentData', this.dialogJudgmentData)
+              break
+
+            default:
+              break
+          }
+        }
+      })
+    },
+    getArea() {
+      getArea() // 获取交易地址
+        .then(res => {
+          if (res.code === 200) {
+            this.cityListOptions = res.data
+          } else {
+            res.message
+          }
+        })
+        .catch()
+    },
+    // 获取省份
+    getCountry() {
+      country().then(res => {
+        if (res.code === 200) {
+          this.countryData = res.data.list
+        }
+      })
+    },
+    handleQuery() { // 查询
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.listLoading = true
+          this.pageInfo.pageNum = 1
+          this.getQueryList()
+        }
+      })
+    },
+    getQueryList() {
+      var paramsObj = {}
+      if (this.form.queryType === '' || this.form.queryType === '0') {
+        paramsObj = Object.assign(this.form, this.pageInfo)
+      } else {
+        paramsObj = {
+          queryType: '1',
+          laiwenNcard: this.form.laiwenNcard2,
+          centerNum: this.form.centerNum2,
+          evokename: this.form.evokename2,
+          laiwenDept: this.form.laiwenDept2,
+          evokeNum: this.form.evokeNum2,
+          keyinum: this.form.keyinum2,
+          pageNum: this.pageInfo.pageNum,
+          pageSize: this.pageInfo.pageSize
+        }
+      }
+
+      getQueryList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.listLoading = false
+          this.list = res.data.list
+          this.total = res.data.total
+        } else {
+          this.loading = false
+          this.listLoading = false
+        }
+      }).catch(() => {
+        this.loading = false
+        this.listLoading = false
+      })
+    },
+    resetForm() {
+      this.$refs.form.resetFields()
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getQueryList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getQueryList()
+    },
+    handleChange(val) {
+
+    },
+    toggleShow() {
+      if (this.form.queryType === '2') {
+        this.isShow = false
+        this.isShow2 = true
+      } else if (this.form.queryType === '' || this.form.queryType === '0' || this.form.queryType === '1') {
+        this.isShow = true
+        this.isShow2 = false
+        if (this.form.queryType === '0') {
+          this.resetForm()
+          this.form.queryType = '0'
+        } else {
+          this.resetForm()
+          this.form.queryType = '1'
+        }
+        this.list = []
+        this.pageInfo.pageNum = 1
+        this.getQueryList()
+      }
+    },
+    handleFeedView(scope) { // 查看反馈
+      this.getDictionary('TOSC')
+      const fkId = scope.row.fkId
+      this.dialogFeedForm = {}
+      getFeedData(fkId).then(res => {
+        if (res.code === 200) {
+          this.dialogFeedVisible = true
+          this.dialogFeedForm = res.data
+        }
+      }).catch()
+      this.getfiles(fkId)
+    },
+    // 线索 查看
+    handleClueView(scope) {
+      this.getDictionary('TOSC')
+      const fkId = scope.row.fkId
+      if (fkId) {
+        getClueData(fkId).then(res => {
+          if (res.code === 200) {
+            if (!res.data) {
+              this.$confirm('无此线索信息', '提示', {
+                confirmButtonText: '确定',
+                showCancelButton: false,
+                type: 'warning'
+              }).then(() => {
+
+              }).catch(() => { })
+            } else {
+              this.dialogClueVisible = true
+              if (res.data.infoType === '线索') {
+                this.suspFlag = true
+                this.dialogClueForm = res.data ? res.data : this.dialogClueForm
+              } else if (res.data.infoType === '通报') {
+                this.suspFlag = false
+                this.adialogClueForm = res.data ? res.data : this.adialogClueForm
+              }
+              console.log('dialogClueForm.cjudge', this.dialogClueForm.cjudge)
+              console.log('adialogClueForm.ajudge', this.adialogClueForm.ajudge)
+              this.adjunctDOList = res.data.adjunctDOList ? res.data.adjunctDOList : []
+            }
+          }
+        }).catch()
+      }
+    },
+
+    // 关闭线索表 - dialog
+    closeClueDialog() {
+      this.suspFlag = true
+      this.dialogClueForm = {}
+      this.adialogClueForm = {}
+      this.adjunctDOList = []
+    },
+
+    // 关闭导出 - dialog
+    closeExportDialog() {
+      this.checkList = []
+    },
+
+    // 主题 查看
+    handleSubjectView(scope) {
+      const fkId = scope.row.fkId
+      const citizenidnumber = scope.row.subjectnum
+      this.dialogSubjectForm = {}
+      getSubjectData(fkId, citizenidnumber).then(res => {
+        if (res.code === 200) {
+          if (!res.data[0]) {
+            this.$confirm('无此主体信息', '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+          } else {
+            this.dialogSubjectVisible = true
+            this.dialogSubjectForm = res.data[0] ? res.data[0] : this.dialogSubjectForm
+          }
+        }
+      }).catch()
+    },
+
+    // 导出项 - 选择
+    handleAllExport(val) {
+      //   const length = this.multipleSelection.length
+      //   if (length === 0) {
+      //     this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+      //       .then(() => {
+      //         // 向请求服务端删除
+      //       })
+      //       .catch(() => { })
+      //   } else {
+      //     this.dialogExportVisible = true
+
+      //   }
+    },
+
+    // 确定 - 导出
+    handlexportDoc() {
+      if (this.checkList.length > 0) {
+        const type = this.checkList.join()
+        var tFlag = false
+
+        this.checkList.forEach(item => {
+          if (item === '2') {
+            tFlag = true
+          }
+        })
+        // 如果infoType= 2的情况下，分为'线索'，'通报'
+        if (!tFlag) {
+          location.href = `monitor/feedback/FeedbackafterDO/expory?fkId=${this.exportId}&coupleBackType=${type}&infoType=${this.suspType}&token=${getToken()}`
+        } else {
+          location.href = `monitor/feedback/FeedbackafterDO/expory?fkId=${this.exportId}&coupleBackType=${type}&token=${getToken()}`
+        }
+      } else {
+        this.$message({
+          message: '请至少选择一项',
+          type: 'error'
+        })
+      }
+    },
+
+    // 导出
+    handleExport(scope) {
+      this.dialogExportVisible = true
+      this.exportId = scope.row.fkId
+      this.suspType = scope.row.mation.infoType
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    // 下载附件
+    hanldDownload(id) {
+      location.href = `/file-service/upload/download/${id}`
+    },
+    getfiles(fkId) {
+      // 1:案情，2:线索数据，3:可疑报告
+      getfileListapi(fkId, '1').then(res => {
+        this.uploadDetial = res.data ? res.data : []
+      })
+      getfileListapi(fkId, '2').then(res => {
+        this.uploadEn = res.data ? res.data : []
+      })
+      getfileListapi(fkId, '3').then(res => {
+        this.uploadSusp = res.data ? res.data : []
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.backInfoWrap {
+  .casewarp .el-form-item--small.el-form-item {
+    margin-bottom: 8px;
+  }
+  .listxtf{
+    .el-table .el-tooltip{
+      white-space: nowrap !important;
+    }
+  }
+  .allsearchBlock {
+    .divider.divider-dashed {
+      margin: 0 0 20px 0;
+    }
+    .el-collapse-item__content {
+      padding-bottom: 0px;
+    }
+  }
+  .queryTitle {
+    margin-left: 10px;
+    height: 48px;
+    line-height: 48px;
+    color: #303133;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .inputwrap {
+    .flex-modelmain {
+      border-left: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+    }
+    .flex-row {
+      width: 100%;
+      display: flex;
+      justify-content: center; /*x轴对齐方式*/
+    }
+    .row-header-column {
+      display: flex;
+      flex: 0 0 30%;
+      margin-bottom: 10px;
+
+      span {
+        flex: 0 0 120px;
+        text-align: right;
+        align-self: center;
+      }
+      .el-input {
+        flex: 1;
+      }
+    }
+    .flex-col-1 {
+      flex: 1;
+      display: flex;
+      border-top: 1px solid #ccc;
+      border-right: 1px solid #ccc;
+    }
+
+    .flex-col-2 {
+      flex: 2;
+      display: flex;
+      border-top: 1px solid #ccc;
+      border-right: 1px solid #ccc;
+    }
+
+    .flex-col-end {
+      flex: 1;
+      display: flex;
+      border-top: 1px solid #ccc;
+    }
+    .flex-label {
+      justify-content: center;
+      flex: 0 0 224px;
+      -webkit-flex: 0 0 224px;
+      -ms-flex: 0 0 183px;
+      padding: 10px 20px;
+      text-align: right;
+      border-right: 1px solid #ccc;
+      // flex垂直居中的方法
+      display: flex;
+      align-items: center;
+      background-color: #f5f7fa;
+    }
+    .flex-label-first {
+      justify-content: center;
+      flex: 0 0 150px;
+      padding: 10px 8px;
+      text-align: right;
+      border-right: 1px solid #ccc;
+      // flex垂直居中的方法
+      display: flex;
+      align-items: center;
+    }
+    .flex-input {
+      flex: 1;
+      padding: 10px 20px;
+      font-size: 14px;
+      align-self: center;
+    }
+    .txt-row .flex-input {
+      align-self: center;
+    }
+    .table-title {
+      padding: 10px 20px;
+      font-weight: bold;
+      background-color: #f5f7fa;
+    }
+    .modeltitle {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  }
+}
+</style>

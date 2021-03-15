@@ -1,0 +1,1969 @@
+<template>
+  <div class="dataReady">
+      <div slot="header" class="titlefix">
+        <span style="lineHeight:32px">数据准备任务</span>
+      </div>
+    <el-form ref="formReady" :rules="formReadyRules" :model="formReady" label-width="130px">
+      <el-row>
+        <el-col :span="8">
+          <el-form-item label="数据模板名称：" prop="templateName">
+            <el-input v-model="formReady.templateName" maxlength="50" placeholder="内容长度不能超过50"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+         <el-form-item label="任务启动时间：" prop="taskStartTime">
+            <el-date-picker v-model="formReady.taskStartTime" value-format="yyyy-MM-dd HH:mm:ss"   type="daterange"  range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="['00:00:00', '23:59:59']"></el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="模板创建人：" prop="taskCreator">
+            <el-input v-model="formReady.taskCreator" maxlength="50" placeholder="内容长度不能超过50"></el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="8">
+             <el-form-item label="任务结束时间：" prop="taskStopTime">
+            <el-date-picker v-model="formReady.taskStopTime" value-format="yyyy-MM-dd HH:mm:ss"   type="daterange"  range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="['00:00:00', '23:59:59']"></el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="9">
+          <el-form-item label="执行状态：" prop="executionStatus">
+                    <el-checkbox-group v-model="formReady.executionStatus" @change="handleCheckedTaskChange">
+                    <el-checkbox label="进行中"></el-checkbox>
+                    <el-checkbox label="成功" style="margin-left: 7px"></el-checkbox>
+                    <el-checkbox label="失败" style="margin-left: 7px"></el-checkbox>
+                    <el-checkbox label="已终止" style="margin-left: 7px"></el-checkbox>
+                    </el-checkbox-group>
+                </el-form-item>
+        </el-col>
+      </el-row>
+      <el-form-item  class="valable">
+        <el-button type="primary" @click="searchPag">查询</el-button>
+        <el-button  @click="clearForm" type="primary" plain>清空</el-button>
+      </el-form-item>
+    </el-form>
+     <div slot="header" class="titlefixs">
+        <span style="lineHeight:32px;float:left">任务列表：</span>
+        <div style="float:left;margin:0 0 15px 15px">
+            <el-button type="primary" plain @click="batchDataStop" :disabled="batchDisStop">批量终止</el-button>
+            <el-button type="primary" plain @click="batchDelete">批量删除</el-button>
+        </div>
+      </div>
+    <el-table :data="tableData" ref='multipleOneTable'
+      v-loading="loadingReady"
+      element-loading-text="拼命加载中"
+      element-loading-spinner="el-icon-loading"
+      element-loading-background="rgba(0, 0, 0, 0.1)"
+      @selection-change="handleChangeData"
+      style="width: 100%"
+      @sort-change="sortChange">
+      <el-table-column type="selection" fixed="left" width="50"></el-table-column>
+      <el-table-column type="index" label="序号" width="50"></el-table-column>
+      <el-table-column label="数据模板名称" min-width="460" >
+        <template slot-scope="scope">
+         <el-popover trigger="hover" placement="top">
+            <p>{{scope.row.templateName}}</p>
+            <div slot="reference" class="name-wrapper">
+                <el-tag size="medium" style="width: 100%;overflow: hidden;">
+                     <el-button style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" type="text" @click="details(scope)">{{scope.row.templateName}}</el-button>
+                </el-tag>
+            </div>
+        </el-popover>
+        </template>
+      </el-table-column>
+      <el-table-column prop="taskStartTime" label="任务启动时间" min-width="170" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="taskStopTime" label="任务结束时间" min-width="170" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="executionStatus" label="执行状态" width="170" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="taskCreator" label="模板创建人" min-width="170" show-overflow-tooltip></el-table-column>
+      <el-table-column fixed="right" label="操作" width="350">
+        <template slot-scope="scope">
+          <el-button type="text" size="medium"  :disabled="scope.row.executionStatus == '进行中'"  @click="startLibary(scope)">执行日志</el-button>
+          <el-button type="text" size="medium" :disabled="!(scope.row.executionStatus == '成功')" @click="previewTheData(scope)">预览数据</el-button>
+          <el-button type="text" size="medium"  v-if="scope.row.dsId !== null&&scope.row.dsId !== ''&&scope.row.executionStatus == '成功'" @click="editDataConcentrated(scope,true)">编辑数据集</el-button>
+          <el-button type="text" size="medium"  v-else-if="scope.row.executionStatus == '成功'"  @click="editDataConcentrated(scope,false)">添加数据集</el-button>
+          <el-button type="text" size="medium"  v-else disabled  @click="editDataConcentrated(scope,false)">添加数据集</el-button>
+          <el-button type="text" v-if="scope.row.executionStatus == '失败'" :loading="loadingModel" size="medium" @click="letGo(scope)">启动</el-button>
+          <el-button v-if="scope.row.executionStatus !== '失败'" type="text" size="medium"  :disabled="!(scope.row.executionStatus == '进行中')||(disStop&&ifIndex(scope.$index))||scope.row.breakTime === '已点击'"  @click="tableStop(scope,scope.$index)">终止</el-button>
+          <el-button type="text" size="medium"  :disabled="scope.row.executionStatus == '进行中'" @click="tableDelete(scope)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.PageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.PageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+    </el-pagination>
+
+    <!-- 执行日志 -->
+    <el-dialog title="执行日志" :visible.sync="dialogDatalogVisible"  class="personDialog">
+      <el-form label-width="150px">
+        <template v-for="(item,index) in performLogs">
+        <el-form-item label="状态：" :key="index">
+            <template>
+              <span>{{item.executionStatus}}</span>
+            </template>
+        </el-form-item>
+        <el-form-item label="源表名：" :key="index+'3'">
+            <template>
+              <span>{{item.logModelTable}}</span>
+            </template>
+        </el-form-item>
+        <el-form-item label="目标表名：" :key="index+'1'">
+            <template>
+              <span>{{item.extractDatabaseTables!==null?item.extractDatabaseTables:'无'}}</span>
+            </template>
+        </el-form-item>
+          <el-form-item label="日志开始时间：" :key="index+'4'">
+            <template>
+              <span>{{item.logStart}}</span>
+            </template>
+          </el-form-item>
+          <el-form-item label="日志结束时间：" :key="index+'5'">
+            <template>
+              <span>{{item.logStop}}</span>
+            </template>
+          </el-form-item>
+          <el-form-item label="日志信息：" :key="index+'2'">
+            <template>
+              <span>{{item.logMessage}}</span>
+            </template>
+          </el-form-item>
+        </template>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="dialogDatalogVisible = false">关 闭</el-button>
+      </span>
+    </el-dialog>
+    <!-- 预览数据 -->
+    <el-dialog :visible.sync="dialogPreviewVisible" width="70%" class="personDialog">
+      <span>
+          <b style="margin:5px 0;display:inline-block">模板名称：{{previewTableData.dataTemplateName}}</b>
+          <b style="margin:5px 0 5px 150px;display:inline-block">数据落地时间：{{previewTableData.newTableName}}</b>
+      </span>
+      <el-table border ref="multipleTable"
+       :data="previewTableData.dataPreviewArr"
+       tooltip-effect="dark"
+       style="width: 100%"
+       v-loading="loadingReadyPreview"
+       element-loading-text="拼命加载中"
+       element-loading-spinner="el-icon-loading"
+       element-loading-background="rgba(0, 0, 0, 0.1)">
+            <el-table-column type="index" label="序号" fixed="left" width="50"></el-table-column>
+            <el-table-column align="center" width="150" v-for="(item,index) in this.previewTableData.tableName" :key="index" :label="item">
+              <template slot-scope="scope">
+                <div v-if="scope.row[previewTableData.objKeyName[index]]">
+                  <el-popover trigger="hover" placement="top">
+                      <p>{{scope.row[previewTableData.objKeyName[index]]}}</p>
+                      <div slot="reference" class="name-wrapper">
+                              <el-button type="text"  style="color:#606266">{{scope.row[previewTableData.objKeyName[index]]}}</el-button>
+                      </div>
+                  </el-popover>
+                </div>
+                <div v-else>
+                  <span>{{scope.row[previewTableData.objKeyName[index]]}}</span>
+                </div>
+              </template>
+            </el-table-column>
+      </el-table>
+      <el-pagination v-if="pageInfoLook.total" background @size-change="handleSizeLookChange" @current-change="handleCurrentLookChange" :current-page="pageInfoLook.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfoLook.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfoLook.total">
+    </el-pagination>
+      <!-- <el-row>
+          <el-col :span="11">
+            <p class="tip_info" style="color:red">注：预览数据时，页面默认显示10条数据记录，用于查看数据格式等信息。</p>
+          </el-col>
+      </el-row> -->
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="dialogPreviewVisible = false">关 闭</el-button>
+      </span>
+    </el-dialog>
+    <!-- 添加数据集 -->
+    <el-dialog :title="ifadd?'添加数据集':'查看数据集'" :visible.sync="dialogVisible" width="60%" top="10vh" class="addDataTeam">
+      <el-row>
+        <el-col :span="20" style="margin: 5px 5px 5px 4%">
+          <el-form ref="addDataSets" class="diageForm" :model="addDataSets" label-width="120px">
+            <el-form-item label="数据模板名称：" style="width: 100%">
+              <el-input v-model="addDataSets.dataModelName" style="width: 100%" disabled></el-input>
+            </el-form-item>
+            <!-- v-if="this.addDataSets.dsId === null" -->
+            <el-form-item label="连接类型：" >
+              <template>
+                  <el-select v-model="addDataSets.connId" placeholder="请选择" @change="handChangeSelectEvent" :disabled="!ifadd">
+                      <el-option  label="jdbc" value="1"></el-option>
+                      <el-option  label="hbase" value="2"></el-option>
+                      <el-option  label="hdfs" value="3"></el-option>
+                      <el-option  label="odps" value="4"></el-option>
+                  </el-select>
+              </template>
+            </el-form-item>
+          </el-form>
+        </el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="20" style="margin: 5px 5px 5px 4%">
+          <div v-show="this.addDataSets.connId=== '1'">
+            <el-form ref="connectionjdbc" :model="connectionjdbc" label-width="120px" :rules="jdbcRules">
+              <el-row style="margin-bottom:10px">
+                <el-col :span="24">
+                  <span class="titleSpanStyle">集研</span>
+                </el-col>
+              </el-row>
+                <el-form-item label="名称：" prop="jdbcName">
+                    <el-input v-model="connectionjdbc.jdbcName" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="驱动：" prop="jdbcDrive">
+                    <template>
+                        <el-select v-model="connectionjdbc.jdbcDrive" placeholder="请选择" @change="chageEvent">
+                           <el-option  label="inceptor-5.1.0" value="hive2"></el-option>
+                            <el-option  label="MySQL" value="mysql"></el-option>
+                            <el-option  label="db2jcc4" value="db2"></el-option>
+                            <el-option  label="oracle6" value="oracle:thin"></el-option>
+                            <el-option  label="sqlserver41" value="sqlserver"></el-option>
+                        </el-select>
+                    </template>
+                </el-form-item>
+                <el-form-item label="地址：" prop="jdbcAddress">
+                    <el-input v-model="connectionjdbc.jdbcAddress" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="端口：" prop="jdbcPort">
+                    <el-input v-model="connectionjdbc.jdbcPort" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="数据库名称：" prop="jdbcDbName">
+                    <el-input v-model="connectionjdbc.jdbcDbName" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="目标表名：" prop="jdbcAdditionalAttributes">
+                    <el-input v-model="connectionjdbc.jdbcAdditionalAttributes" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="数据库链接：">
+                    <el-input disabled v-model="jdbcDbConnection" placeholder="">
+                    </el-input>
+                </el-form-item>
+                <!-- <el-form-item label="是否远程集群：">
+                    <el-switch  v-model="connectionjdbc.jdbcRemoteCluster"  active-color="#409EFF"  inactive-color="#dcdfe6"></el-switch>
+                </el-form-item>
+                <el-form-item label="NameNodes：" v-if="connectionjdbc.jdbcRemoteCluster">
+                    <el-input v-model="connectionjdbc.nameNodes" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="port：" v-if="connectionjdbc.jdbcRemoteCluster">
+                    <el-input v-model="connectionjdbc.port" placeholder=""></el-input>
+                </el-form-item> -->
+                    <!-- <el-form-item label="用户名：" prop="jdbcUsername">
+                    <el-input v-model="connectionjdbc.jdbcUsername" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="密码：" prop="jdbcPassword">
+                    <el-input v-model="connectionjdbc.jdbcPassword" show-password placeholder=""></el-input>
+                </el-form-item> -->
+                <!-- <el-form-item>
+                  <el-button type="primary" @click="testDataConnact">测试</el-button>
+                </el-form-item> -->
+            </el-form>
+          </div>
+          <div v-show="this.addDataSets.connId=== '2'">
+              <el-form ref="connectionhbase" :model="connectionhbase" label-width="120px" :rules="hbaseRules">
+                <el-row style="margin-bottom:10px">
+                  <el-col :span="24">
+                    <span class="titleSpanStyle">集研</span>
+                  </el-col>
+                </el-row>
+                  <el-form-item label="名称：" prop="hbaseName">
+                  <el-input v-model="connectionhbase.hbaseName"></el-input>
+                  </el-form-item>
+                  <el-form-item label="nameSpace：" prop="hbaseNamespace">
+                  <el-input type="textarea" v-model="connectionhbase.hbaseNamespace"></el-input>
+                  </el-form-item>
+                  <el-form-item>
+                    <el-button type="primary" @click="testDataConnact">测试</el-button>
+                  </el-form-item>
+              </el-form>
+          </div>
+          <div v-show="this.addDataSets.connId=== '3'">
+              <el-form ref="connectionhdfs" :model="connectionhdfs" label-width="120px" :rules="hdfsRules">
+                <el-row style="margin-bottom:10px">
+                  <el-col :span="24">
+                    <span class="titleSpanStyle">集研</span>
+                  </el-col>
+                </el-row>
+                  <el-form-item label="名称：" prop="hdfsName">
+                  <el-input v-model="connectionhdfs.hdfsName"></el-input>
+                  </el-form-item>
+                  <el-form-item label="是否远程集群：">
+                      <el-switch  v-model="connectionhdfs.hdfsRemoteCluster"  active-color="#13ce66"  inactive-color="#ff4949"></el-switch>
+                  </el-form-item>
+                  <el-form-item label="NameNodes：" v-if="connectionhdfs.hdfsRemoteCluster" prop="hdfsNameNodes">
+                      <el-input v-model="connectionhdfs.hdfsNameNodes" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item label="port：" v-if="connectionhdfs.hdfsRemoteCluster" prop="hdfsPort">
+                      <el-input v-model="connectionhdfs.hdfsPort" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item>
+                    <el-button type="primary" @click="testDataConnact">测试</el-button>
+                  </el-form-item>
+              </el-form>
+          </div>
+          <div v-show="this.addDataSets.connId=== '4'">
+              <el-form ref="connectionodps" :model="connectionodps" label-width="120px"
+              :rules="nodpsRules">
+                  <el-row style="margin-bottom:10px">
+                    <el-col :span="24">
+                      <span class="titleSpanStyle">集研</span>
+                    </el-col>
+                  </el-row>
+                  <el-form-item label="名称：" prop="odpsName">
+                      <el-input v-model="connectionodps.odpsName" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item label="项目名称：" prop="odpsProjectName">
+                      <el-input v-model="connectionodps.odpsProjectName" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item label="驱动：" prop="odpsDrive">
+                      <template>
+                          <el-select v-model="connectionodps.odpsDrive" placeholder="请选择">
+                              <el-option  label="inceptor-5.1.0" value="hive2"></el-option>
+                              <el-option  label="MySQL" value="mysql"></el-option>
+                              <el-option  label="db2jcc4" value="db2"></el-option>
+                              <el-option  label="oracle6" value="oracle:thin"></el-option>
+                              <el-option  label="sqlserver41" value="sqlserver"></el-option>
+
+                          </el-select>
+                      </template>
+                  </el-form-item>
+                  <el-form-item label="目标表名：" prop="odpsAdditional">
+                      <el-input v-model="connectionodps.odpsAdditional" placeholder=""></el-input>
+                  </el-form-item>
+                      <el-form-item label="数据库链接：">
+                      <el-input disabled v-model="odpsDbConnection" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item label="Access Id："  prop="odpsAccessId">
+                      <el-input v-model="connectionodps.odpsAccessId" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item label="Access Key"  prop="odpsAccessKey">
+                      <el-input v-model="connectionodps.odpsAccessKey" placeholder=""></el-input>
+                  </el-form-item>
+                  <el-form-item>
+                    <el-button type="primary" @click="testDataConnact">测试</el-button>
+                  </el-form-item>
+              </el-form>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="20" style="margin: 5px 5px 5px 4%">
+          <el-collapse v-model="disOffButton">
+            <el-collapse-item title="查看生产数据集" name="1">
+              <!-- 生产 -->
+              <div>
+                <el-form ref="connectionSCjdbc" :model="connectionSCjdbc" disabled label-width="120px" :rules="jdbcRules">
+                  <el-row style="margin-bottom:10px">
+                    <el-col :span="24">
+                      <span class="titleSpanStyle">生产</span>
+                    </el-col>
+                  </el-row>
+                    <el-form-item label="连接类型：" prop="typeLJ">
+                        <el-input v-model="connectionSCjdbc.typeLJ" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="名称：" prop="jdbcName">
+                        <el-input v-model="connectionSCjdbc.jdbcName" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="驱动：" prop="jdbcDrive">
+                        <template>
+                            <el-select v-model="connectionSCjdbc.jdbcDrive" placeholder="请选择" @change="chageEvent">
+                              <el-option  label="inceptor-5.1.0" value="hive2"></el-option>
+                                <el-option  label="MySQL" value="mysql"></el-option>
+                                <el-option  label="db2jcc4" value="db2"></el-option>
+                                <el-option  label="oracle6" value="oracle:thin"></el-option>
+                                <el-option  label="sqlserver41" value="sqlserver"></el-option>
+                            </el-select>
+                        </template>
+                    </el-form-item>
+                    <el-form-item label="地址：" prop="jdbcAddress">
+                        <el-input v-model="connectionSCjdbc.jdbcAddress" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="端口：" prop="jdbcPort">
+                        <el-input v-model="connectionSCjdbc.jdbcPort" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="数据库名称：" prop="jdbcDbName">
+                        <el-input v-model="connectionSCjdbc.jdbcDbName" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="源表名：" prop="jdbcName">
+                        <el-input v-model="connectionSCjdbc.jdbcName" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="数据库链接：">
+                        <el-input disabled v-model="connectionSCjdbc.jdbcDbConnection" placeholder="">
+                        </el-input>
+                    </el-form-item>
+                    <!-- <el-form-item label="是否远程集群：">
+                        <el-switch  v-model="connectionjdbc.jdbcRemoteCluster"  active-color="#409EFF"  inactive-color="#dcdfe6"></el-switch>
+                    </el-form-item>
+                    <el-form-item label="NameNodes：" v-if="connectionjdbc.jdbcRemoteCluster">
+                        <el-input v-model="connectionjdbc.nameNodes" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="port：" v-if="connectionjdbc.jdbcRemoteCluster">
+                        <el-input v-model="connectionjdbc.port" placeholder=""></el-input>
+                    </el-form-item> -->
+                        <!-- <el-form-item label="用户名：" prop="jdbcUsername">
+                        <el-input v-model="connectionjdbc.jdbcUsername" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item label="密码：" prop="jdbcPassword">
+                        <el-input v-model="connectionjdbc.jdbcPassword" show-password placeholder=""></el-input>
+                    </el-form-item> -->
+                    <!-- <el-form-item>
+                      <el-button type="primary" @click="testDataConnact">测试</el-button>
+                    </el-form-item> -->
+                </el-form>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </el-col>
+      </el-row>
+      <span slot="footer" class="dialog-footer">
+          <!-- <el-button type="primary" @click="allocatedData">分配数据集</el-button> -->
+          <el-button type="primary" :loading="ifRun" @click="sureDataSets" >确定</el-button>
+          <!-- v-if="this.addDataSets.dsId === null" -->
+          <el-button @click="dialogVisible = false">取消</el-button>
+      </span>
+    </el-dialog>
+     <!-- 分配数据集 -->
+
+    <!-- <el-dialog title="分配数据集" :visible.sync="dialogDistributionVisible" width="60%" top="10vh">
+      <el-form ref="allocatedDataSet" :model="allocatedDataSet" label-width="120px">
+        <el-form-item label="数据模板名称：">
+          <el-input disabled v-model="allocatedDataSet.dataName"></el-input>
+        </el-form-item>
+        <el-form-item label="数据可见人：">
+          <div class="dataVisible">
+            <el-row>
+              <el-col :span="10">
+                <div class="divScroll">
+                  <el-tree accordion ref="tree" :data="allocatedDataSet.dataVisible" @check="handleNodeClick"  default-expand-all show-checkbox node-key="id"  :props="defaultProps"></el-tree>
+                </div>
+              </el-col>
+              <el-col :span="14">
+                <el-transfer v-model="transferData" :data="transferOptions" :props="{key: 'userId',label: 'name'}"></el-transfer>
+              </el-col>
+            </el-row>
+          </div>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary"  @click="distriButionSure">确定</el-button>
+        <el-button @click="dialogDistributionVisible = false">取消</el-button>
+      </span>
+    </el-dialog> -->
+    <!-- 模板详情 -->
+    <el-dialog title="数据模板详情" :visible.sync="modelDialogVisible" width="60%" top="2vh">
+      <el-form ref="modelClassify" :model="modelClassify" label-width="120px">
+        <el-form-item label="数据分类：">
+          <template>
+            <span>{{modelClassify.dataClassification}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="数据表名：">
+          <template>
+            <span>{{modelClassify.cmodelTable}}</span>
+          </template>
+        </el-form-item>
+        <!-- <div v-show="moreModel"> -->
+        <el-form-item label="字段名称：">
+          <template>
+            <span>{{modelClassify.taskCFieldName}}</span>
+          </template>
+          <!-- <el-button type="text" style="margin-left:10px" @click="moreModel=!moreModel">更多<i class="el-icon-d-arrow-right"></i></el-button> -->
+        </el-form-item>
+        <!-- </div> -->
+        <el-form-item label="数据落地时间：">
+          <template>
+            <span>{{modelClassify.startTime}} ~ {{modelClassify.endTime}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item label="描述信息：">
+          <template>
+            <span>{{modelClassify.dataMessage}}</span>
+          </template>
+        </el-form-item>
+        <el-form-item style="marginRight:20px;textAlign:right">
+          <el-button type="primary" @click="closeTheWindow">确 定</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import {
+  searchQuery,
+  // dataDelete,
+  batchDelete,
+  previewData,
+  batchStop,
+  // stop,
+  performLog,
+  addDataCentratSets,
+  connectTest,
+  addDataModeling,
+  dataTemplateDetails,
+  // dSUser,
+  addDataCentratSetsNew,
+  // obtainCentratSets,
+  showDataInfo,
+  editDataCentratSets,
+  batchStart
+//   dataVisibility
+} from '@/api/sys-monitoringAnalysis/dataControl/dataReady'
+import { getToken } from '@/utils/auth'
+import { ValidQueryInput } from '@/utils/formValidate.js'
+// import {
+//   batchStart
+// } from '@/api/sys-monitoringAnalysis/dataControl/dataModel'
+// delDataValidInput
+export default {
+  data() {
+    return {
+      pageInfo: {
+        PageNum: 1,
+        PageSize: 10
+      },
+      total: 1,
+      loadingReady: false,
+      loadingModel: false,
+      loadingReadyPreview: false,
+      scopeIndex: [],
+      // 查询
+      formReady: {
+        templateName: null,
+        taskStartTime: null,
+        taskCreator: null,
+        taskStopTime: null,
+        executionStatus: []
+      },
+      disOffButton: '',
+      // 校验
+      formReadyRules: {
+        templateName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '长度不能超过50', trigger: 'blur' }
+        ],
+        taskCreator: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '长度不能超过50', trigger: 'blur' }
+        ]
+      },
+      // 勾选信息
+      checkInfo: [],
+      runningStateOne: '',
+      runningStateTwo: '',
+      allocatedDataSet: {
+        dsId: '',
+        dataName: '',
+        dataVisible: []
+      },
+      tableData: [],
+      // 穿梭框
+      transferData: [],
+      transferOptions: [],
+      // 执行日志
+      performLogs: {},
+      dialogDatalogVisible: false,
+      modelDialogVisible: false,
+      // 预览数据
+      previewTableData: {
+        dataTemplateName: '',
+        newTableName: '',
+        tableName: [],
+        dataPreviewArr: [],
+        objKeyName: [] // 装对象的key值
+      },
+      timer: null,
+      dialogPreviewVisible: false,
+      // 被选中的终止参数
+      select_orderId: [],
+      select_modelTable: [],
+      // 添加数据集
+      addDataSets: {
+        taskId: '',
+        dataModelName: '',
+        connId: '',
+        dsId: ''
+
+      },
+      defaultProps: {
+        children: 'children',
+        label: 'text'
+      },
+      // 连接类型的四个字段
+      connectionjdbc: {
+        jdbcConnType: '',
+        jdbcName: '',
+        jdbcDrive: '',
+        jdbcAddress: '',
+        jdbcPort: '',
+        jdbcDbName: '',
+        jdbcAdditionalAttributes: '',
+        jdbcDbConnection: '',
+        jdbcRemoteCluster: false,
+        nameNodes: '',
+        port: '',
+        jdbcUsername: '',
+        jdbcPassword: ''
+      },
+      editTaskIdData: '',
+      // 生产
+      connectionSCjdbc: {
+        typeLJ: 'jdbc',
+        jdbcConnType: '',
+        jdbcName: '',
+        jdbcDrive: '',
+        jdbcAddress: '',
+        jdbcPort: '',
+        jdbcDbName: '',
+        jdbcAdditionalAttributes: '',
+        jdbcDbConnection: '',
+        jdbcRemoteCluster: false,
+        nameNodes: '',
+        port: '',
+        jdbcUsername: '',
+        jdbcPassword: ''
+      },
+      jdbcRules: {
+        jdbcName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        jdbcDrive: [
+          { required: true, message: '内容不能为空', trigger: 'change' }
+        ],
+        jdbcAddress: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        jdbcPort: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        jdbcDbName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        jdbcAdditionalAttributes: [
+          { required: false, message: '内容不能为空', trigger: 'blur' }
+        ],
+        // nameNodes: '',
+        // port: '',
+        jdbcUsername: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        jdbcPassword: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connectionhbase: {
+        hbaseConnType: '',
+        hbaseName: '',
+        hbaseNamespace: ''
+      },
+      hbaseRules: {
+        hbaseName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        hbaseNamespace: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connectionhdfs: {
+        hdfsConnType: '',
+        hdfsName: '',
+        hdfsRemoteCluster: false,
+        hdfsNameNodes: '',
+        hdfsPort: ''
+      },
+      hdfsRules: {
+        hdfsName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        hdfsNameNodes: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        hdfsPort: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connectionodps: {
+        odpsConnType: '',
+        odpsName: '',
+        odpsProjectName: '',
+        odpsDrive: '',
+        odpsAdditional: '',
+        odpsDbConnection: '',
+        odpsAccessId: '',
+        odpsAccessKey: ''
+      },
+      nodpsRules: {
+        odpsName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsProjectName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsDrive: [
+          { required: true, message: '内容不能为空', trigger: 'change' }
+        ],
+        odpsAdditional: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsDbConnection: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsAccessId: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsAccessKey: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      identify: true,
+      dialogVisible: false,
+      ifadd: true,
+      // 分配数据集
+      dialogDistributionVisible: false,
+      scopeData: [],
+      checkAll: false,
+      checkedPersons: [],
+      isIndeterminate: true,
+      currentPage4: 1,
+      deletePopover: false,
+      dialogDeleteVisible: false,
+      dialogdataVisible: false,
+      dialogupVisible: false,
+      moreModel: false,
+      modelClassify: {},
+      form: {
+        dataVisible: [
+          {
+            id: 1,
+            label: '方案开发处',
+            children: [
+              {
+                id: 11,
+                label: '方案开发员001'
+              },
+              {
+                id: 12,
+                label: '方案开发员002'
+              },
+              {
+                id: 13,
+                label: '方案开发员003'
+              },
+              {
+                id: 14,
+                label: '方案开发员004'
+              }
+            ]
+          },
+          {
+            id: 2,
+            label: '信息管理处',
+            children: [
+              {
+                id: 21,
+                label: '信息管理处人员01'
+              },
+              {
+                id: 22,
+                label: '信息管理处人员02'
+              },
+              {
+                id: 23,
+                label: '信息管理处人员03'
+              },
+              {
+                id: 24,
+                label: '信息管理处人员04'
+              },
+              {
+                id: 25,
+                label: '信息管理处人员05'
+              }
+            ]
+          },
+          {
+            id: 3,
+            label: '分析移送处'
+          },
+          {
+            id: 4,
+            label: '报文接收部门'
+          }
+        ]
+      },
+      disStop: false,
+      batchDisStop: false,
+      sortVal: '',
+      sortName: '',
+      ifRun: false,
+      arrExecution: [],
+      piliangZhong: [],
+      arrExecutionDeffet: [],
+      pageInfoLook: {
+        pageSize: 10,
+        pageNum: 1,
+        total: null
+      },
+      lookDataVeiw: {}
+    }
+  },
+  computed: {
+    paramsObj: function() {
+      return {
+        PageSize: this.pageInfo.PageSize,
+        PageNum: this.pageInfo.PageNum,
+        templateName: this.formReady.templateName ? this.formReady.templateName : null,
+        Time1: this.formReady.taskStartTime ? this.formReady.taskStartTime[0] : null,
+        Time2: this.formReady.taskStartTime ? this.formReady.taskStartTime[1] : null,
+        executionStatus: this.formReady.executionStatus.length > 0 ? this.formReady.executionStatus.join(',') : null,
+        taskCreator: this.formReady.taskCreator ? this.formReady.taskCreator : null,
+        Time3: this.formReady.taskStopTime ? this.formReady.taskStopTime[0] : null,
+        Time4: this.formReady.taskStopTime ? this.formReady.taskStopTime[1] : null,
+        sortVal: this.sortVal ? this.sortVal : null,
+        sortName: this.sortName ? this.sortName : null
+      }
+    },
+    jdbcDbConnection: function() {
+      this.connectionjdbc.jdbcDbConnection = 'jdbc:' +
+      this.connectionjdbc.jdbcDrive + '://' + this.connectionjdbc.jdbcAddress + ':' + this.connectionjdbc.jdbcPort + '/' + this.connectionjdbc.jdbcDbName
+      return this.connectionjdbc.jdbcDbConnection
+    },
+    odpsDbConnection: function() {
+      this.connectionodps.odpsDbConnection = 'jdbc:' +
+      this.connectionodps.odpsDrive + '//?project=' + this.connectionodps.odpsProjectName
+      return this.connectionodps.odpsDbConnection
+    },
+    addSetEventObj: function() {
+      var addSetEventObj = {}
+      switch (this.addDataSets.connId) {
+        case '1':
+          addSetEventObj.jdbc = this.connectionjdbc
+          addSetEventObj.jdbc.jdbcConnType = 'jdbc'
+          addSetEventObj.connType = 'jdbc'
+          break
+        case '2':
+          addSetEventObj.hbase = this.connectionhbase
+          addSetEventObj.hbase.hbaseConnType = 'hbase'
+          addSetEventObj.connType = 'hbase'
+          break
+        case '3':
+          addSetEventObj.hdfs = this.connectionhdfs
+          addSetEventObj.hdfs.hdfsConnType = 'hdfs'
+          addSetEventObj.connType = 'hdfs'
+          break
+        case '4':
+          addSetEventObj.odps = this.connectionodps
+          addSetEventObj.odps.odpsConnType = 'odps'
+          addSetEventObj.connType = 'odps'
+          break
+      }
+      addSetEventObj.taskId = this.addDataSets.taskId
+      return addSetEventObj
+    }
+  },
+  mounted() {
+    this.loadingReady = true
+    this.getDataList()
+    if (this.timer) {
+      // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.getDataList()
+      }, 25000)
+    }
+  },
+  created() {
+    this.getTreeData()
+  },
+  methods: {
+    ifIndex(index) {
+      for (let i = 0; i < this.scopeIndex.length; i++) {
+        if (index === this.scopeIndex[i]) {
+          return true
+        }
+      }
+      return false
+      // scopeIndex==scope.$index
+    },
+    sortChange({ column, prop, order }) {
+      if (prop !== null) {
+        this.sortVal = order === 'ascending' ? 'asc' : 'desc'
+        this.sortName = prop
+      } else {
+        this.sortVal = null
+        this.sortName = null
+      }
+      this.getDataList()
+    },
+    chageEvent() {
+      switch (this.connectionjdbc.jdbcDrive) {
+        case 'hive2':
+          this.connectionjdbc.jdbcPort = '10000'
+          break
+        case 'mysql':
+          this.connectionjdbc.jdbcPort = '3306'
+          break
+        case 'db2':
+          this.connectionjdbc.jdbcPort = '50000'
+          break
+        case 'oracle:thin':
+          this.connectionjdbc.jdbcPort = '1521'
+          break
+        case 'sqlserver':
+          this.connectionjdbc.jdbcPort = '1433'
+          break
+
+        default:
+          break
+      }
+    },
+    // 数据可见范围的数据
+    // handleNodeClick(data) {
+    //   var str = getToken()
+    //   if (this.$refs.tree.getCheckedKeys().length) {
+    //     var arrString = this.$refs.tree.getCheckedKeys().join()
+    //     obtainCentratSets(str, arrString).then(res => {
+    //       if (res.code === 200) {
+    //         const data = res.data.data
+    //         const arr = []
+    //         for (var item in data) {
+    //           for (let i = 0; i < data[item].length; i++) {
+    //             arr.push(data[item][i])
+    //           }
+    //         }
+    //         this.transferOptions = arr
+    //       } else {
+    //         this.$message({
+    //           message: res.message,
+    //           type: 'warning'
+    //         })
+    //       }
+    //     })
+    //   } else {
+    //     this.transferOptions = []
+    //     this.transferData = []
+    //   }
+    // },
+    // 获取树
+    getTreeData() {
+      var str = getToken()
+      addDataCentratSetsNew(str).then(res => {
+        if (res.code === 200) {
+          this.allocatedDataSet.dataVisible = JSON.parse(JSON.stringify(res.data.data))
+        }
+      })
+    },
+    // 获取列表
+    getDataList() {
+      searchQuery(this.paramsObj).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          this.loadingReady = false
+        } else {
+          this.loadingReady = false
+          this.$message({
+            type: 'error',
+            message: '查询列表失败!',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      }).catch(() => {
+        this.loadingReady = false
+      })
+    },
+
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.PageSize = val
+      this.loadingReady = true
+      this.getDataList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.PageNum = val
+      this.loadingReady = true
+      this.getDataList()
+    },
+    // 执行状态
+    handleCheckedTaskChange(val) {
+    },
+    // 清空
+    clearForm() {
+      this.$refs.formReady.resetFields()
+      // this.loadingReady = true
+      // this.getDataList()
+    },
+    // 查询
+    searchPag() {
+      this.$refs.formReady.validate((valid) => {
+        if (valid) {
+          this.loadingReady = true
+          this.pageInfo.pageNum = 1
+          this.pageInfo.pageSize = 10
+          this.getDataList()
+        }
+      })
+    },
+    // 删除
+    tableDelete(scope) {
+      this.$confirm('是否删除当前选中的数据模板?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          const arr = []
+          arr.push(scope.row.taskId)
+          const modelStr = scope.row.modelTable
+          batchDelete(arr.join(','), modelStr).then(res => {
+            this.getDataList()
+          })
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+            duration: 6000,
+            showClose: true
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+            duration: 6000,
+            showClose: true
+          })
+        })
+    },
+    // 删除名单
+    delRosterFn(id, modelTable) {
+      batchDelete(id, modelTable).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+            duration: 6000,
+            showClose: true
+          })
+          this.getDataList()
+          this.identify = true
+          this.$refs.rosterTable.clearSelection()
+        }
+      })
+        .then(() => {
+          this.getDataList()
+          this.identify = true
+        })
+        .catch(() => {})
+    },
+    // 批量删除
+    batchDelete() {
+      this.checkInfo = this.$refs.multipleOneTable.selection
+      if (this.checkInfo.length > 0) {
+        for (let i = 0; i < this.checkInfo.length; i++) {
+          if (this.checkInfo[i].executionStatus === '进行中') {
+            this.$alert('您勾选的数据中存在任务状态为成功或失败的任务！请重新勾选', '警告', {
+              confirmButtonText: '确定',
+              callback: action => {
+                this.identify = true
+              }
+            })
+            this.identify = false
+            this.$refs.multipleOneTable.clearSelection()
+            this.checkInfo = this.$refs.multipleOneTable.selection
+            break
+          }
+        }
+        if (this.identify) {
+          this.$confirm('确定要删除选中的数据？', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          })
+            .then(() => {
+              const modelStr = this.select_modelTable.join(',')
+              this.delRosterFn(this.select_orderId.join(), modelStr)
+            })
+            .catch(() => {
+              this.$message({
+                message: '已取消删除',
+                type: 'info',
+                duration: 6000,
+                showClose: true
+              })
+            })
+        }
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请勾选批量删除数据！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+    // 预览数据
+    previewTheData(scope) {
+      this.loadingReadyPreview = true
+      this.lookDataVeiw = scope
+      this.previewTableData = {
+        dataTemplateName: '',
+        newTableName: '',
+        tableName: [],
+        dataPreviewArr: [],
+        objKeyName: []
+      }
+      this.previewTableData.dataTemplateName = scope.row.templateName
+      // this.previewTableData.newTableName = scope.row.downTime
+      this.dialogPreviewVisible = true
+      const obj = {
+        pageNum: this.pageInfoLook.pageNum,
+        pageSize: this.pageInfoLook.pageSize,
+        modelTable: scope.row.modelTable,
+        taskId: scope.row.taskId
+      }
+      previewData(obj).then(res => {
+        if (res.code === 200) {
+          var arr = res.data[0].cfieldName.split(',')
+          this.previewTableData.tableName = arr
+          this.previewTableData.dataPreviewArr = res.data[1]
+          this.pageInfoLook.total = res.data[2].total
+          this.previewTableData.objKeyName = res.data[0].fieldName.split(',')
+          this.previewTableData.newTableName = res.data[0].downTime
+          for (let i = 0; i < this.previewTableData.objKeyName.length; i++) {
+            this.previewTableData.objKeyName[i] = this.previewTableData.objKeyName[i].toLowerCase()
+          }
+          this.loadingReadyPreview = false
+        } else {
+          this.loadingReadyPreview = false
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingReadyPreview = false
+        })
+    },
+    letGo(scope) {
+      this.ifRun = true
+      this.loadingModel = true
+      var cModelTable = encodeURI(scope.row.cmodelTable)
+      var dataTemplateId = scope.row.dataTemplateId
+      var modelTable = scope.row.modelTable
+      // this.scopeIndex = index
+      batchStart(modelTable, dataTemplateId, cModelTable, scope.row.taskId).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '启动成功',
+            duration: 6000,
+            showClose: true
+          })
+          this.ifRun = false
+          this.loadingModel = false
+          this.getDataList()
+        } else if (res.code === 599) {
+          this.loadingModel = false
+          this.ifRun = false
+          this.$message({
+            type: 'warning',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+          this.loadingModel = false
+          this.ifRun = false
+        }
+      }).catch(res => {
+        this.ifRun = false
+        this.loadingModel = false
+      })
+    },
+    // 预览数据分页
+    // 分页
+    handleSizeLookChange(val) {
+      this.pageInfoLook.pageSize = val
+      this.loadingReadyPreview = true
+      this.previewTheData(this.lookDataVeiw)
+    },
+    handleCurrentLookChange(val) {
+      this.pageInfoLook.pageNum = val
+      this.loadingReadyPreview = true
+      this.previewTheData(this.lookDataVeiw)
+    },
+    // 批量
+    handleChangeData(val) {
+      this.piliangZhong = []
+      this.select_orderId = []
+      this.select_modelTable = []
+      if (val) {
+        val.forEach(val => {
+          if (val.executionStatus !== '进行中') {
+            this.piliangZhong.push(val.executionStatus)
+          }
+          if (val) {
+            this.select_orderId.push(val.taskId)
+            this.select_modelTable.push(val.modelTable)
+          }
+        })
+      }
+    },
+    // 模板详情
+    details(scope) {
+      this.modelDialogVisible = true
+      dataTemplateDetails(scope.row.taskId).then(res => {
+        if (res.code === 200) {
+          this.modelClassify = res.data
+          const arr = res.data.taskCFieldName
+          if (arr.split(',')[0] === 'null') {
+            this.modelClassify.taskCFieldName = '无'
+          }
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    batchDataStopSure(id) {
+      this.batchDisStop = true
+      const modelStr = this.select_modelTable.join(',')
+      batchStop(id, modelStr).then(res => {
+        if (res.code === 200) {
+          this.batchDisStop = false
+          this.$message({
+            type: 'success',
+            message: '终止成功！',
+            duration: 6000,
+            showClose: true
+          })
+          this.identify = true
+          this.getDataList()
+        } else {
+          this.batchDisStop = false
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+          this.identify = true
+        }
+      })
+        .catch(() => {
+          this.batchDisStop = false
+        })
+    },
+    // 批量终止
+    batchDataStop() {
+      if (this.piliangZhong.length > 0) {
+        this.$message({
+          type: 'error',
+          message: '只能选择未终止的数据进行批量终止',
+          duration: 6000,
+          showClose: true
+        })
+        return false
+      }
+      this.checkInfo = this.$refs.multipleOneTable.selection
+      if (this.checkInfo.length > 0) {
+        for (let i = 0; i < this.checkInfo.length; i++) {
+          if (this.checkInfo[i].executionStatus === '成功' || this.checkInfo[i].executionStatus === '失败') {
+            this.$alert('您勾选的数据中存在任务状态为成功或失败的任务！请重新勾选', '警告', {
+              confirmButtonText: '确定',
+              callback: action => {
+                this.identify = true
+              }
+            })
+            this.identify = false
+            this.$refs.multipleOneTable.clearSelection()
+            this.checkInfo = this.$refs.multipleOneTable.selection
+            break
+          }
+        }
+        if (this.identify) {
+          this.batchDataStopSure(this.select_orderId.join())
+        }
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请勾选批量终止数据！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+    // 终止
+    tableStop(scope, index) {
+      this.disStop = true
+      this.scopeIndex.push(index)
+      batchStop(scope.row.taskId, scope.row.modelTable).then(res => {
+        if (res.code === 200) {
+          this.disStop = false
+          this.$message({
+            type: 'success',
+            message: '终止成功！',
+            duration: 6000,
+            showClose: true
+          })
+          this.getDataList()
+          setTimeout(() => {
+            this.getDataList()
+          }, 25000)
+          // setTimeout(() => {
+          //   this.getDataList()
+          // }, 60000)
+        } else {
+          this.disStop = false
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      }).catch(() => {
+        this.disStop = false
+      })
+    },
+
+    // 执行日志
+    startLibary(scope) {
+      performLog(scope.row.taskId, scope.row.modelTable).then(res => {
+        if (res.code === 200) {
+          this.dialogDatalogVisible = true
+          if (scope.row.executionStatus === '已终止') {
+            if (scope.row.operationState === '2') {
+              this.arrExecution = []
+              var _this = this
+              res.data.forEach(function(element) {
+                if (element.executionStatus !== '失败') {
+                  _this.arrExecution.push(element)
+                }
+              })
+              this.performLogs = _this.arrExecution
+            } else {
+              this.performLogs = res.data
+            }
+          } else if (scope.row.executionStatus === '失败') {
+            this.performLogs = res.data
+            this.arrExecutionDeffet = []
+            var __this = this
+            res.data.forEach(function(element) {
+              if (element.executionStatus !== '成功') {
+                __this.arrExecutionDeffet.push(element)
+              }
+            })
+            this.performLogs = __this.arrExecutionDeffet
+          } else {
+            this.performLogs = res.data
+          }
+
+          // const taskStartTime = scope.row.taskStartTime
+          // const taskStopTime = scope.row.taskStopTime
+          // for (let i = 0; i < this.performLogs.lenght; i++) {
+          //   this.performLogs[i].logStart = taskStartTime
+          //   this.performLogs[i].logStop = taskStopTime
+          // }
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    // 测试
+    testDataConnact() {
+      var obj = {}
+      switch (this.addDataSets.connId) {
+        case '1':
+          obj.connType = 'jdbc'
+          obj.drive = this.connectionjdbc.jdbcDrive
+          obj.jdbcDbConnection = this.connectionjdbc.jdbcDbConnection
+          obj.jdbcUsername = this.connectionjdbc.jdbcUsername
+          obj.jdbcPassword = this.connectionjdbc.jdbcPassword
+          obj.jdbcAdditionalAttributes = this.connectionjdbc.jdbcAdditionalAttributes
+          this.$refs.connectionjdbc.validate(valid => {
+            if (valid) {
+              connectTest(obj).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: '测试成功！',
+                    duration: 6000,
+                    showClose: true
+                  })
+                } else {
+                  this.$message({
+                    type: 'error',
+                    message: '测试失败！',
+                    duration: 6000,
+                    showClose: true
+                  })
+                }
+              })
+            }
+          })
+          break
+        case '2':
+          this.$refs.connectionhbase.validate(valid => {
+            if (valid) {
+              this.$message({
+                type: 'success',
+                message: '测试成功！',
+                duration: 6000,
+                showClose: true
+              })
+            } else {
+              this.$message({
+                type: 'error',
+                message: '测试失败！',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+          break
+        case '3':
+          this.$refs.connectionhdfs.validate(valid => {
+            if (valid) {
+              this.$message({
+                type: 'success',
+                message: '测试成功！',
+                duration: 6000,
+                showClose: true
+              })
+            } else {
+              this.$message({
+                type: 'error',
+                message: '测试失败！',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+          break
+        case '4':
+          obj.connType = 'odps'
+          obj.drive = this.connectionodps.odpsDrive
+          obj.odpsDbConnection = this.connectionodps.odpsDbConnection
+          obj.odpsAccessId = this.connectionodps.odpsAccessId
+          obj.odpsAccessKey = this.connectionodps.odpsAccessKey
+          this.$refs.connectionodps.validate(valid => {
+            if (valid) {
+              connectTest(obj).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: '测试成功！',
+                    duration: 6000,
+                    showClose: true
+                  })
+                } else {
+                  this.$message({
+                    type: 'error',
+                    message: '测试失败！',
+                    duration: 6000,
+                    showClose: true
+                  })
+                }
+              })
+            }
+          })
+          break
+        default:
+          this.$message({
+            type: 'error',
+            message: '请选择连接类型',
+            duration: 6000,
+            showClose: true
+          })
+      }
+    },
+    // // 分配数据集
+    // allocatedData() {
+    //   this.transferData = []
+    //   this.transferOptions = []
+    //   this.allocatedDataSet.dsId = this.scopeData.row.taskId
+    //   this.allocatedDataSet.dataName = this.scopeData.row.templateName
+    //   this.dialogDistributionVisible = true
+    //   this.$refs.tree.setCheckedKeys([])
+    //   this.$refs.$nextTick(function() {
+    //     this.$refs.tree.setCheckedKeys([])
+    //   })
+    // },
+    // // 分配数据集 确定
+    // distriButionSure() {
+    //   if (this.transferData.length === 0) {
+    //     this.$message({
+    //       message: '请选择人员',
+    //       type: 'warning'
+    //     })
+    //     return false
+    //   }
+    //   const params = {
+    //     userIdList: this.transferData,
+    //     dsId: this.allocatedDataSet.dsId,
+    //     thrProductList: this.$refs.tree.getCheckedKeys()
+    //   }
+    //   dSUser(params).then(res => {
+    //     if (res.code === 200) {
+    //       this.$message({
+    //         message: '添加成功',
+    //         type: 'success'
+    //       })
+    //       this.dialogDistributionVisible = false
+    //       this.dialogVisible = false
+    //       this.getDataList()
+    //     } else {
+    //       this.$message({
+    //         message: res.message,
+    //         type: 'warning'
+    //       })
+    //     }
+    //   })
+    // },
+    closeTheWindow() {
+      this.modelDialogVisible = false
+    },
+    addSetsEvent() {
+      // if (!this.ifadd) {
+
+      if (this.ifadd) {
+        let params = null
+        switch (this.addDataSets.connId) {
+          case '1': {
+            params = this.addSetEventObj
+            break
+          }
+          case '2': {
+            params = this.addSetEventObj
+            params.hbaseConnType = 'hbase'
+            break
+          }
+          case '3': {
+            params = this.addSetEventObj
+            break
+          }
+          case '4': {
+            params = this.addSetEventObj
+            break
+          }
+        }
+        params.taskId = this.scopeData.row.taskId
+        addDataCentratSets(params, params.connType).then(res => {
+          if (res.code === 200) {
+            // if (this.ifadd) {
+            this.$message({
+              message: '添加数据集成功',
+              type: 'success',
+              duration: 6000,
+              showClose: true
+            })
+            // } else {
+            // this.$message({
+            //   message: '编辑数据集成功',
+            //   type: 'success',
+            //   duration: 6000,
+            //   showClose: true
+            // })
+            // }
+
+            this.getDataList()
+            this.dialogVisible = false
+            if (this.scopeData.row.dsId === null || this.scopeData.row.dsId === '') {
+              addDataModeling(this.addDataSets.taskId).then(res => {
+                if (res.code === 200) {
+                  this.ifRun = false
+                  // this.$message({
+                  //   type: 'success',
+                  //   message: res.data,
+                  //   duration: 6000,
+                  //   showClose: true
+                  // })
+                } else {
+                  this.ifRun = false
+                  this.$message({
+                    type: 'error',
+                    message: res.message,
+                    duration: 6000,
+                    showClose: true
+                  })
+                }
+              }).catch(res => {
+                this.ifRun = false
+              })
+            }
+          } else {
+            this.$message({
+              message: res.message,
+              type: 'error',
+              duration: 6000,
+              showClose: true
+            })
+            this.ifRun = false
+          }
+        }).catch(res => {
+          this.ifRun = false
+        })
+      } else {
+        let params = null
+        switch (this.addDataSets.connId) {
+          case '1': {
+            params = this.addSetEventObj.jdbc
+            params.connType = 'jdbc'
+            break
+          }
+          case '2': {
+            params = this.addSetEventObj.hbase
+            params.connType = 'hbase'
+            break
+          }
+          case '3': {
+            params = this.addSetEventObj.hdfs
+            params.connType = 'hdfs'
+            break
+          }
+          case '4': {
+            params = this.addSetEventObj.odps
+            params.connType = 'odps'
+            break
+          }
+        }
+        params.taskId = this.scopeData.row.taskId
+        editDataCentratSets(params, params.connType).then(res => {
+          if (res.code === 200) {
+            // if (this.ifadd) {
+            //   this.$message({
+            //     message: '添加数据集成功',
+            //     type: 'success',
+            //     duration: 6000,
+            //     showClose: true
+            //   })
+            // } else {
+            this.$message({
+              message: '编辑数据集成功',
+              type: 'success',
+              duration: 6000,
+              showClose: true
+            })
+            // }
+
+            this.getDataList()
+            this.dialogVisible = false
+            if (this.scopeData.row.dsId === null || this.scopeData.row.dsId === '') {
+              addDataModeling(this.addDataSets.taskId).then(res => {
+                if (res.code === 200) {
+                  this.ifRun = false
+                  // this.$message({
+                  //   type: 'success',
+                  //   message: res.data,
+                  //   duration: 6000,
+                  //   showClose: true
+                  // })
+                } else {
+                  this.ifRun = false
+                  this.$message({
+                    type: 'error',
+                    message: res.message,
+                    duration: 6000,
+                    showClose: true
+                  })
+                }
+              }).catch(res => {
+                this.ifRun = false
+              })
+            }
+          } else {
+            this.$message({
+              message: res.message,
+              type: 'error',
+              duration: 6000,
+              showClose: true
+            })
+            this.ifRun = false
+          }
+        }).catch(res => {
+          this.ifRun = false
+        })
+      }
+      // return false
+      // } else {
+      // }
+    },
+    // 确定添加数据集
+    sureDataSets() {
+      switch (this.addDataSets.connId) {
+        case '1':
+          this.$refs.connectionjdbc.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.addSetsEvent()
+            }
+          })
+          break
+        case '2':
+          this.$refs.connectionhbase.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.addSetsEvent()
+            }
+          })
+          break
+        case '3':
+          this.$refs.connectionhdfs.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.addSetsEvent()
+            }
+          })
+          break
+        case '4':
+          this.$refs.connectionodps.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.addSetsEvent()
+            }
+          })
+          break
+        default:
+          this.$message({
+            type: 'error',
+            message: '请选择连接类型',
+            duration: 6000,
+            showClose: true
+          })
+      }
+    },
+    // 添加数据集
+    addDataConcentrated(scope) {
+      this.ifadd = true
+      this.scopeData = scope
+      this.dialogVisible = true
+      this.addDataSets.dataModelName = scope.row.templateName
+      this.allocatedDataSet.dataName = scope.row.templateName
+      this.addDataSets.dsId = scope.row.dsId
+      this.addDataSets.taskId = scope.row.taskId
+      this.addDataSets.connId = ''
+      this.$refs['connectionjdbc'].resetFields()
+      this.$refs['connectionhbase'].resetFields()
+      this.$refs['connectionhdfs'].resetFields()
+      this.$refs['connectionodps'].resetFields()
+    },
+    // 编辑数据集回显示
+    editDataConcentrated(scope, type) {
+      if (!type) {
+        this.ifadd = true
+      } else {
+        this.ifadd = false
+      }
+      this.editTaskIdData = ''
+      this.dialogVisible = true
+      this.editTaskIdData = scope.row.taskId
+      this.addDataSets.dataModelName = scope.row.templateName
+      this.allocatedDataSet.dataName = scope.row.templateName
+      this.addDataSets.dsId = scope.row.dsId
+      this.addDataSets.taskId = scope.row.taskId
+      this.scopeData = scope
+      showDataInfo(scope.row.taskId).then(res => {
+        if (res.code === 200) {
+          this.ifRun = false
+          const data = res.data[0][0]
+          if (data.jdbcConnType) {
+            this.addDataSets.connId = '1'
+            this.connectionjdbc = data
+            this.connectionSCjdbc = res.data[1]
+            this.connectionSCjdbc.typeLJ = 'jdbc'
+          } else if (data.hbaseConnType) {
+            this.addDataSets.connId = '2'
+            this.connectionhbase = data
+          } else if (data.hdfsConnType) {
+            this.addDataSets.connId = '3'
+            this.connectionhdfs = data
+          } else if (data.odpsConnType) {
+            this.addDataSets.connId = '4'
+            this.connectionodps = data
+          }
+        }
+      })
+        .catch(() => {
+          this.ifRun = false
+        })
+    },
+    lookincludeData(bloor) {
+      if (bloor) {
+        this.disOffButton = true
+      } else {
+        this.disOffButton = false
+      }
+    },
+    // 连接类型值初始化（写校验时清空）
+    handChangeSelectEvent(val) {
+      this.$refs['connectionjdbc'].resetFields()
+      this.$refs['connectionhbase'].resetFields()
+      this.$refs['connectionhdfs'].resetFields()
+      this.$refs['connectionodps'].resetFields()
+      if (val === '1') {
+        showDataInfo(this.editTaskIdData).then(res => {
+          if (res.code === 200) {
+            this.ifRun = false
+            const data = res.data[0][0]
+            if (data.jdbcConnType) {
+              this.addDataSets.connId = '1'
+              this.connectionjdbc = data
+              this.connectionSCjdbc = res.data[1]
+              this.connectionSCjdbc.typeLJ = 'jdbc'
+            } else if (data.hbaseConnType) {
+              this.addDataSets.connId = '2'
+              this.connectionhbase = data
+            } else if (data.hdfsConnType) {
+              this.addDataSets.connId = '3'
+              this.connectionhdfs = data
+            } else if (data.odpsConnType) {
+              this.addDataSets.connId = '4'
+              this.connectionodps = data
+            }
+          }
+        })
+          .catch(() => {
+            this.ifRun = false
+          })
+      }
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleCheckAllChange(val) {
+    //   this.checkedPersons = val ? personOptions : []
+    //   this.isIndeterminate = false
+    },
+    handleCheckedCitiesChange(value) {
+    //   const checkedCount = value.length
+    //   this.checkAll = checkedCount === this.cities.length
+    //   this.isIndeterminate = checkedCount > 0 && checkedCount < this.persons.length
+    }
+  },
+  destroyed() {
+    clearInterval(this.timer)
+  }
+}
+</script>
+<style rel="stylesheet/scss" lang="scss">
+.dataReady {
+    background: #ffffff;
+    padding: 10px;
+    .titlefix{
+        margin: 5px;
+    }
+    .titleSpanStyle {
+      background: #C0C4CC;
+      text-align: left;
+      display:inline-block;
+      width: 100%;color: #fff;
+      height:30px;
+      line-height: 30px;
+      padding: 0 10px;
+      margin-bottom: 10px
+    }
+    .el-form {
+        margin-bottom: 14px;
+        padding-top:10px;
+        border-radius: 10px;
+        border: 1px solid #f2f2f2;
+        .el-range-editor.el-input__inner {
+          width: 100% !important;
+        }
+         .valable{
+                  width:100%;
+                  text-align:right;
+                  .el-form-item__content button {
+                      margin:0 10px;
+                  }
+              }
+    }
+    .diageForm {
+      width: 100%;
+      .el-form-item {
+        .el-form-item__content {
+          width: 81%;
+        }
+      }
+    }
+  .line {
+    text-align: center;
+  }
+  .personDialog{
+    .el-checkbox__label{
+      padding-right: 20px;
+    }
+    .el-checkbox+.el-checkbox{
+      margin-left: 0px;
+    }
+  }
+  .el-dialog__wrapper{
+      .el-dialog{
+          .el-dialog__body{
+              .dataLdTime{
+                .headtitle {
+                    display: inline-block;
+                    line-height: 27px;
+                    padding: 10px 5px;
+                    width: 100%;
+                    border-bottom: 1px solid;
+                }
+              }
+              .dynamic {
+                  line-height: 27px;
+                  padding: 10px 5px;
+              }
+          }
+      }
+  }
+  .addDataTeam{
+      .el-dialog{
+          .el-dialog__body{
+
+              .el-form{
+                  .el-form-item{
+                      .el-form-item__content{
+                          .el-select{
+                              width: 100%;
+                          }
+                          width: 60%;
+                      }
+                  }
+                  padding:10px;
+                  .conInfo{
+                      padding:5px;
+                      .el-form{
+                          .comboInfo{
+                              margin: 10px;
+                          display: block;
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  }
+  .divScroll{
+  height: 300px;
+  margin:0 20px 0 0;
+  overflow-y: auto;
+}
+}
+
+</style>

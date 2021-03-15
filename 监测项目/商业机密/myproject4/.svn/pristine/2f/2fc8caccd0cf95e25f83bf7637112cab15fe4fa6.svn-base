@@ -1,0 +1,293 @@
+<template>
+  <div class="dataCycle_total" v-loading="loading" element-loading-text="拼命加载中" element-loading-background="rgba(0, 0, 0, 0.4)">
+    <el-card>
+      <div slot="header">
+        <span>统计日志</span>
+      </div>
+      <el-form :model="myform" ref="forms" label-width="120px" :rules="rules">
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="申请单号：" prop="applyNum">
+              <el-input v-model="myform.applyNum" maxlength="12" placeholder="请输入申请单号，最长为12字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="迁移表名：" prop="migrationTableName">
+              <el-select v-model="myform.migrationTableName" placeholder="请选择"  clearable>
+                <el-option v-for="item in Listname" :key="item.value" :label="item.label" :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="迁移方式：" prop="migrationMode">
+              <el-select v-model="myform.migrationMode" placeholder="请选择"  clearable>
+                <el-option v-for="item in method" :key="item.value" :label="item.label" :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="迁移申请人：" prop="relocationApplicant">
+              <el-input maxlength="12" placeholder="请输入，最长为12字符" v-model="myform.relocationApplicant"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="迁移开始时间：" prop="transferStartTime">
+              <el-date-picker value-format="yyyy-MM-dd HH:mm:ss" :default-time="['00:00:00', '23:59:59']" v-model="myform.transferStartTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+              </el-date-picker>
+            </el-form-item>
+
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="迁移结束时间：" prop="transferStopTime">
+              <el-date-picker value-format="yyyy-MM-dd HH:mm:ss" :default-time="['00:00:00', '23:59:59']" v-model="myform.transferStopTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="执行状态：" prop="status">
+              <el-select v-model="myform.status" placeholder="请选择" clearable>
+                <el-option v-for="item in mystatus" :key="item.value" :label="item.label" :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row style="padding-bottom:10px">
+          <el-col :span="12" style="text-align:right;float:right">
+            <el-button type="primary" @click="searchData">查 询</el-button>
+            <el-button type="primary" @click="cleanUp" plain>清 空</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <h4>迁移日志：</h4>
+      <el-table :data="tableData" tooltip-effect="dark" @selection-change="handleChange">
+        <el-table-column label="序号" type="index"></el-table-column>
+        <el-table-column label="申请单号" prop="applyNum" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移表名" prop="migrationTableName" width="220" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移方式" prop="migrationMode" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="执行状态" prop="status" min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span v-if="scope.row.status==='未开始'" class="mark-span" style="background:#CFCFCF"></span>
+            <span v-if="scope.row.status==='进行中'" class="mark-span" style="background:#436EEE"></span>
+            <span v-if="scope.row.status==='成功'" class="mark-span" style="background:#00EE00"></span>
+            <span>{{scope.row.status}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="迁移开始时间" prop="migrationStartTime" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移结束时间" prop="migrationStopTime" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column label="总耗时（秒）" prop="timeConsuming" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移笔数（条）" prop="migrationNum" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移申请人" prop="relocationApplicant" min-width="120" show-overflow-tooltip></el-table-column>
+      </el-table>
+      <el-row style="margin-top:10px;">
+        <el-pagination v-if="this.pageInfo.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background></el-pagination>
+      </el-row>
+    </el-card>
+  </div>
+</template>
+<script>
+import { ValidQueryInput, onlyNumberValidate } from '@/utils/formValidate'
+import { getLists } from '@/api/sys-monitoringAnalysis/dataCycle/index'
+export default {
+  data() {
+    return {
+      delArr: [],
+      loading: false,
+      method: [
+        { label: '在线->近线', value: '在线近线' },
+        { label: '近线->离线', value: '近线离线' },
+        { label: '离线->临时区', value: '离线临时区' }
+      ],
+      Listname: [
+        { label: '银行业大额交易', value: '银行业大额交易' },
+        { label: '银行业可疑交易', value: '银行业可疑交易' },
+        { label: '银行业可疑报告', value: '银行业可疑报告' }
+      ],
+      mystatus: [
+        { label: '未开始', value: '未开始' },
+        { label: '进行中', value: '进行中' },
+        { label: '成功', value: '成功' }
+      ],
+      myform: {
+        applyNum: '',
+        transferStartTime: '',
+        transferStopTime: '',
+        migrationTableName: [],
+        migrationMode: [],
+        relocationApplicant: '',
+        status: ''
+      },
+      rules: {
+        applyNum: [{ validator: onlyNumberValidate, trigger: 'blur' }],
+        relocationApplicant: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      },
+      tableData: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      timer: null // 定时任务
+    }
+  },
+  computed: {
+    searchParams() {
+      const obj = Object.assign({}, this.myform, this.pageInfo)
+      if (obj.transferStartTime) {
+        obj.transferStartTime1 = obj.transferStartTime[0]
+        obj.transferStartTime2 = obj.transferStartTime[1]
+      }
+      if (obj.transferStopTime) {
+        obj.transferStopTime1 = obj.transferStopTime[0]
+        obj.transferStopTime2 = obj.transferStopTime[1]
+      }
+      delete obj.transferStartTime
+      delete obj.transferStopTime
+      return obj
+    }
+  },
+  mounted() {
+    // this.loading = true
+    this.initList()
+    if (this.timer) {
+      // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.initList()
+      }, 300000)
+    }
+  },
+  methods: {
+    // 查询列表
+    initList() {
+      this.loading = true
+      getLists(this.pageInfo)
+        .then(res => {
+          if (res.code === 200) {
+            this.pageInfo.total = res.data.data.total
+            this.loading = false
+            if (res.data.data) {
+              const arr = res.data.data.list
+              this.tableData = arr
+            } else {
+              this.tableData = []
+            }
+          } else {
+            this.loading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 查询
+    searchData() {
+      this.loading = true
+      this.pageInfo.pageSize = 10
+      this.pageInfo.pageNum = 1
+      getLists(this.searchParams)
+        .then(res => {
+          if (res.code === 200) {
+            this.pageInfo.total = res.data.data.total
+            this.loading = false
+            if (res.data.data) {
+              const arr = res.data.data.list
+              arr.forEach(el => {
+                el.transTime = el.transferStartTime
+                el.approvalTime = el.approvalStartTime
+              })
+              this.tableData = arr
+            } else {
+              this.tableData = []
+            }
+          } else {
+            this.loading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 耗时自定义校验
+    timeValidate(rule, value, callback) {
+      var mmnumber = /^\d+(\.\d+)?$/
+      if (this.myform.timeConsuming1 === '' && this.myform.timeConsuming2 === '') {
+        callback()
+      }
+      if (this.myform.timeConsuming1 !== '' && this.myform.timeConsuming2 === '') {
+        if (!mmnumber.test(this.myform.timeConsuming1)) {
+          callback(new Error('必须输入数值'))
+        } else {
+          callback()
+        }
+      }
+      if (this.myform.timeConsuming1 === '' && this.myform.timeConsuming2 !== '') {
+        if (!mmnumber.test(this.myform.timeConsuming2)) {
+          callback(new Error('必须输入数值'))
+        } else {
+          callback()
+        }
+      }
+      if (this.myform.timeConsuming1 !== '' && this.myform.timeConsuming2 !== '') {
+        if (
+          mmnumber.test(this.myform.timeConsuming2) &&
+          mmnumber.test(this.myform.timeConsuming1)
+        ) {
+          callback()
+        } else {
+          callback(new Error('必须输入数值'))
+        }
+      }
+    },
+    // 重置
+    cleanUp() {
+      this.$refs.forms.resetFields()
+      this.myform.timeConsuming2 = ''
+      this.myform.migrationNum2 = ''
+    },
+    // 选择要删的数据
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.initList()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initList()
+    },
+    destroyed() {
+      clearInterval(this.timer)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.dataCycle_total {
+  .mark-span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    vertical-align: 1px;
+  }
+  position: relative;
+  .el-date-editor--daterange {
+    min-width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

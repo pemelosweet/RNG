@@ -1,0 +1,1765 @@
+<template>
+  <div
+    class="judgedClues"
+    v-loading="loading"
+    element-loading-spinner="el-icon-loading"
+    element-loading-text="拼命加载中"
+    element-loading-background="rgba(0, 0, 0, 0.1)"
+  >
+    <el-card>
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>查询</span>
+        <div
+          style="float:right"
+          v-if="this.isBranch && !powers "
+        >
+          <el-button
+            type="text"
+            style="color:#409EFF"
+            @click="add"
+          >新建线索</el-button>
+        </div>
+      </div>
+
+      <!-- 填报历史 表单搜索条件模块 -->
+      <div class="historyBlock">
+        <div class="searchBlock">
+          <el-form
+            :model="form"
+            label-width="120px"
+            ref="searchForm"
+            :rules="rules"
+          >
+            <template v-if="toggleSearch">
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索名称 ："
+                    prop="clueName"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueName"
+                      placeholder="请输入线索名称,最长50字符"
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item
+                    v-if='isBranch'
+                    label="分支机构 ："
+                    prop="ricd"
+                    :rules="[{validator: isValidInput , trigger: 'blur'}]"
+                  >
+                  <el-select
+                    disabled
+                      style="width:100%"
+                      v-model="this.user_riid"
+                      placeholder="请选择机构"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item,index) in localBankArr"
+                        :key="index"
+                        :value="item.codeId"
+                        :label="item.codeName"
+                      ></el-option>
+                    </el-select>
+                    <!-- <el-input
+                      v-model="this.name"
+                      placeholder="请输入分支机构,最长50字符"
+                      disabled
+                      maxlength="50"
+                    ></el-input> -->
+                  </el-form-item>
+                  <el-form-item
+                    label=" 分支机构 ："
+                    prop="ricd"
+                    v-if='!isBranch'
+                  >
+                    <el-select
+                      style="width:100%"
+                      v-model="form.ricd"
+                      placeholder="请选择机构"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item,index) in localBankArr"
+                        :key="index"
+                        :value="item.codeId"
+                        :label="item.codeName"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                
+                </el-col>
+                <el-col :span="8">
+                  <el-button
+                    type="primary"
+                    @click="onSubmit"
+                  >查 询</el-button>
+                  <el-button  type="primary"
+                  plain @click="cleanUp">清 空</el-button>
+                  <el-button
+                    type="text"
+                    icon="el-icon-arrow-down"
+                    @click="toggleSearch=false"
+                  >展开</el-button>
+                </el-col>
+              </el-row>
+            </template>
+            <template v-else>
+              <el-row
+                :gutter="20"
+                class="toggle"
+              >
+                <el-col :span="8">
+                   <el-form-item
+                    v-if='isBranch'
+                    label="分支机构 ："
+                    prop="ricd"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                  <el-select
+                  disabled
+                      style="width:100%"
+                      v-model="this.user_riid"
+                      placeholder="请选择机构"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item,index) in localBankArr"
+                        :key="index"
+                        :value="item.codeId"
+                        :label="item.codeName"
+                      ></el-option>
+                    </el-select>
+                    <!-- <el-input
+                      v-model="this.name"
+                      placeholder="请输入分支机构,最长50字符"
+                      disabled
+                      maxlength="50"
+                    ></el-input> -->
+                  </el-form-item>
+                  <el-form-item
+                    label=" 分支机构 ："
+                    prop="ricd"
+                    v-if='!isBranch'
+                  >
+                    <el-select
+                      style="width:100%"
+                      v-model="form.ricd"
+                      placeholder="请选择机构"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item,index) in localBankArr"
+                        :key="index"
+                        :value="item.codeId"
+                        :label="item.codeName"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索名称 ："
+                    prop="clueName"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueName"
+                      placeholder="请输入线索名称,最长50字符"
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 线索编号： "
+                    prop="clueNo"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.clueNo"
+                      placeholder="请输入线索编号,最长50字符"
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row
+                :gutter="20"
+                class="toggle"
+              >
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 关联移送记录： "
+                    prop="linkId"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.linkId"
+                      placeholder="请输入关联移送记录,最长50字符"
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label="交易起止日期 ："
+                    prop="tradeStartDate"
+                  >
+                    <el-date-picker
+                      clearable
+                      v-model="form.tradeStartDate"
+                      type="daterange"
+                      range-separator="至"
+                   
+                      unlink-panels
+                      value-format="yyyy-MM-dd"
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label="提交日期 ："
+                    prop="submitTime"
+                  >
+                    <el-date-picker
+                      clearable
+                      v-model="form.submitTime"
+                      type="daterange"
+                      range-separator="至"
+                      unlink-panels
+                      value-format="yyyy-MM-dd"
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row
+                :gutter="20"
+                class="toggle"
+              >
+                <el-col :span="8">
+                  <el-form-item label="有效状态：">
+                    <el-select
+                      v-model="form.currentState"
+                      placeholder="请选择"
+                      clearable
+                    >
+                      <el-option
+                        label="有效"
+                        value="有效"
+                      ></el-option>
+                      <el-option
+                        label="无效"
+                        value="无效"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 分析触发点 ："
+                    prop="triggerPoint"
+                  >
+                    <el-select
+                      v-model="form.triggerPoint"
+                      placeholder="分析触发"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item, index) in form.triggerData"
+                        :key="index"
+                        :value="item.value"
+                        :label="item.label"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label="线索状态 ："
+                    prop="clewState"
+                  >
+                    <el-select
+                      v-model="form.clewState"
+                      placeholder="请选择"
+                      clearable
+                    >
+                      <el-option
+                        v-for="(item, index) in form.clueData"
+                        :key="index"
+                        :label="item.label"
+                        :value="item.value"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row
+                :gutter="20"
+                class="toggle"
+              >
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 填报人 ："
+                    prop="createUser"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.createUser"
+                      placeholder="请输入填报人,最长20字符"
+                      maxlength="20"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    label=" 审核人 ："
+                    prop="auditingUser"
+                    :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      v-model="form.auditingUser"
+                      placeholder="请输入审核人,最长20字符"
+                      maxlength="20"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row
+                :gutter="20"
+                class="toggle"
+              >
+                <el-col>
+                  <div>
+                    <el-row>
+                      <el-col :span="8">
+                        <el-form-item
+                          label="交易发生地："
+                          label-width="120px"
+                          prop="districtFlag"
+                          :rules="[{ message: '请选择交易发生地',trigger: 'change'}]"
+                        >
+                          <el-select
+                             placeholder="请选择"
+                            clearable
+                            @change="countryOrProvince"
+                            v-model="form.districtFlag"
+                            class="districtFlag"
+                          >
+                            <el-option
+                              value="1"
+                              label="省份"
+                            ></el-option>
+                            <el-option
+                              value="2"
+                              label="国家"
+                            ></el-option>
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="8">
+                        <el-form-item
+                          label-width="0px"
+                          prop="district"
+                          :rules="[{  message: '请选择交易发生地',trigger: 'change'}]"
+                        >
+                          <el-select
+                            v-if="form.districtFlag=='2'"
+                            v-model="form.district"
+                            placeholder="请选择"
+                            filterable
+                          >
+                            <el-option
+                              v-for="(item,index) in countryData"
+                              :key="index"
+                              :label="item.chSName"
+                              :value="item.numCode"
+                            ></el-option>
+                          </el-select>
+                          <el-select
+                            v-else
+                            clearable
+                            v-model="form.district"
+                            placeholder="请选择"
+                            filterable
+                          >
+                            <el-option
+                              v-for="(item,index) in provinceData"
+                              :key="index"
+                              :label="item.codeName"
+                              :value="item.code"
+                            ></el-option>
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="8">
+                        <el-form-item
+                          label-width="0px"
+                          prop="city"
+                          :rules="[{validator: validateDept, trigger: 'blur'}]"
+                        >
+                          <el-input
+                            v-if="form.districtFlag=='1'"
+                            class="city"
+                            v-model="form.city"
+                            placeholder="市,最长20个字符"
+                            maxlength="20"
+                          ></el-input>
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-row
+                :gutter="20"
+                class="toggle"
+              >
+                <el-col>
+                  <div>
+                    <el-form-item
+                      label="涉罪类型："
+                      prop="psclueId"
+                    >
+                      <el-select
+                        filterable
+                        v-model="form.psclueId"
+                        multiple
+                        clearable
+                        placeholder="请选择"
+                        @change="replenish"
+                      >
+                        <el-option
+                          v-for="(item,index) in dialogJudgmentData"
+                          :key="index"
+                          :label="item.codeName"
+                          :value="item.codeId"
+                        ></el-option>
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item
+                      v-if="isReplenishOne"
+                      prop="supplementOne"
+                      :rules="[{required:true, validator: szisValidInput1, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        maxlength="100"
+                        v-model="supplementOne"
+                        placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充"
+                      ></el-input>
+                    </el-form-item>
+                    <el-form-item
+                      v-if="isReplenishTwo"
+                      prop="supplementTwo"
+                      :rules="[{required:true, validator: szisValidInput2, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        maxlength="100"
+                        v-model="supplementTwo"
+                        placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充"
+                      ></el-input>
+                    </el-form-item>
+                    <!-- <preliminary-judgment
+                      :lableWidth="120"
+                      ref="judgment"
+                      :propVal="'initJudge'"
+                      :judgmentInp1="judgmentInp1"
+                      :judgmentInp2="judgmentInp2"
+                      @judgment="getJudgment"
+                      :echoJudgment="reportCluePreJudgment"
+                      @judgmentOther="getJudgmentOther"
+                    ></preliminary-judgment>-->
+                  </div>
+                </el-col>
+              </el-row>
+              <div style="text-align:right; margin-bottom:10px">
+                <el-button
+                  type="primary"
+                  @click="onSubmit"
+                >查 询</el-button>
+                <el-button
+                   type="primary"
+                  plain
+                  @click="cleanUp"
+                >清 空</el-button>
+                <el-button
+                  type="text"
+                  icon="el-icon-arrow-up"
+                  @click="toggleSearch=true"
+                >收起</el-button>
+              </div>
+            </template>
+          </el-form>
+        </div>
+      </div>
+
+      <div class="taleBlock">
+        <el-table
+          :data="tableData"
+          tooltip-effect="dark"
+          @selection-change="handleChange"
+        >
+          <el-table-column
+            type="selection"
+            width="60"
+            fixed="left"
+          ></el-table-column>
+          <el-table-column
+            type="index"
+            label="序号"
+            width="60"
+            fixed="left"
+          ></el-table-column>
+          <el-table-column
+            prop="clueNo"
+            label="线索编号"
+            min-width="160"
+            show-overflow-tooltip
+          >
+            <template slot-scope="scope">
+              <span>{{`${scope.row.clueNo}`}}</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="clueName"
+            label="线索名称"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="branch"
+            label="分支机构"
+            min-width="100"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="clewState"
+            label="线索状态"
+            min-width="100"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="linkId"
+            label="关联移送记录"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="triggerPoint"
+            label="分析触发点"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="judge"
+            label="涉罪类型"
+            min-width="120"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="tradeStartDate"
+            label="交易起止日期"
+            min-width="180"
+          ></el-table-column>
+          <el-table-column
+            prop="area"
+            label="交易发生地"
+            show-overflow-tooltip
+            min-width="120"
+          ></el-table-column>
+          <el-table-column
+            prop="moneyRmb"
+            label="交易累计金额(万元)"
+            min-width="160"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="reportingBody"
+            label="报告机构"
+            min-width="100"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="submissionDate"
+            label="提交日期"
+            min-width="150"
+          ></el-table-column>
+          <el-table-column
+            label="操作"
+            min-width="200"
+            fixed="right"
+          >
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                @click="Initiate(scope)"
+                v-if="(scope.row.clewState==='已保存'||scope.row.clewState==='已退回') && !powers"
+              >编辑</el-button>
+              <el-button
+                type="text"
+                @click="Initiate(scope)"
+                v-else
+              >查看</el-button>
+              <el-button
+                type="text"
+                @click="Exprots(scope)"
+              >导出线索</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-row>
+          <el-col
+            :span="12"
+            style="paddingTop:10px"
+          >
+            <el-button
+              type="primary"
+              @click="submitHandle"
+              v-if="!powers"
+              plain
+            >提 交</el-button>
+            <el-button
+              type="primary"
+              @click="exportExcel"
+              plain
+            >导出列表</el-button>
+            <el-button type="primary" @click="multiDel" v-if="!powers" plain>删 除</el-button>
+            <el-button
+              type="primary"
+              @click="invalid"
+              v-if="!powers"
+              plain
+            >置为无效</el-button>
+          </el-col>
+          <el-col :span="12">
+            <el-pagination
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+              :current-page="pageInfo.pageNum"
+              :page-size="pageInfo.pagesize"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="pageInfo.total"
+              background
+            ></el-pagination>
+          </el-col>
+        </el-row>
+      </div>
+      <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { commonPattern } from '@/utils/formValidate'
+import {
+  dictionary,
+  province,
+  country
+} from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import {
+  getListNew,
+  getList,
+  delList,
+  approvalStaus,
+  invalid
+} from '@/api/sys-monitoringAnalysis/judgedClues/branch.js'
+import { getPower } from '@/api/sys-monitoringAnalysis/report-clues/search.js'
+import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/crimeInvolved.vue'
+import { mapGetters } from 'vuex'
+import { getToken } from '@/utils/auth'
+import { branch } from '@/api/sys-monitoringAnalysis/conjointAnalysis/list.js'
+export default {
+  data() {
+    return {
+      localBankArr: [],
+      chinaNull: /[\u4e00-\u9fa5]/, // 校验中文
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      englishNull: /[abcdefghijklmnopqrstuvwxyz]/im, // 校验英文
+      numberNull: /[1234567890]/im, // 校验数字
+      blankSpace: /[ ]/im, // 校验空格
+      loading: false,
+      toggleSearch: true,
+      delArr: [],
+      arr1: [],
+      powers: false,
+      ides: '',
+      flag: 0,
+      countryData: [], // 国家数据
+      provinceData: [], // 省份数据
+      judgmentInp1: '', // 初步判断1401 input
+      judgmentInp2: '', // 初步判断1402 input
+      reportCluePreJudgment: [], // 回显的数据
+      dialogJudgmentData: [],
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      isReplenishOne2: false,
+      isReplenishTwo2: false,
+      supplementOne: '',
+      supplementTwo: '',
+      supplementOne2: '',
+      supplementTwo2: '',
+      form: {
+        psclueId: [],
+        ricd: '',
+        clueName: '',
+        clueNo: '',
+        linkId: '',
+        tradeStartDate: '',
+        submitTime: '',
+        trade: '',
+        createUser: '',
+        auditingUser: '',
+        clewState: '',
+        currentState: '',
+        isvisible: '',
+        districtFlag: '',
+        initJudge: [],
+        district: '',
+        clueData: [
+          {
+            label: '已保存',
+            value: '已保存'
+          },
+          {
+            label: '已退回',
+            value: '已退回'
+          },
+          {
+            label: '行内审批',
+            value: '行内审批'
+          },
+          {
+            label: '已提交',
+            value: '已提交'
+          },
+          {
+            label: '已分发',
+            value: '已分发'
+          },
+          {
+            label: '已分配',
+            value: '已分配'
+          },
+          {
+            label: '待审核',
+            value: '待审核'
+          },
+          {
+            label: '已分析',
+            value: '已分析'
+          },
+          {
+            label: '已审核',
+            value: '已审核'
+          },
+          {
+            label: '移送中',
+            value: '移送中'
+          },
+          {
+            label: '已移送',
+            value: '已移送'
+          },
+          {
+            label: '仅报告',
+            value: '仅报告'
+          },
+          {
+            label: '立案',
+            value: '立案'
+          },
+          {
+            label: '结案',
+            value: '结案'
+          },
+          {
+            label: '撤案',
+            value: '撤案'
+          },
+          {
+            label: '不予立案',
+            value: '不予立案'
+          }
+        ],
+        triggerPoint: '',
+        triggerData: [
+          {
+            value: '1',
+            label: '可疑交易报告'
+          },
+          {
+            value: '2',
+            label: '行政调查'
+          },
+          {
+            value: '3',
+            label: '现场调查'
+          },
+          {
+            value: '4',
+            label: '举报'
+          },
+          {
+            value: '5',
+            label: '其他'
+          }
+        ],
+        analyze: ''
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      Newcenter: {
+        configCode: 'reportLeads',
+        pageNum: 1,
+        pageSize: 10
+      },
+      token: getToken(),
+      tableData: [],
+      currentPage: 1,
+      pagesize: 10,
+      rules: {
+        district: [{ validator: this.iseras, trigger: 'change' }]
+      }
+    }
+  },
+  components: {
+    preliminaryJudgment
+  },
+  // 列表查询参数
+  computed: {
+    ...mapGetters(['businessFlag', 'name', 'user_riid', 'workFlow2business', 'userInfo', 'institution']),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    },
+    searchParams() {
+      if (sessionStorage.getItem('searchData')) {
+        const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+        if (searchData.pageName === this.$route.name && searchData.ifReview) {
+          this.pageInfo = searchData.pageInfo
+          this.form = searchData.searchFrom
+          this.toggleSearch = searchData.toggleSearch
+        }
+      }
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.tradeStartDate
+      delete obj.submitTime
+      delete obj.clueData
+      delete obj.triggerData
+      delete obj.total
+      delete obj.psclueId
+      // if (this.form.psclueId.indexOf('1401') !== -1) {
+      //   const i = this.form.psclueId.indexOf('1401')
+      //   this.form.psclueId[i] = '1401-' + this.supplementOne
+      // }
+      // if (this.form.psclueId.indexOf('1402') !== -1) {
+      //   const n = this.form.psclueId.indexOf('1402')
+      //   this.form.psclueId[n] = '1402-' + this.supplementTwo
+      // }
+      if (this.form.psclueId) {
+        for (var i = 0; i < this.form.psclueId.length; i++) {
+          if (this.form.psclueId[i].indexOf('1401') !== -1) {
+            this.form.psclueId[i] = '1401-' + this.supplementOne
+          }
+          if (this.form.psclueId[i].indexOf('1402') !== -1) {
+            this.form.psclueId[i] = '1402-' + this.supplementTwo
+          }
+        }
+        obj.pSClueId = this.form.psclueId.join(',')
+      }
+      if (this.form.tradeStartDate) {
+        obj.tradeStartDate = this.form.tradeStartDate[0]
+        obj.tradeEndDate = this.form.tradeStartDate[1]
+      }
+      if (this.form.submitTime) {
+        obj.minDate = this.form.submitTime[0]
+        obj.maxDate = this.form.submitTime[1]
+      }
+      return obj
+    },
+    searchParams1() {
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.tradeStartDate
+      delete obj.submitTime
+      delete obj.clueData
+      delete obj.triggerData
+      delete obj.total
+      delete obj.psclueId
+      obj.configCode = 'reportLeads'
+      if (this.form.psclueId.indexOf('1401') !== -1) {
+        const i = this.form.psclueId.indexOf('1401')
+        this.form.psclueId[i] = '1401-' + this.supplementOne
+      }
+      if (this.form.psclueId.indexOf('1402') !== -1) {
+        const n = this.form.psclueId.indexOf('1402')
+        this.form.psclueId[n] = '1402-' + this.supplementTwo
+      }
+      obj.pSClueId = this.form.psclueId.join(',')
+      if (this.form.tradeStartDate) {
+        obj.tradeStartDate = this.form.tradeStartDate[0]
+        obj.tradeEndDate = this.form.tradeStartDate[1]
+      }
+      if (this.form.submitTime) {
+        obj.minDate = this.form.submitTime[0]
+        obj.maxDate = this.form.submitTime[1]
+      }
+      return obj
+    }
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  created() {
+    // if (sessionStorage.getItem('searchData')) {
+    //   const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+    //   if (searchData.pageName === this.$route.name && searchData.ifReview) {
+    //     this.pageInfo = searchData.pageInfo
+    //     this.form = searchData.searchFrom
+    //   }
+    // }
+  },
+  mounted() {
+    this.getPower()
+    this.initList(this.searchParams)
+    this.getDictionary('SFZJ')
+    // this.getDictionary('FZJGD')
+    this.getBranch()
+    this.getDictionary('TOSC')
+    this.getCountry()
+    this.getProvince()
+  },
+  methods: {
+    async getPower() {
+      const res = await getPower()
+      console.log(res, 111)
+      this.powers = false
+      this.powers = res.message === '是'
+    },
+    // tabs
+    handleClick(tab, event) {
+      if (tab.index === '0') {
+        this.initList(this.searchParams)
+      } else {
+        this.initListMain(this.Newcenter)
+      }
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.form.psclueId.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.form.psclueId.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialCharInQuery.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    iseras(rule, value, callback) {
+      if (value === '') {
+        callback(new Error('请选择地区'))
+      } else {
+        if (this.form.districtFlag === '1') {
+          if (this.form.city === '') {
+            callback()
+          } else {
+            if (!commonPattern.spaceBar.test(this.form.city)) {
+              callback(new Error('内容不能含有空格'))
+            } else if (
+              commonPattern.specialChar.test(this.form.city) ||
+              commonPattern.specialEng.test(this.form.city)
+            ) {
+              callback(new Error('内容不能填写特殊字符'))
+            } else {
+              callback()
+            }
+          }
+        } else if (this.form.districtFlag === '2') {
+          callback()
+        }
+      }
+    },
+    // 新建
+    add() {
+      if (this.isBranch) {
+        this.$router.push({
+          name: 'judgedClues_add',
+          query: {
+            pageFlag: 'new'
+          }
+        })
+      } else {
+        this.$message({
+          message: '请登录分支机构创建线索',
+          type: 'error',
+          duration: 6000
+        })
+      }
+    },
+    // 调取工作流
+    callWorkFlow() {
+      this.$store.dispatch('workFlow', { configCode: 'reportLeads' })
+      this.$store.dispatch('openWorkFlow', true)
+    },
+    nextStep() {
+      const reportLeads = {}
+      const arr = []
+      this.delArr.forEach(el => {
+        arr.push(el.clueId)
+      })
+      reportLeads.clueId = arr.join(',')
+      // const arr = []
+      // this.delArr.forEach(el => {
+      //   const obj = {}
+      //   obj.clueId = el.clueId
+      //   obj.clewState = el.clewState
+      //   arr.push(obj)
+      // })
+      this.loading = true
+      approvalStaus(reportLeads, this.workFlow2business)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.$message({
+              type: 'success',
+              message: '提交成功',
+              duration: 6000
+            })
+            this.initList(this.searchParams)
+          } else {
+            this.loading = false
+            this.$confirm(res.message, '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 获取分支列表数据方法
+    initList(params) {
+      this.loading = true
+      getList(params)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.pageInfo.total = res.data.total
+            const arry = res.data.list // 获取的数据
+            const arr = []
+            console.log(arry, 222222222)
+
+            arry.forEach(el => {
+              const obj = {}
+              obj.currentState = el.currentState
+              obj.clueId = el.clueId // ID
+              obj.clueNo = el.clueNo // 线索编号
+              obj.clueName = el.clueName // 线索名称
+              obj.branch = el.ricd // 分支机构
+              obj.linkId = el.linkId // 关联移送记录
+              obj.tradeStartDate = el.tradeStartDate + '至' + el.tradeEndDate // 交易起止日期
+              obj.clewState = el.clewState // 线索状态
+              obj.moneyRmb = el.moneyRmb // 交易累计金额
+              const ary = []
+              el.rcriminalType.forEach(item => {
+                ary.push(item.preliminaryJudgme)
+              })
+              obj.judge = ary.join(',') // 初步判断
+              const cityArr = []
+              el.rdesignAreas.forEach(item => {
+                cityArr.push(item.district)
+              })
+              obj.area = cityArr.join(',') // 地区
+              // obj.reportingBody = el.reportingBody // 报告机构
+              const ary1 = []
+              if (el.reportingBodies) {
+                el.reportingBodies.forEach(item => {
+                  ary1.push(item.reportingBody)
+                })
+                obj.reportingBody = ary1.join(',') // 报告机构
+              }
+
+              if (el.commitTime) {
+                obj.submissionDate = el.commitTime.substr(0, 10) // 提交日期
+              }
+              switch (
+                el.triggerPoint // 分析触发点
+              ) {
+                case '1':
+                  obj.triggerPoint = '可疑交易报告'
+                  break
+                case '2':
+                  obj.triggerPoint = '行政调查'
+                  break
+                case '3':
+                  obj.triggerPoint = '现场调查'
+                  break
+                case '4':
+                  obj.triggerPoint = '举报'
+                  break
+                case '5':
+                  obj.triggerPoint = '其他' + el.triggerOther
+                  break
+                default:
+                  break
+              }
+              arr.push(obj)
+            })
+            console.log(this.form, 111111111111)
+
+            const searchData = {
+              pageName: this.$route.name,
+              pageInfo: this.pageInfo,
+              searchFrom: this.form,
+              toggleSearch: this.toggleSearch
+            }
+            sessionStorage.setItem('searchData', JSON.stringify(searchData))
+            this.tableData = arr
+          } else {
+            this.loading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 展开查询
+    onSubmit() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          getList(this.searchParams)
+            .then(res => {
+              this.loading = false
+              if (res.code === 200) {
+                this.pageInfo.total = res.data.total
+                const arry = res.data.list // 获取的数据
+                console.log(arry, '0200202')
+
+                const arr = []
+                arry.forEach(el => {
+                  const obj = {}
+                  obj.currentState = el.currentState
+                  obj.clueId = el.clueId // ID
+                  obj.clueNo = el.clueNo // 线索编号
+                  obj.clueName = el.clueName // 线索名称
+                  obj.branch = el.ricd // 分支机构
+                  obj.linkId = el.linkId // 关联移送记录
+                  // obj.triggerPoint = el.triggerPoint // 分析触发点
+                  obj.tradeStartDate = el.tradeStartDate + '至' + el.tradeEndDate// 交易起止日期
+                  obj.clewState = el.clewState // 线索状态
+                  obj.moneyRmb = el.moneyRmb // 交易累计金额
+                  const ary = []
+                  el.rcriminalType.forEach(item => {
+                    ary.push(item.preliminaryJudgme)
+                  })
+                  obj.judge = ary.join(',') // 初步判断
+                  const cityArr = []
+                  el.rdesignAreas.forEach(item => {
+                    cityArr.push(item.district)
+                  })
+                  obj.area = cityArr.join(',') // 地区
+                  // obj.reportingBody = el.reportingBody // 报告机构
+                  const ary1 = []
+                  el.reportingBodies.forEach(item => {
+                    ary1.push(item.reportingBody)
+                  })
+                  obj.reportingBody = ary1.join(',') // 报告机构
+                  if (el.commitTime) {
+                    obj.submissionDate = el.commitTime.substr(0, 10) // 提交日期
+                  }
+                  switch (
+                    el.triggerPoint // 分析触发点
+                  ) {
+                    case '1':
+                      obj.triggerPoint = '可疑交易报告'
+                      break
+                    case '2':
+                      obj.triggerPoint = '行政调查'
+                      break
+                    case '3':
+                      obj.triggerPoint = '现场调查'
+                      break
+                    case '4':
+                      obj.triggerPoint = '举报'
+                      break
+                    case '5':
+                      obj.triggerPoint = '其他' + el.triggerOther
+                      break
+                    default:
+                      break
+                  }
+                  arr.push(obj)
+                })
+                const searchData = {
+                  pageName: this.$route.name,
+                  pageInfo: this.pageInfo,
+                  searchFrom: this.form,
+                  toggleSearch: this.toggleSearch
+                }
+                sessionStorage.setItem('searchData', JSON.stringify(searchData))
+                this.tableData = arr
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          this.$message({
+            message: '查询条件需符合检验',
+            type: 'warning',
+            duration: 6000
+          })
+        }
+      })
+    },
+    initListMain(params) {
+      getListNew(params).then(res => {
+        if (res.code === 200) {
+          this.pageInfo.total = res.data.total
+          const arry = res.data.list
+          const arr = []
+          arry.forEach(el => {
+            const obj = {}
+            if (el.reportLeads) {
+              if (el.reportLeads.list.length > 0) {
+                obj.clueId = el.reportLeads.list[0].clueId // ID
+                obj.clueNo = el.reportLeads.list[0].clueNo // 线索编号
+                obj.clueName = el.reportLeads.list[0].clueName // 线索名称
+                obj.branch = el.reportLeads.list[0].ricd // 分支机构
+                obj.linkId = el.reportLeads.list[0].linkId // 关联移送记录
+                obj.clewState = el.reportLeads.list[0].clewState // 线索状态
+                obj.cart = el.reportLeads.list[0].cart // 交易累计金额
+                const ary = []
+                el.reportLeads.list[0].rcriminalType.forEach(item => {
+                  ary.push(item.preliminaryJudgme)
+                })
+                obj.judge = ary.join(',') // 初步判断
+                obj.area = el.reportLeads.list[0].rdesignArea.district // 地区
+                obj.reportingBody = el.reportLeads.list[0].reportingBody // 报告机构
+                obj.submissionDate = el.reportLeads.list[0].commitTime // 提交日期
+                obj.tradeStartDate = el.reportLeads.list[0].tradeStartDate
+                switch (
+                  el.reportLeads.list[0].triggerPoint // 分析触发点
+                ) {
+                  case '1':
+                    obj.triggerPoint = '可疑交易报告'
+                    break
+                  case '2':
+                    obj.triggerPoint = '行政调查'
+                    break
+                  case '3':
+                    obj.triggerPoint = '现场调查'
+                    break
+                  case '4':
+                    obj.triggerPoint = '举报'
+                    break
+                  case '5':
+                    obj.triggerPoint = el.reportLeads.list[0].triggerOther
+                    break
+                  default:
+                    break
+                }
+                arr.push(obj)
+              }
+            }
+          })
+          this.tableData = arr
+        }
+      })
+    },
+    onSubmitMain() {
+      this.loading = true
+      getListNew(this.searchParams)
+        .then(res => {
+          this.loading = false
+          if (res.code === 200) {
+            this.pageInfo.total = res.data.total
+            const arry = res.data.list
+            const arr = []
+            arry.forEach(el => {
+              const obj = {}
+              if (el.reportLeads.list.length !== 0) {
+                obj.clueId = el.reportLeads.list[0].clueId // ID
+                obj.clueNo = el.reportLeads.list[0].clueNo // 线索编号
+                obj.clueName = el.reportLeads.list[0].clueName // 线索名称
+                obj.branch = el.reportLeads.list[0].ricd // 分支机构
+                obj.linkId = el.reportLeads.list[0].linkId // 关联移送记录
+                obj.clewState = el.reportLeads.list[0].clewState // 线索状态
+                obj.cart = el.reportLeads.list[0].cart // 交易累计金额
+                const ary = []
+                el.reportLeads.list[0].rcriminalType.forEach(item => {
+                  ary.push(item.preliminaryJudgme)
+                })
+                obj.judge = ary.join(',') // 初步判断
+                obj.area = el.reportLeads.list[0].rdesignArea.district // 地区
+                obj.reportingBody = el.reportLeads.list[0].reportingBody // 报告机构
+                obj.submissionDate = el.reportLeads.list[0].commitTime // 提交日期
+                obj.tradeStartDate = el.reportLeads.list[0].tradeStartDate + '-' + el.reportLeads.list[0].tradeEndDate
+                switch (
+                  el.reportLeads.list[0].triggerPoint // 分析触发点
+                ) {
+                  case '1':
+                    obj.triggerPoint = '可疑交易报告'
+                    break
+                  case '2':
+                    obj.triggerPoint = '行政调查'
+                    break
+                  case '3':
+                    obj.triggerPoint = '现场调查'
+                    break
+                  case '4':
+                    obj.triggerPoint = '举报'
+                    break
+                  case '5':
+                    obj.triggerPoint = el.reportLeads.list[0].triggerOther
+                    break
+                  default:
+                    break
+                }
+                arr.push(obj)
+              }
+            })
+            this.tableData = arr
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    validateDept(rule, value, callback) {
+      if (this.blankSpace.test(value)) {
+        callback(new Error('禁止输入空格'))
+      } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+        callback(new Error('禁止输入特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // 清空
+    cleanUp() {
+      this.$refs.searchForm.resetFields()
+      this.reportCluePreJudgment = []
+      this.form.city = ''
+      this.form.districtFlag = ''
+      this.form.district = ''
+      this.supplementTwo = ''
+      this.supplementOne = ''
+      this.form.clueNo = ''
+      this.form.linkId = ''
+      this.form.tradeStartDate = ''
+      this.form.submitTime = ''
+      this.form.clewState = ''
+      this.form.currentState = ''
+      this.form.triggerPoint = ''
+      this.form.createUser = ''
+      this.form.auditingUser = ''
+      this.form.psclueId = []
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+    },
+    // 选择要删的数据
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 批量删除
+    multiDel() {
+      this.flag = 0
+      var step = 0
+      if (this.delArr.length > 0) {
+        this.delArr.forEach(el => {
+          if (el.clewState === '已保存' || el.clewState === '已退回') {
+            step++
+            if (step === this.delArr.length) {
+              this.$confirm('确定要删除数据吗 ？', '提示', {
+                confirmButtonText: '确认',
+                cancelButtonText: '取消',
+                type: 'warning'
+              }).then(() => {
+                this.delArr.map(delItem => {
+                  this.tableData.map((item, index) => {
+                    const delId = item.clueId
+                    const curId = delItem.clueId
+                    const clewState = item.clewState
+                    if (delId === curId) {
+                      // this.arr1.push(delId)
+                      // const arr2 =[]
+                      // arr2.push(clewState)
+                      delList(delId, clewState).then(res => {})
+                      this.tableData.splice(index, 1)
+                    }
+                  })
+                })
+                this.$message({
+                  message: '删除成功！',
+                  type: 'success',
+                  duration: 6000
+                })
+                this.initList(this.searchParams)
+              })
+            }
+          } else {
+            this.flag++
+            if (this.flag === 1) {
+              setTimeout(() => {
+                this.$message({
+                  message: '请选择状态为已保存或已退回的线索！',
+                  type: 'warning',
+                  duration: 6000
+                })
+              }, 10)
+            }
+          }
+        })
+      } else {
+        this.$message({
+          message: '请至少选择一条线索！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 提交处理
+    submitHandle() {
+      if (this.delArr.length > 0) {
+        var step = 0
+        this.delArr.forEach((el, index) => {
+          if (el.clewState === '已保存') {
+            step++
+            if (step === this.delArr.length) {
+              // 判断是中心用户还是分支机构用户
+              if (this.isCenter) {
+                this.$message({
+                  message: '只有分支机构可以提交线索！',
+                  type: 'warning',
+                  duration: 6000
+                })
+                // this.centerInsert()
+              } else {
+                this.callWorkFlow()
+              }
+            }
+          } else {
+            this.$message({
+              message: '请选择已保存的线索！',
+              type: 'warning',
+              duration: 6000
+            })
+            return
+          }
+        })
+      } else {
+        this.$message({
+          message: '请选择要提交的线索！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 置为无效
+    invalid() {
+      if (this.delArr.length === 1) {
+        var step = 0
+        console.log(this.delArr)
+
+        this.delArr.forEach((el, index) => {
+          if (el.clewState === '已提交') {
+            if (el.currentState === '无效') {
+              this.$message({
+                message: '该线索已置为无效',
+                type: 'warning',
+                duration: 6000
+              })
+            } else {
+              step++
+              if (step === this.delArr.length) {
+              // 判断是中心用户还是分支机构用户
+                if (this.isCenter) {
+                  this.$message({
+                    message: '只有分支机构可操作',
+                    type: 'warning',
+                    duration: 6000
+                  })
+                // this.centerInsert()
+                } else {
+                  const obj = {}
+                  this.delArr.forEach(el => {
+                    obj.clueId = el.clueId
+                    obj.clewState = el.clewState
+                  })
+                  invalid(obj).then(res => {
+                    this.initList(this.searchParams)
+                  })
+                }
+              }
+            }
+          } else {
+            this.$message({
+              message: '请选择一条已提交的线索！',
+              type: 'warning',
+              duration: 6000
+            })
+            return
+          }
+        })
+      } else {
+        this.$message({
+          message: '请选择一条要置为无效的线索！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    Exprots(scope) {
+      this.ides = scope.row.clueId
+      location.href = `/monitor/reportLeads/export?clueId=${this.ides}&token=${this.token}`
+    },
+    // 批量导出
+    exportExcel() {
+      if (this.delArr.length > 0) {
+        const ids = []
+        this.delArr.forEach(el => {
+          ids.push(el.clueId)
+        })
+        location.href = `/monitor/reportLeads/exportBatch?clueId=${ids.join(',')}&token=${
+          this.token
+        }`
+      } else {
+        this.$message({
+          message: '请至少选择一条线索！',
+          type: 'warning',
+          duration: 6000
+        })
+        return
+      }
+    },
+    // 获取省份
+    getProvince() {
+      province().then(res => {
+        if (res.code === 200) {
+          this.provinceData = res.data
+        }
+      })
+    },
+    // 获取省份
+    getCountry() {
+      country().then(res => {
+        if (res.code === 200) {
+          res.data.list = res.data.list.filter(item => {
+            return item.numCode !== '344' && item.numCode !== '446' && item.numCode !== '158'
+          })
+          this.countryData = res.data.list
+        }
+      })
+    },
+    // 获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'SFZJ':
+              this.attachTypeArr = res.data
+              break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 获取分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.localBankArr = res.data.list
+        }
+      })
+    },
+    countryOrProvince(val) {
+      this.form.district = ''
+    },
+    Initiate(scope) {
+      if (this.powers) {
+        this.$router.push({
+          name: 'judgedClues_add',
+          params: {
+            id: scope.row.clueId,
+            clewStates: scope.row.clewState,
+            seeyou: true
+          }
+        })
+      } else {
+        this.$router.push({
+          name: 'judgedClues_add',
+          params: {
+            id: scope.row.clueId,
+            clewStates: scope.row.clewState
+          }
+        })
+      }
+    },
+    // 获取涉案类型其他
+    getJudgmentOther(val1, val2) {
+      this.form.preliminaryJudgmentInp1 = val1
+      this.form.preliminaryJudgmentInp2 = val2
+    },
+    // 获取子组件发射的信息  ---涉案类型
+    getJudgment(val) {
+      this.form.initJudge = val
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.initList(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initList(this.searchParams)
+    },
+    // 切换分页条数
+    handleSizeChange1(size) {
+      this.pageInfo.pageSize = size
+      this.initListMain(this.searchParams1)
+    },
+    // 点击切换分页
+    handleCurrentChange1(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initListMain(this.searchParams1)
+    }
+  }
+}
+</script>
+
+<style  lang="scss">
+$margin: 20px;
+$c: #fff;
+$border: 1px solid #ccc;
+
+@mixin marginBottom($margin) {
+  margin-bottom: $margin;
+}
+@mixin color($color) {
+  color: $color;
+}
+@mixin padding($t, $l) {
+  padding: $t $l;
+}
+.dialog-block {
+  .title {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 10px;
+  }
+  .task {
+    margin-bottom: 30px;
+    .title {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+  }
+  .el-transfer__button.el-button--primary {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}
+.judgedClues {
+  .historyBlock {
+    .label {
+      @include marginBottom(10px);
+    }
+    .searchBlock {
+      .el-date-editor--daterange {
+        width: 100%;
+      }
+      .el-select {
+        width: 100%;
+      }
+      .toggleBtn {
+        bottom: -16px;
+        left: 50%;
+      }
+      .el-range-editor {
+        max-width: 100%;
+        min-width: 100%;
+      }
+    }
+  }
+  .itemline {
+    font-size: 16px;
+    color: #409eff;
+    padding: 0 4px 0 8px;
+  }
+  // @media screen and(max-width: 1400px) {
+  //   .toggle {
+  //     .el-col-8 {
+  //       width: 50%;
+  //     }
+  //   }
+  // }
+}
+</style>

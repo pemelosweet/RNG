@@ -1,0 +1,191 @@
+# vue 开发规范
+
+1. 组件命名规范
+2. views命名
+3. vue 方法放置顺序
+4. 注释规范
+5. 编码规范
+
+## 组件命名规范(即src下components文件夹)
+Vue官方文档给予以下说明：
+```
+当注册组件 (或者 prop) 时，可以使用 kebab-case (短横线分隔命名)、camelCase (驼峰式命名) 或 PascalCase (单词首字母大写命名)。
+PascalCase 是最通用的声明约定而 kebab-case 是最通用的使用约定。
+```
+**这里我们约定使用 PascalCase (单词首字母大写) 方式命名**
+
+## views命名
+views 文件夹下面是由 以页面为单位的 vue 文件 或者 模块文件夹 组成的，放在 src 目录之下，与 components、assets 同级。
+
+#### views 下的文件夹命名
+1. views 下面的文件夹代表着模块的名字
+2. 由名词组成（car、order、cart）
+3. 单词只能有一个（good: car order cart）（bad: carInfo carpage）
+4. 尽量是名词（good: car）（bad: greet good）
+5. 以小写开头（good: car）（bad: Car）
+
+#### views 下的 vue 文件命名
+1. views 下面的 vue 文件代表着页面的名字
+2. 放在模块文件夹之下
+3. 只有一个文件的情况下不会出现文件夹，而是直接放在 views 目录下面，如 Login Home
+4. 尽量是名词
+5. 大写开头，开头的单词就是所属模块名字（CarDetail、CarEdit、CarList）
+6. 名字至少两个单词（good: CarDetail）（bad: Car）
+7. 常用结尾单词有（Detail、Edit、List、Info、Report）
+8. 以 Item 结尾的代表着组件（CarListItem、CarInfoItem）
+
+## vue 方法放置顺序
+1. components
+2. props
+3. data
+4. created
+5. mounted
+6. activited
+7. update
+8. beforeRouteUpdate
+9. methods
+10. filter
+11. computed
+12. watch
+
+#### data props 方法注意点
+1. 使用 data 里的变量时请先在 data 里面初始化
+2. props 指定类型，也就是 type
+3. props 改变父组件数据 基础类型用 $emit ，复杂类型直接改
+4. ajax 请求数据用上 isLoading、isError 变量
+5. 不命名多余数据，现在是详情页、你的数据是 ajax 请求的，那就直接声明一个对象叫 d，而不是每个字段都声明
+6. 表单数据请包裹一层 form
+
+#### 生命周期方法注意点
+1. 不在 mounted、created 之类的方法写逻辑，取 ajax 数据
+2. 在 created 里面监听 Bus 事件
+
+
+## 注释规范
+代码注释在一个项目的后期维护中显的尤为重要，所以我们要为每一个被复用的组件编写组件使用说明，为组件中每一个方法编写方法说明。
+以下情况，务必添加注释
+```
+    1.公共组件使用说明
+    2.各组件中重要函数或者类说明
+    3.复杂的业务逻辑处理说明
+    4.特殊情况的代码处理说明,对于代码中特殊用途的变量、存在临界值、函数中使用的hack、使用了某种算法或思路等需要进行注释描述
+    5.注释块必须以/**（至少两个星号）开头**/；
+    6.单行注释使用//；
+```
+
+*单行注释*
+```
+普通方法一般使用单行注释// 来说明该方法主要作用
+```
+
+*多行注释*
+```
+组件使用说明，和调用说明 
+   
+  /**
+    * 组件名称
+    * @module 组件存放位置
+    * @desc 组件描述
+    * @author 组件作者
+    * @date 2017年12月05日17:22:43
+    * @param {Object} [title]    - 参数说明
+    * @param {String} [columns] - 参数说明
+    * @example 调用示例
+    *  <hbTable :title="title" :columns="columns" :tableData="tableData"></hbTable>
+    */
+```
+2.	修改别人的代码，请添加注释
+```
+/* 主要修改XXX问题 zhangsan 2018-04-06 13:21 */
+```
+
+## 编码规范
+统一的编码规范，可使代码更易于阅读，易于理解，易于维护。尽量按照**ESLint**格式要求编写代码
+```
+  1.使用ES6风格编码源码
+      定义变量使用let ,定义常量使用const
+      使用export ，import 模块化
+  2.组件 props 原子化
+      提供默认值
+      使用 type 属性校验类型
+      使用 props 之前先检查该 prop 是否存在
+  3.避免 this.$parent
+  4.谨慎使用 this.$refs
+  5.无需将 this 赋值给 component 变量
+  6.调试信息console.log() debugger 使用完及时删除
+```
+
+## 自定义 element-ui 样式
+**由于element-ui的样式我们是在全局引入的，所以你想在某个页面里面覆盖它的样式就不能加 scoped，但你又想只覆盖这个页面的element样式，你就可在它的父级加一个class，用命名空间来解决问题。**
+```
+.aritle-page{ /* 你的命名空间 */
+  .el-tag { /* element-ui 元素*/
+    margin-right: 0px;
+  }
+}
+```
+
+## 在css中使用background导入图片
+*在data中使用如下写法*
+```
+data() {
+  return {
+    navbarMenuBgImg: {
+      backgroundImage: 'url(' + require('@/assets/navbar/header-bg.png') + ')'
+    }
+  }
+}
+```
+*使用*
+```
+<div :style="navbarMenuBgImg"></div>
+```
+
+## 引入其他模块的写法
+以为配置了webpack的alias  `@`就表示`src`目录，所以在页面中想要引用其他模块请使用以下方法
+```
+import ErrorLog from '@/components/ErrorLog' ✅
+import ErrorLog from '../../components/ErrorLog' ❎
+```
+
+## 判断当前用户角色
+```
+1. 引入 import { mapGetters } from 'vuex'
+  computed: {
+      ...mapGetters([
+        'roles'
+      ])
+    }
+2. 需要用的地方 roles.indexOf('report') !== -1
+```
+
+## 代码格式化 -- 工具
+
+1. 首先安装vscode的插件 **Prettier** 和 **vetur**
+2. 在vscode设置里添加 **"vetur.format.defaultFormatter.html": "js-beautify-html"**
+
+## ESLint -- 工具
+1. 首先安装vscode的插件 **ESLint**
+2. 在vscode设置里添加
+```
+  "eslint.validate": [
+      "javascript",
+      "javascriptreact",
+      "html",
+      {
+          "language": "html",
+          "autoFix": true
+      },
+      {
+          "language": "vue",
+          "autoFix": true
+      }
+  ],
+  "eslint.autoFixOnSave": true, 
+```
+## 构建
+测试环境：192.168.200.65:8076
+开发环境：192.168.200.63:8076
+账户、密码：jenkins jenkins
+
+

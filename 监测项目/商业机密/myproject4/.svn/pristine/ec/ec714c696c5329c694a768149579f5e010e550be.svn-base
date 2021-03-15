@@ -1,0 +1,261 @@
+<template>
+  <div class="thinwrap">
+    <el-card>
+      <div slot="header"><span>接收评价任务</span></div>
+      <el-row>
+        <el-form ref="form" :model="form" :rules="formRules" label-width="120px">
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item label="评价任务名称：" prop="name">
+                <el-select v-model="form.name" style="width:100%;" clearable>
+                  <el-option v-for="item in myAllTaskName" :key="item" :label="item" :value="item"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="分配时间：" prop="dateValue">
+                <el-date-picker
+                  v-model="form.dateValue"
+                  type="daterange"
+                  style="width:100% !important;"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  value-format="yyyy-MM-dd">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-col>
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item label="任务状态：" prop="state">
+                <el-select v-model="form.state" style="width:100%;" clearable>
+                  <el-option label="全部" value="0"></el-option>
+                  <el-option label="待细化" value="1"></el-option>
+                  <el-option label="完成细化" value="2"></el-option>
+                  <el-option label="已提交" value="3"></el-option>
+                  <el-option label="退回" value="4"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12" class="btnalign">
+			  <el-button type="primary" :loading="queryLoading" @click="queryBtn">查 询</el-button>
+              <el-button type="primary" plain @click="resetForm('form')">清 空</el-button>
+            </el-col>
+          </el-col>
+        </el-form>
+      </el-row>
+
+      <div style="margin-top: 10px;margin-bottom: 15px;">
+        <span>评价任务列表</span>
+      </div>
+      <el-table :data="tableData" v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="evaluationTaskName" label="评价任务名称" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="effectDate" label="分配时间" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="receiveAttachments" label="任务状态">
+          <template slot-scope="scope">
+            <span v-if="scope.row.receiveAttachments[0].receiveTaskStatus === '1'">待细化</span>
+            <span v-if="scope.row.receiveAttachments[0].receiveTaskStatus === '2'">完成细化</span>
+            <span v-if="scope.row.receiveAttachments[0].receiveTaskStatus === '3'">已提交</span>
+            <span v-if="scope.row.receiveAttachments[0].receiveTaskStatus === '4'">退回</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作">
+          <template slot-scope="scope">
+            <el-button type="text" @click="taskDetails(scope)">任务详情</el-button>
+            <!-- <router-link :to="{ name: 'dataGovernance_qualityEvaluation_thinIndicator_trial'}"> -->
+              <el-button type="text" @click="trial(scope.row)" :disabled="scope.row.receiveAttachments[0].receiveTaskStatus !== '2'">试算</el-button>
+              <el-button type="text" @click="queryTrial(scope.row)" :disabled="scope.row.receiveAttachments[0].receiveTaskStatus !== '3'">查看试算</el-button>
+              <!-- </router-link> -->
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination v-if="myTabTotal" background :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="myTabTotal" @size-change="handleSizeChange" @current-change="handleCurrentChange">
+      </el-pagination>
+
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { listAll, allTaskName, deleteTemp } from '@/api/sys-monitoringAnalysis/evaluate/receiveTaskController.js'
+export default {
+  data() {
+    return {
+      tableDataLoading: false,
+      queryLoading: false,
+      myAllTaskName: [],
+      currentPage: 1,
+      form: {
+        name: '',
+        dateValue: '',
+        state: '0'
+      },
+      newForm: {
+        name: '',
+        dateValue: '',
+        state: '0'
+      },
+      pageNum: 1,
+      pageSize: 10,
+      myTabTotal: 0,
+      tableData: [],
+      chinaNull: /[\u4e00-\u9fa5]/, // 校验中文
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      englishNull: /[abcdefghijklmnopqrstuvwxyz]/im, // 校验英文
+      numberNull: /[1234567890]/im, // 校验数字
+      blankSpace: /[ ]/im, // 校验空格
+      formRules: {
+        name: [{ required: false, trigger: 'change' }],
+        dateValue: [{ required: false, trigger: 'change' }],
+        state: [{ required: false, trigger: 'change' }]
+      }
+    }
+  },
+  mounted() {
+    this.returnMemory()
+    this.dropDownData()
+    this.initQueryData()
+  },
+  methods: {
+    taskDetails(scope) {
+      this.sessionFn()
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_thinIndicator_detail',
+        query: {
+          id: scope.row.evaluationTaskId
+        }
+      })
+    },
+    returnMemory() {
+      if (sessionStorage.getItem('returnMemoryJyl') && JSON.parse(sessionStorage.getItem('returnMemoryJyl')).returnBtn === 'Y') {
+        const obj = JSON.parse(sessionStorage.getItem('returnMemoryJyl'))
+        this.form = obj.form
+        this.newForm = obj.form
+        this.pageNum = obj.pageNum
+        this.pageSize = obj.pageSize
+        sessionStorage.removeItem('returnMemoryJyl')
+      }
+    },
+    sessionFn() {
+      const obj = {
+        form: this.newForm,
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      sessionStorage.setItem('returnMemoryJyl', JSON.stringify(obj))
+    },
+    // 查看试算
+    queryTrial(val) {
+      this.sessionFn()
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_thinIndicator_queryTrial',
+        query: {
+          type: 'thinwrap',
+          evaluationTaskName: val.evaluationTaskName,
+          evaluationTaskId: val.evaluationTaskId
+        }
+      })
+    },
+    // 试算按钮
+    trial(val) {
+      this.sessionFn()
+      deleteTemp().then()
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_thinIndicator_trial',
+        query: {
+          evaluationTaskId: val.evaluationTaskId,
+          receiveTaskStatus: val.receiveAttachments[0].receiveTaskStatus,
+          evaluationTaskName: val.evaluationTaskName
+        }
+      })
+    },
+    dropDownData() {
+      allTaskName().then(res => {
+        if (res.code === 200) {
+          this.myAllTaskName = res.data
+        }
+      })
+    },
+    // 校验空格特殊字符
+    characterSpaceChecking(rule, value, callback) {
+      if (this.blankSpace.test(value)) {
+        callback(new Error('禁止输入空格'))
+      } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+        callback(new Error('禁止输入特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    resetForm(formName) { // 重置清空操作
+      this.$refs[formName].resetFields()
+      this.newForm = {
+        name: '',
+        dateValue: '',
+        state: '0'
+      }
+      this.pageNum = 1
+      // this.initQueryData()
+    },
+    getQueryParamter() {
+      const map = {
+        evaluationTaskName: this.form.name,
+        startDate: this.form.dateValue ? this.form.dateValue[0] : '',
+        endDate: this.form.dateValue ? this.form.dateValue[1] : '',
+        receiveTaskStatus: this.form.state,
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      return map
+    },
+    queryBtn() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.newForm = Object.assign({}, this.form)
+          this.queryLoading = true
+          this.initQueryData()
+        } else {
+          return false
+        }
+      })
+    },
+    // 查询接口
+    initQueryData() {
+      this.tableDataLoading = true
+      listAll(this.getQueryParamter()).then(res => {
+        if (res.code === 200) {
+          this.queryLoading = false
+          this.myTabTotal = res.data.total
+          this.tableData = res.data.list
+        } else {
+          this.queryLoading = false
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.queryLoading = false
+        this.tableDataLoading = false
+      })
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.pageNum = 1
+      this.initQueryData()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.initQueryData()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.thinwrap {
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

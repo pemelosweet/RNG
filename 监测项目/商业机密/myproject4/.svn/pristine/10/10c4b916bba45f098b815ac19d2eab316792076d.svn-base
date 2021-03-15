@@ -1,0 +1,508 @@
+<template>
+  <div class="dataCycleQuery" v-loading="loading" element-loading-text="拼命加载中" element-loading-background="rgba(0, 0, 0, 0.4)">
+    <el-card>
+      <div slot="header">
+        <span>数据迁移</span>
+        <el-button style="float:right;font-size:14px" type="text" @click="add">申请数据迁移</el-button>
+      </div>
+      <el-form :model="myform" ref="forms" label-width="120px" :rules="rules">
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="申请单号：" prop="applyNum">
+              <el-input v-model="myform.applyNum" maxlength="12" placeholder="请输入申请单号，最长为12字符"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="迁移申请人：" prop="relocationApplicant">
+              <el-input v-model="myform.relocationApplicant" maxlength="10" placeholder="请输入迁移申请人，最长为10字符"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="8">
+            <el-form-item label="迁移申请时间：" prop="transferTime">
+              <el-date-picker value-format="yyyy-MM-dd" v-model="myform.transferTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="审批人：" prop="approvers">
+              <el-input v-model="myform.approvers" maxlength="12" placeholder="请输入审批人，最长为12字符"></el-input>
+            </el-form-item>
+          </el-col>
+        <!-- </el-row>
+        <el-row> -->
+          <el-col :span="8">
+            <el-form-item label="审批时间：" prop="approvalTime">
+              <el-date-picker value-format="yyyy-MM-dd HH:mm:ss" v-model="myform.approvalTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="['00:00:00', '23:59:59']">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="审批状态：" prop="approvalStatus">
+              <el-select v-model="myform.approvalStatus" placeholder="请选择"  clearable>
+                <el-option v-for="item in approvalState" :key="item.value" :label="item.label" :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <!-- <el-row>
+          <el-col :span="8">
+            <el-form-item
+              label="迁移操作人："
+              prop="migrationOperator"
+            >
+              <el-input
+                maxlength="10"
+                placeholder="请输入审批人，最长为10字符"
+                v-model="myform.migrationOperator"
+              ></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row> -->
+        <el-row style="padding-bottom:10px">
+          <el-col :span="12" style="text-align:left;float:left">
+            <el-button type="primary" :loading="plainSubmit" @click="submitHandle" plain>提 交</el-button>
+          </el-col>
+          <el-col :span="12" style="text-align:right;float:right">
+            <el-button type="primary" @click="searchData">查 询</el-button>
+            <el-button @click="cleanUp" type="primary" plain>清 空</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <h4>
+        迁移申请列表：
+      </h4>
+      <el-table :data="tableData"
+       tooltip-effect="dark"
+       @selection-change="handleChange"
+       v-loading="loadingTable"
+       element-loading-text="拼命加载中"
+       element-loading-spinner="el-icon-loading"
+       element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" width="60" fixed="left" :selectable='selectInit'></el-table-column>
+        <el-table-column label="序号" type="index"></el-table-column>
+        <el-table-column label="申请单号" prop="applyNum" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移申请人" prop="relocationApplicant" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="迁移申请时间" min-width="230" show-overflow-tooltip prop="transTime"></el-table-column>
+        <el-table-column label="审批人" prop="approvers" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column label="审批状态" prop="approvalStatus" width="100" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{ scope.row.approvalStatus==='1'?
+              '审批中':scope.row.approvalStatus==='2'?
+              '审批通过':scope.row.approvalStatus==='3'?
+              '审批不通过':scope.row.approvalStatus==='4'?
+              '退回':scope.row.approvalStatus==='5'?
+              '未提交': null
+              }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="审批完成时间" prop="approvalStopTime" min-width="180" show-overflow-tooltip></el-table-column>
+        <!-- <el-table-column
+          label="迁移操作人"
+          prop="migrationOperator"
+          width="100"
+        ></el-table-column> -->
+        <el-table-column label="操作" width="250">
+          <template slot-scope="scope">
+            <el-button @click="details(scope)" type="text">查看详情</el-button>
+            <el-button :disabled="!(scope.row.approvalStatus=='3'||scope.row.approvalStatus==='4'||scope.row.approvalStatus==='5')" type="text" @click="modify(scope)">修 改</el-button>
+            <el-button @click="migration(scope)" :disabled="scope.row.transferStatus ==='1' || scope.row.approvalStatus !=='2'" type="text">执行数据迁移</el-button>
+            <el-button @click="deletemigration(scope)" :disabled="scope.row.approvalStatus ==='1' || scope.row.approvalStatus ==='2'" type="text">删 除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-row>
+
+        <el-col :span="12" style="text-align:right;float:right">
+          <el-pagination v-if="this.pageInfo.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background></el-pagination>
+        </el-col>
+
+      </el-row>
+    </el-card>
+    <monitor-workflow></monitor-workflow>
+  </div>
+</template>
+<script>
+import { noSpaceAndTs, onlyNumberValidate } from '@/utils/formValidate'
+import { getList, implement, approvalStaus, deleteList } from '@/api/sys-monitoringAnalysis/dataCycle/index'
+import { mapGetters } from 'vuex'
+export default {
+  data() {
+    return {
+      delArr: [],
+      delArrStr: [],
+      loading: false,
+      loadingTable: false,
+      plainSubmit: false,
+      approvalState: [
+        {
+          value: '1',
+          label: '审批中'
+        },
+        {
+          value: '2',
+          label: '审批通过'
+        },
+        {
+          value: '3',
+          label: '审批未通过'
+        },
+        {
+          value: '4',
+          label: '退回'
+        },
+        {
+          value: '5',
+          label: '未提交'
+        }
+      ],
+      myform: {
+        applyNum: '',
+        relocationApplicant: '',
+        transferTime: '',
+        approvers: '',
+        approvalTime: '',
+        approvalStatus: [],
+        migrationOperator: ''
+      },
+      rules: {
+        applyNum: [{ validator: onlyNumberValidate, trigger: 'blur' }],
+        relocationApplicant: [{ validator: noSpaceAndTs, trigger: 'blur' }],
+        approvers: [{ validator: noSpaceAndTs, trigger: 'blur' }],
+        migrationOperator: [{ validator: noSpaceAndTs, trigger: 'blur' }]
+      },
+
+      tableData: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      pickerOptions0: {
+        disabledDate(time) {
+          return time.getTime()
+          //  > Date.now() - 8.64e7
+        }
+      },
+      timer: null // 定时任务
+    }
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchDatadataCycIndex')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchDatadataCycIndex'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewdataCycIndex) {
+        this.pageInfo = searchData.pageInfo
+        this.myform = searchData.searchForm
+        this.loadingTable = true
+        this.searchData()
+      } else {
+        this.loadingTable = true
+        this.initList()
+      }
+      sessionStorage.removeItem('searchDatadataCycIndex')
+    } else {
+      this.loadingTable = true
+      this.initList()
+    }
+  },
+  computed: {
+    ...mapGetters(['businessFlag', 'workFlow2business', 'userInfo', 'institution']),
+    searchParams() {
+      const obj = Object.assign({}, this.myform, this.pageInfo)
+      if (obj.approvalTime) {
+        obj.approvalTime1 = obj.approvalTime[0]
+        obj.approvalTime2 = obj.approvalTime[1]
+      }
+      if (obj.transferTime) {
+        obj.transferTime1 = obj.transferTime[0]
+        obj.transferTime2 = obj.transferTime[1]
+      }
+      delete obj.transferTime
+      delete obj.approvalTime
+      return obj
+    }
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  methods: {
+    submitHandle() {
+      if (this.delArr.length > 0) {
+        if (this.delArr.approvalStatus === '4' || this.delArr.approvalStatus === '4') {
+          alert('未提交，退回')
+        }
+        this.callWorkFlow()
+      } else {
+        this.$message({
+          message: '请至少选择一条未提交或已退回的数据提交！',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 调取工作流
+    callWorkFlow() {
+      this.$store.dispatch('workFlow', { configCode: 'dataLifeCycleManage' })
+      this.$store.dispatch('openWorkFlow', true)
+    },
+    nextStep() {
+      const dataId = this.delArrStr.join(',')
+      this.plainSubmit = true
+      this.loading = true
+      approvalStaus(dataId, this.workFlow2business)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '提交成功',
+              duration: 6000
+            })
+            this.plainSubmit = false
+            this.loading = false
+            this.initList(this.searchParams)
+          } else {
+            this.$confirm(res.message, '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+          }
+        })
+        .then(() => {
+          this.searchData()
+        })
+        .catch(() => {
+          this.plainSubmit = false
+          this.loading = false
+        })
+    },
+    // 查询列表
+    initList() {
+      // this.loading = true
+      // const obj = this.pageInfo
+      // delete obj.total
+      getList(this.pageInfo)
+        .then(res => {
+          if (res.code === 200) {
+            this.pageInfo.total = res.data.data.total
+            this.loadingTable = false
+            if (res.data.data) {
+              const arr = res.data.data.list
+              arr.forEach(el => {
+                if (el.transferStartTime && el.transferStopTime) {
+                  el.transTime = el.transferStartTime + '~' + el.transferStopTime
+                }
+                if (el.approvalStartTime && el.approvalStopTime) {
+                  el.approvalTime = el.approvalStartTime + '~' + el.approvalStopTime
+                }
+              })
+              this.tableData = arr
+            } else {
+              this.tableData = []
+            }
+          } else {
+            // this.loading = false
+            this.loadingTable = false
+          }
+        })
+        .catch(() => {
+          // this.loading = false
+          this.loadingTable = false
+        })
+    },
+    // 清空
+    cleanUp() {
+      this.$refs.forms.resetFields()
+    },
+    // 查询
+    searchData() {
+      this.loadingTable = true
+      this.pageInfo.pageSize = 10
+      this.pageInfo.pageNum = 1
+      getList(this.searchParams)
+        .then(res => {
+          if (res.code === 200) {
+            this.pageInfo.total = res.data.data.total
+            this.loading = false
+            this.loadingTable = false
+            if (res.data.data) {
+              const arr = res.data.data.list
+              arr.forEach(el => {
+                if (el.transferStartTime && el.transferStopTime) {
+                  el.transTime = el.transferStartTime + '~' + el.transferStopTime
+                }
+                if (el.approvalStartTime && el.approvalStopTime) {
+                  el.approvalTime = el.approvalStartTime + '~' + el.approvalStopTime
+                }
+              })
+              this.tableData = arr
+            } else {
+              this.tableData = []
+            }
+          } else {
+            this.loading = false
+            this.loadingTable = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+          this.loadingTable = false
+        })
+    },
+
+    // 选择要删的数据
+    handleChange(val) {
+      this.delArrStr = []
+      for (let i = 0; i < val.length; i++) {
+        this.delArrStr.push(val[i].dataId)
+      }
+      this.delArr = val
+    },
+    add() {
+      this.$router.push({
+        name: 'dataCycle_add',
+        query: {
+          sign: 'new',
+          title: '新增'
+        }
+      })
+    },
+    details(scope) {
+      const searchDatadataCycIndex = {
+        pageName: this.$route.name,
+        pageInfo: this.pageInfo,
+        searchForm: this.myform
+      }
+      sessionStorage.setItem('searchDatadataCycIndex', JSON.stringify(searchDatadataCycIndex))
+      this.$router.push({
+        name: 'dataCycle_add',
+        query: {
+          sign: 'details',
+          title: '查看',
+          id: scope.row.dataId
+        }
+      })
+    },
+    modify(scope) {
+      const searchDatadataCycIndex = {
+        pageName: this.$route.name,
+        pageInfo: this.pageInfo,
+        searchForm: this.myform
+      }
+      sessionStorage.setItem('searchDatadataCycIndex', JSON.stringify(searchDatadataCycIndex))
+      this.$router.push({
+        name: 'dataCycle_add',
+        query: {
+          sign: 'modify',
+          title: '新增',
+          id: scope.row.dataId
+        }
+      })
+    },
+    migration(scope) {
+      this.loading = true
+      implement(scope.row).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.initList()
+          this.$message({
+            message: '执行成功',
+            type: 'success',
+            duration: 6000
+          })
+        } else {
+          this.loading = false
+        }
+      })
+        .catch(() => {
+          this.loading = false
+        })
+      // this.$router.push({
+      //   name: 'dataCycle_modify',
+      //   query: {
+      //     sign: 'modify',
+      //     title: '数据迁移'
+      //   }
+      // })
+    },
+    deletemigration(scope) {
+      this.$confirm('是否删除当前的数据?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          deleteList(scope.row.dataId).then(res => {
+            if (res.code === 200) {
+              this.initList()
+              this.$message({
+                message: '删除成功',
+                type: 'success',
+                duration: 6000,
+                showClose: true
+              })
+            } else {
+              this.$message({
+                message: res.message,
+                type: 'error',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+            duration: 6000,
+            showClose: true
+          })
+        })
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.loadingTable = true
+      this.initList()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.loadingTable = true
+      this.initList()
+    },
+    destroyed() {
+      // clearInterval(this.timer)
+    },
+
+    // 复选框操作
+    selectInit(row, index) {
+      if (row.approvalStatus !== '4' && row.approvalStatus !== '5') {
+        // 不可勾选
+        return false
+      } else {
+        // 可勾选
+        return true
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.dataCycleQuery {
+  .el-date-editor--daterange {
+    min-width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

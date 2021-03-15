@@ -1,0 +1,1225 @@
+<template>
+  <div class="conjointAnalysisAdd"
+   v-loading="loading"
+    element-loading-text="请耐心等待"
+    element-loading-spinner="el-icon-loading"
+
+    element-loading-background="rgba(0, 0, 0, 0.2)">
+    <el-card class="box-card">
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>{{publicName}}</span>
+      </div>
+      <el-form
+        ref="form"
+        :rules="rules"
+        :model="form"
+        label-width="200px"
+      >
+
+        <el-form-item
+          label="任务名称："
+          prop="analyseName"
+          class="itme-block"
+        >
+          <el-input
+            validate-event
+            :disabled="disForm"
+            maxlength="100"
+            v-model="form.analyseName"
+            placeholder="请输入任务名称，最多输入100字符"
+          ></el-input>
+        </el-form-item>
+        <div class="start-end">
+          <el-form-item
+            label="起止日期："
+            class="start"
+            prop="startTime"
+            :rules="[{ required: false, message: '开始时间不能为空', trigger: 'change' },
+          { validator: timeCheckStart, trigger: 'change' },]"
+          >
+            <el-date-picker
+            :disabled="disForm"
+              v-model="form.startTime"
+              type="date"
+              :picker-options="pickerOptions"
+              placeholder="开始日期"
+              format="yyyy 年 MM 月 dd 日"
+              value-format="yyyy-MM-dd"
+            ></el-date-picker>
+          </el-form-item>
+          <span>至</span>
+          <el-form-item
+            class="end"
+            label-width="10px"
+            prop="endTime"
+            :rules="[{validator: timeCheck, trigger: 'change'}]"
+          >
+            <el-date-picker
+              v-model="form.endTime"
+              :disabled="disForm"
+              type="date"
+              :picker-options="pickerOptions"
+              placeholder="结束日期"
+              format="yyyy 年 MM 月 dd 日"
+              value-format="yyyy-MM-dd"
+            ></el-date-picker>
+          </el-form-item>
+        </div>
+
+        <el-form-item
+          label="涉及分支机构："
+          class="itme-block"
+          prop="organDoList"
+        >
+          <el-select
+            filterable
+            v-model="form.organDoList"
+            :disabled="disForm"
+            multiple
+            placeholder="请选择"
+            @change="jgChange"
+          >
+            <el-option
+              v-for="(item,index) in organDoListData"
+              :key="index"
+              :label="item.codeName"
+              :value="item.codeId"
+            >
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <!-- <preliminary-judgment :lableWidth="200" :labelName="'涉罪类型：'" ref="judgment" judgmentOther="judgmentOther" ></preliminary-judgment>         -->
+        <el-form-item
+          label="简介："
+          class="itme-block"
+        >
+          <el-input
+          :disabled="disForm"
+            maxlength="200"
+            type="textarea"
+            v-model="form.brief"
+          ></el-input>
+        </el-form-item>
+
+        <el-form-item
+          label="附件："
+          class="itme-block"
+        >
+
+          <el-upload
+            class="upload-demo"
+            :disabled="disForm"
+            ref="Newupload"
+            :action="updataUrl1"
+            :on-success='upSuccess'
+            :before-upload="beforeAvatarUpload"
+            :on-preview="downFile"
+            :file-list="fileList1"
+            :on-remove="handleRemove"
+          >
+            <el-button
+            :disabled="disForm"
+              type="primary"
+              plain
+            >点击上传</el-button>
+          </el-upload>
+        </el-form-item>
+
+        <el-form-item
+          label="联系人："
+          class="itme-block"
+          prop="contact"
+        >
+          <el-input
+          :disabled="disForm"
+            maxlength="30"
+            v-model="form.contact"
+            placeholder=""
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="批量导入报文：">
+          <div>
+            <el-upload
+              :limit="1"
+              :disabled="disForm"
+              :on-exceed="handleExceed"
+              :beforeUpload="beforeAvatarUpload"
+              style="display: inline-block;"
+              class="upload-demo"
+              ref="upload"
+              :action="updataUrl2"
+              :file-list="mainFileList"
+              :on-success='handleSuccess'
+            >
+              <el-button
+              :disabled="disForm"
+                slot="trigger"
+                type="primary"
+                plain
+              >选取文件</el-button>
+              <!-- <el-button style="margin-left: 10px;" type="success" plain>导入</el-button> -->
+              <el-button
+              :disabled="disForm"
+                type="primary"
+                icon="el-icon-download"
+                plain
+                @click="download"
+              >模版下载</el-button>
+              <el-button
+              :disabled="disForm"
+                style="margin-left:0;"
+                type="primary"
+                plain
+                @click="addSingle"
+              >添加一行</el-button>   
+            </el-upload>
+          </div>
+          <el-table :data="form.tableData" max-height="500px" style="margin-left: -100px;" border>
+            <el-table-column type="index" label="序号" width="60" ></el-table-column>
+            <el-table-column label="报文名称" min-width="120" prop="taskName"></el-table-column>
+            <el-table-column label="涉及分支机构" min-width="120"  prop="orgKey"></el-table-column>
+            <el-table-column label="分发时间" min-width="120"  prop="distributesTime"></el-table-column>
+            <el-table-column label="开始分析时间" min-width="150"  prop="startAnalyseTime"></el-table-column>
+            <el-table-column label="结束分析时间" min-width="150"  prop="endAnalyseTime"></el-table-column>
+            <el-table-column label="状态" min-width="80"  prop="taskStatus">
+              <template slot-scope="scope">
+                <div>
+                  {{scope.row.taskStatus ==='1'?'分析中':scope.row.taskStatus ==='2'?'分析完成':scope.row.taskStatus ==='3'?'申请上报分析':'已分发'}}
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="是否需上报分析" min-width="150"  prop="isReport">
+              <template slot-scope="scope">
+                <div>
+                  {{scope.row.isReport === '1'?'是':'否'}}
+                </div>
+              </template></el-table-column>                               
+            <el-table-column
+              label="操作"
+              min-width="200"
+            >
+              <template slot-scope="scope">
+                <el-button
+                  type="text"
+                  :disabled="scope.row.taskStatus==='1'||scope.row.taskStatus==='2'||scope.row.taskStatus==='3' || isEnd"
+                  @click="startFen(scope.row)"
+                >开始分析</el-button>
+                <el-button
+                  type="text"
+                  :disabled="scope.row.taskStatus!=='1' || isEnd"
+                  @click="stopFen(scope.row)"
+                >结束分析</el-button>
+                <el-button
+                  :disabled="scope.row.taskStatus==='4' || scope.row.taskStatus ==='2' || isEnd"
+                  type="text"
+                  @click="toFen(scope.row)"
+                >申请上报分析</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <!-- <el-button v-if="isMore" type="primary" @click="more">查看更多</el-button>  -->
+        </el-form-item>
+        <el-dialog title="任务信息" :visible.sync="editVisible" width="60%">
+            <el-form ref="formMain" :model="formMain">
+              <el-form-item label="报文名称：" label-width="200px" prop="taskName" :rules="[{required: true, validator: delDataValidInput, trigger: 'blur'}]">
+                  <el-input v-model="formMain.taskName" maxlength="50"  placeholder="请输入报文名称,最多输入50字符"></el-input>
+              </el-form-item>
+              <el-form-item label="是否需上报分析：" :rules="[{required: true, trigger: 'blur'}]" label-width="200px">
+                  <el-select
+                    clearable
+                    v-model="formMain.isReport"
+                    placeholder="请选择"
+                  >
+                    <el-option
+                      v-for="(item,index) in options"
+                      :key="index"
+                      :label="item.label"
+                      :value="item.value"
+                    >
+                    </el-option>
+                  </el-select>
+              </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="editVisible = false">取 消</el-button>
+                <el-button type="primary" @click="saveEdit('formMain')">确 定</el-button>
+            </span>
+        </el-dialog>
+
+      </el-form>
+      <div style="text-align: center">
+          <el-button
+            type="primary"
+            @click="$router.back(-1)"
+          >返回</el-button>
+        </div>
+      <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import { getToken } from '@/utils/auth'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import {
+  newBranch,
+  branch,
+  analyst,
+  analystUpdate,
+  approvalStaus,
+  centerInsert,
+  stopTask,
+  changeStatus
+} from '@/api/sys-monitoringAnalysis/sendTaskInfo/index.js'
+import { delAttach, getInfoById } from '@/api/sys-monitoringAnalysis/sendTaskInfo/list.js'
+import { common_Validate, commonPattern } from '@/utils/formValidate'
+export default {
+  data() {
+    return {
+      pickerMinDate: '',
+      pickerOptions: {
+
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7 // 禁用以前的日期，今天不禁用
+          // return date.getTime() <= Date.now();    //禁用今天以及以前的日期
+        }
+
+      },
+      publicName: '新建分析任务',
+      formMain: {
+        taskName: '', // 报文名称
+        orgKey: '', // 涉及分支机构
+        distributesTime: '', // 分发时间
+        startAnalyseTime: '', // 开始分析时间
+        endAnalyseTime: '', // 结束分析时间
+        taskStatus: '', // 状态
+        isReport: '' // 是否需上报研判
+      },
+      stopTaskInfo: true,
+      disForm: false,
+      options: [{
+        value: '0',
+        label: '否'
+      }, {
+        value: '1',
+        label: '是'
+      }],
+      sjjg: [],
+      fenZHiCN: [],
+      editVisible: false,
+      isEdit: false,
+      idx: -1,
+      num: 0,
+      isMore: false,
+      temporaryData: [],
+      check: null,
+      isName: true,
+      bc: 'jointAnalysis:query:operatorrelease',
+      loading: false,
+      isBlock: true, // 是否显示保存按钮
+      permissive: true,
+      fileList1: [],
+      mainFileList: [],
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      dialogJudgmentData: [],
+      form: {
+        analyseId: '',
+        analyseName: '', // 联合分析名称：
+        startTime: '',
+        endTime: '',
+        informationDOS: [], // 账户信息
+        organDoList: [],
+        contact: '',
+        brief: '',
+        preliminaryJudgmeStr: '',
+        tableData: []
+      },
+      id: '',
+      index: 0,
+      checkIndex: 0,
+      preliminaryJudgmeStr2: [],
+      urldata: '',
+      organDoListData: [],
+      typeId: [],
+      token: getToken(),
+      rules: {
+        analyseName: [{ required: true, validator: common_Validate, trigger: 'blur' }],
+        supplementOne: [{ required: true, validator: common_Validate, trigger: 'blur' }],
+        supplementTwo: [{ required: true, validator: common_Validate, trigger: 'blur' }],
+        // startTime: [{ required: true, message: '开始日期不能为空', trigger: 'blur' }],
+        organDoList: [
+          { type: 'array', required: true, message: '至少选择一个涉及分支机构', trigger: 'change' }
+        ],
+        contact: [{ required: true, validator: common_Validate, trigger: 'blur' }],
+        tableData: {
+          name: [{ required: true, message: '主体名称不能为空', trigger: 'blur' }]
+        }
+      },
+      isEnd: false
+    }
+  },
+  mounted() {
+    if (this.$route.query.status === '1') {
+      this.disForm = false
+      this.publicName = '编辑分析任务'
+      this.id = this.$route.query.analyseId
+      this.getInfo(this.id)
+    }
+    if (this.$route.query.status === '2') {
+      this.disForm = true
+      this.isEnd = true
+      this.publicName = '查看分析任务'
+      this.id = this.$route.query.analyseId
+      this.getInfo(this.id)
+    }
+    if (this.$route.query.status === '3') {
+      this.disForm = true
+      this.publicName = '查看分析任务'
+      this.id = this.$route.query.analyseId
+      this.getInfo(this.id)
+    }
+    if (this.$route.query.isView === '1') {
+      this.disForm = true
+      this.publicName = '查看分析任务'
+      this.id = this.$route.query.id
+      this.getInfo(this.id)
+    }
+    this.isCenter1()
+    this.getBranch()
+    this.getTypeId()
+    this.getDictionary('TOSC')
+  },
+  computed: {
+    checkTrue() {
+      this.check = true
+      this.checkIndex = 0
+      const arr = []
+      if (this.form.tableData.length > 0 && this.sjjg.length > 0) {
+        this.sjjg.forEach(el => {
+          arr.push(el.codeName)
+        })
+        this.form.tableData.forEach(el => {
+          if (arr.indexOf(el.branchBankName) === -1) {
+            this.check = false
+          }
+        })
+      }
+
+      return this.check
+    },
+    newForm() {
+      const arr = []
+      const arry = this.form.organDoList
+      arry.forEach(item => {
+        const object = {}
+        object.orgKey = item
+        arr.push(object)
+      })
+      // this.form.organDoList = arr
+      const obj = Object.assign({}, this.form)
+      obj.analyseTaskOrgkeyDos = arr
+      delete obj.tableData
+      delete obj.organDoList
+      return obj
+    },
+    // preliminaryJudgmeStr1() {
+    //   return this.$refs.judgment.searchParams.join()
+    // },
+    ...mapGetters([
+      'businessFlag',
+      'permissions_routers',
+      'workFlow2business',
+      'userInfo',
+      'institution'
+    ]),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    },
+    updataUrl1() {
+      return `monitor/analyse-task/upAttach?analyseId=${this.urldata}&token=${this.token}`
+    },
+    updataUrl2() {
+      return `monitor/analyse-task/upFileMessage?token=${this.token}`
+    }
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  methods: {
+    startFen(scope) {
+      this.$confirm('确定开始分析任务?', '提示', {
+        distinguishCancelAndClose: true,
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        const obj = {
+          taskId: scope.taskId,
+          type: '1'
+        }
+        changeStatus(obj).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '开始分析任务成功',
+              showClose: true,
+              duration: 6000,
+              type: 'success'
+            })
+            getInfoById(this.id).then(res => {
+              this.form.tableData = res.data.informationDOS
+            })
+          }
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'success',
+          message: '已取消开始分析任务',
+          showClose: true,
+          duration: 6000
+        })
+      })
+    },
+    stopFen(scope) {
+      this.$confirm('确定结束分析任务?', '提示', {
+        distinguishCancelAndClose: true,
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        const obj = {
+          taskId: scope.taskId,
+          type: '2'
+        }
+        changeStatus(obj).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '结束分析任务成功',
+              showClose: true,
+              duration: 6000,
+              type: 'success'
+            })
+            getInfoById(this.id).then(res => {
+              this.form.tableData = res.data.informationDOS
+            })
+          }
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'success',
+          message: '已取消结束分析任务',
+          showClose: true,
+          duration: 6000
+        })
+      })
+    },
+    toFen(scope) {
+      this.$confirm('确定申请上报分析?', '提示', {
+        distinguishCancelAndClose: true,
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        const obj = {
+          taskId: scope.taskId,
+          type: '3'
+        }
+        changeStatus(obj).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '申请上报分析成功',
+              showClose: true,
+              duration: 6000,
+              type: 'success'
+            })
+            this.$router.push({
+              name: 'judgedClues_index'
+            })
+          }
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'success',
+          message: '已取消申请上报分析',
+          showClose: true,
+          duration: 6000
+        })
+      })
+    },
+    // 结束分析任务
+    stopTask(scope) {
+      this.$confirm('确定结束分析任务?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true
+        const obj = {
+          type: '2',
+          analyseId: this.form.analyseId
+        }
+        stopTask(obj).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '结束分析任务成功',
+              showClose: true,
+              duration: 6000,
+              type: 'success'
+            })
+            this.loading = false
+            this.$router.push({ path: '/sendTaskInfo/searchTaskInfo' })
+          }
+        }).catch(() => {
+          this.loading = false
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'success',
+          message: '已取消结束分析任务',
+          showClose: true,
+          duration: 6000
+        })
+      })
+    },
+    // 回显
+    getInfo(id) {
+      getInfoById(id).then(res => {
+        this.form.analyseId = res.data.analyseId
+        this.form.analyseName = res.data.analyseName
+        this.form.startTime = res.data.startTime
+        this.form.endTime = res.data.endTime
+        const arr = []
+        res.data.analyseTaskOrgkeyDos.forEach(item => {
+          arr.push(item.orgKey)
+        })
+        this.form.organDoList = arr
+        this.form.brief = res.data.brief
+        this.form.contact = res.data.contact
+        this.form.tableData = res.data.informationDOS
+        if (res.data.attachDoList !== undefined) {
+          res.data.attachDoList.forEach(el => {
+            var obj = {}
+            obj.name = el.attachName
+            obj.id = el.attachId
+            this.fileList1.push(obj)
+          })
+        }
+        this.jgChange()
+        if (res.data.status === '3') {
+          this.stopTaskInfo = false
+        } else if (res.data.status === '2') {
+          this.isEnd = true
+        }
+      })
+    },
+    // 分支行只能选择所选涉及机构
+    jgChange() {
+      this.sjjg = []
+      this.fenZHiCN = []
+      this.form.organDoList.forEach(el => {
+        this.organDoListData.forEach(item => {
+          if (el === item.codeId) {
+            this.sjjg.push(item)
+            this.fenZHiCN.push(item.codeName)
+          }
+        })
+      })
+    },
+    // 判断保存按钮是否显示
+    isCenter1() {
+      if (this.isCenter) {
+        if (this.permissions_routers.indexOf(this.bc) !== -1) {
+          this.isName = true
+          this.isBlock = false
+        } else {
+          this.isName = false
+          this.isBlock = true
+        }
+      } else {
+        this.isName = false
+      }
+    },
+    isValidInput(rule, value, callback) {
+      if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    // 数字检查
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length > 30) {
+          callback(new Error('内容应在30字符以内'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    timeCheck(rule, value, callback) {
+      if (this.form.startTime && value) {
+        const time1 = new Date(this.form.startTime)
+        const time2 = new Date(value)
+        if (time1 > time2) {
+          callback(new Error('结束时间必须大于开始时间'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    timeCheckStart(rule, value, callback) {
+      if (this.form.endTime) {
+        const time1 = new Date(this.form.endTime)
+        const time2 = new Date(value)
+        if (time1 < time2) {
+          callback(new Error('结束时间必须大于开始时间'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 证件
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== '' && value !== null) {
+        if (
+          this.formMain.certificateType ===
+            '110003' ||
+          this.formMain.certificateType ===
+            '110001'
+        ) {
+          if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else if (value.length !== 15 && value.length !== 18) {
+            callback(new Error('身份证件格式标准为15及18位'))
+          } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+            callback(new Error('内容不能填写特殊字符'))
+          } else {
+            callback()
+          }
+        } else {
+          if (value.length <= 5 || value.length >= 129) {
+            callback(new Error('内容应在6-128位之间'))
+          } else if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    // 上传文件提示
+    handleExceed(files, fileList) {
+      this.$message.warning(
+        `当前限制选择 1 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length +
+          fileList.length} 个文件，如要更换上传文件，请先删除已上传的文件。`
+      )
+    },
+    // 设置文件大小和格式
+    beforeAvatarUpload(file) {
+      // var testmsg = file.name.substring(file.name.lastIndexOf('.') + 1)
+      // const extension = testmsg === 'xls'
+      // const extension2 = testmsg === 'xlsx'
+      const isLt2M = file.size / 1024 / 1024 < 100
+      // if (!extension && !extension2) {
+      //   this.$message({
+      //     message: '上传文件只能是 xls、xlsx格式!',
+      //     type: 'warning'
+      //   })
+      // }
+      if (!isLt2M) {
+        this.$message({
+          message: '上传文件大小不能超过 100MB!',
+          type: 'warning'
+        })
+      }
+      return isLt2M
+    },
+    // 判断上传附件不能名字相同
+    beforeAvatarUpload1(file) {
+      this.fileList1.push(file)
+      const isName = this.isFileNameSame(this.fileList1)
+      const w = !isName
+      if (isName) {
+        this.$message({
+          message: '上传的文件名称不能重复',
+          type: 'warning'
+        })
+        this.fileList.splice(this.fileList.length - 1, 1)
+        return w
+      }
+      var testmsg = file.name.substring(file.name.lastIndexOf('.') + 1)
+      const extension = testmsg === 'xls'
+      const extension2 = testmsg === 'xlsx'
+      const isLt2M = file.size / 1024 / 1024 < 10
+      if (!extension && !extension2) {
+        this.$message({
+          message: '上传文件只能是 xls、xlsx格式!',
+          type: 'warning'
+        })
+      }
+      if (!isLt2M) {
+        this.$message({
+          message: '上传文件大小不能超过 10MB!',
+          type: 'warning'
+        })
+      }
+      if ((!extension && !extension2) || !isLt2M) {
+        this.fileList1.splice(this.fileList1.length - 1, 1)
+      }
+      return extension || (extension2 && isLt2M && w)
+    },
+    isFileNameSame(arr) {
+      const hash = {}
+      for (const i in arr) {
+        if (hash[arr[i].name]) {
+          return true
+        }
+        hash[arr[i].name] = true
+      }
+      return false
+    },
+    // 删除附件
+    handleRemove(file, fileList) {
+      if (file && file.status === 'success') {
+        this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId + '?moduleName=' + '联合分析'
+        delAttach('', this.delUrl).then(res => {
+          this.$message({
+            message: '删除附件成功',
+            type: 'success'
+          })
+        })
+      }
+    },
+    // 判断是中心用户还是分支机构用户
+    judge() {
+      if (this.checkTrue) {
+        if (this.isCenter) {
+          if (this.permissions_routers.indexOf(this.bc) !== -1) {
+            this.centerInsert('form')
+          } else {
+            this.callWorkFlow()
+          }
+        } else {
+          this.callWorkFlow()
+        }
+      } else {
+        this.$message({
+          message: '主体账户所在的分支机构需在涉及分支机构内',
+          type: 'error'
+        })
+      }
+    },
+    // 调取工作流
+    callWorkFlow() {
+      this.$refs['form'].validate(valid => {
+        if (valid) {
+          this.$store.dispatch('workFlow', { configCode: 'jointAnalysis' })
+          this.$store.dispatch('openWorkFlow', true)
+        } else {
+          return false
+        }
+      })
+    },
+    nextStep() {
+      this.form.mainDoList = this.form.tableData // 获取的数据
+      this.loading = true
+      approvalStaus(this.newForm, this.workFlow2business)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.$message({
+              type: 'success',
+              message: res.message
+            })
+            this.$router.push({ name: 'conjointAnalysis_list' })
+          } else {
+            this.loading = false
+            this.$confirm(res.message, '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 初步判断为1401 1402 的时候  返回的数据
+    judgmentOther(inp1, inp2) {
+      this.form.preliminaryJudgmentInp1 = inp1
+      this.form.preliminaryJudgmentInp2 = inp2
+    },
+    // 获取分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.organDoListData = res.data.list
+        }
+      })
+    },
+    // 获取证件类型
+    getTypeId() {
+      newBranch('SFZJ').then(res => {
+        if (res.code === 200) {
+          this.typeId = res.data
+        }
+      })
+    },
+    // 获取涉罪类型
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 下载模板
+    download() {
+      window.location.href = '/analyse-task/download?token=' + this.token
+    },
+    // 下载附件
+    downFile(file) {
+      // window.location.href = '/file-service/joint-analysis/download?token=' + this.token + '&fileId=' + file.id
+      // window.location.href = '/file-service/upload/download?fileId=' + file.id + '&token=' + this.token
+      location.href = '/file-service/upload/download/' + file.id
+    },
+    // 上传文件
+    upSuccess(res, file) {
+      if (res.code === 200) {
+        this.form.jointId = res.data.noteId
+        this.urldata = this.form.jointId
+        this.$message({
+          message: '上传成功！',
+          type: 'success'
+        })
+      } else {
+        this.$message({
+          message: res.message,
+          type: 'error'
+        })
+      }
+    },
+    // 选择文件
+    handleSuccess(res, file) {
+      if (res.code === 200) {
+        this.form.tableData = this.form.tableData.concat(res.data.mainDoList)
+        // const arrLength = res.data.mainDoList.length // 获取返回的数组的长度
+        // const arr = res.data.mainDoList
+        // if (arrLength < 10) {
+        //   this.form.tableData = this.form.tableData.concat(res.data.mainDoList)
+        // } else {
+        //   this.isMore = true
+        //   this.form.tableData = this.form.tableData.concat(res.data.mainDoList.slice(0, 10))
+        //   this.temporaryData = arr.slice(10, arrLength) // 数据暂存起来
+        //   this.num = this.temporaryData.length
+        // }
+        this.$message({
+          message: '上传成功！',
+          type: 'success'
+        })
+      } else {
+        this.mainFileList.splice(this.fileList1.length - 1, 1)
+        this.$message({
+          message: res.message,
+          type: 'error'
+        })
+      }
+    },
+    more() {
+      const arrLength = this.temporaryData.length
+      if (arrLength < 10) {
+        this.form.tableData = this.form.tableData.concat(this.temporaryData)
+        this.temporaryData = []
+        this.isMore = false
+      } else {
+        this.form.tableData = this.form.tableData.concat(this.temporaryData.slice(0, 10))
+        this.temporaryData = this.temporaryData.slice(10, arrLength)
+        this.num = this.temporaryData.length
+      }
+    },
+    // 新增保存
+    saveEdit(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.formMain.orgKey = this.fenZHiCN.join(',')
+          const obj = Object.assign({}, this.formMain)
+          if (this.isEdit) {
+            this.$set(this.form.tableData, this.idx, obj)
+            this.$message.success(`编辑任务信息第 ${this.idx + 1} 行成功`)
+            this.isEdit = false
+          } else {
+            this.form.tableData.unshift(obj)
+          }
+          this.editVisible = false
+        } else {
+          return false
+        }
+      })
+    },
+    // 添加一条主体账户信息
+    addSingle() {
+      if (this.form.organDoList.length === 0) {
+        this.$message({
+          type: 'error',
+          message: '请先选择涉及分支机构',
+          showClose: true,
+          duration: 6000
+        })
+      } else {
+        this.editVisible = true
+        this.$refs.formMain.clearValidate()
+        this.$refs.formMain.resetFields()
+        this.formMain = {
+          taskName: '', // 报文名称
+          orgKey: '', // 涉及分支机构
+          distributesTime: '', // 分发时间
+          startAnalyseTime: '', // 开始分析时间
+          endAnalyseTime: '', // 结束分析时间
+          taskStatus: '', // 状态
+          isReport: '' // 是否需上报研判
+        }
+      }
+    },
+
+    // 修改一条主体账户信息
+    editItem(index, item) {
+      this.editVisible = true
+      this.isEdit = true
+      this.idx = index
+      this.formMain = {
+        taskName: item.taskName,
+        orgKey: item.orgKey,
+        branchBankName: item.branchBankName,
+        distributesTime: item.distributesTime,
+        startAnalyseTime: item.startAnalyseTime,
+        endAnalyseTime: item.endAnalyseTime,
+        taskStatus: item.taskStatus,
+        isReport: item.isReport
+      }
+      this.index = 0
+      // this.sjjg.forEach(el => {
+      //   if (this.formMain.branchBank === el.codeId) {
+      //     this.index++
+      //   }
+      // })
+      // if (this.index > 0) {
+      //   return
+      // } else {
+      //   this.formMain.branchBank = ''
+      // }
+    },
+
+    delItem(index) {
+      this.$confirm('确定要删除选中的数据 ?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.form.tableData.splice(index, 1)
+          this.$message({
+            message: '删除成功',
+            type: 'success'
+          })
+        })
+        .catch(() => {})
+    },
+    // 中心机构直接发布
+    centerInsert(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.form.informationDOS = this.form.tableData // 获取的数据
+          analyst(this.newForm)
+            .then(res => {
+              if (res.code === 200) {
+                const obj = {
+                  analyseId: res.data.analyseId,
+                  analyseName: this.form.analyseName
+                }
+                centerInsert(obj).then(response => {
+                  if (response.code === 200) {
+                    this.$message({
+                      message: '发布分析任务成功',
+                      showClose: true,
+                      duration: 6000,
+                      type: 'success'
+                    })
+                    this.loading = false
+                    this.$router.push({ path: '/sendTaskInfo/searchTaskInfo' })
+                  }
+                })
+              } else {
+                this.loading = false
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          return false
+        }
+      })
+    },
+    // 保存
+    publish(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.form.informationDOS = this.form.tableData
+          analyst(this.newForm)
+            .then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  message: '新建分析任务成功',
+                  showClose: true,
+                  duration: 6000,
+                  type: 'success'
+                })
+                this.$router.push({ path: '/sendTaskInfo/searchTaskInfo' })
+                this.loading = false
+              } else {
+                this.loading = false
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          return false
+        }
+      })
+      // this.$refs[formName].validate((valid) => {
+      //   if (valid) {
+      //     this.getPreliminaryJudgmeStr()
+      //     const arr = []
+      //     const arry = this.form.organDoList
+      //     const obj = {}
+      //     arry.forEach(item => {
+      //       obj.organId = item
+      //       arr.push(obj)
+      //     })
+      //     this.form.organDoList = arr
+      //     this.form.mainDoList = this.form.tableData
+      //     analyst(this.newForm).then(res => {
+      //       // alert(res.code)
+      //       this.$router.push({ name: 'conjointAnalysis_list' })
+      //     })
+      //   } else {
+      //     return false
+      //   }
+      // })
+    },
+    // 编辑
+    update(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.form.informationDOS = this.form.tableData
+          analystUpdate(this.newForm)
+            .then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  message: '保存分析任务成功',
+                  showClose: true,
+                  duration: 6000,
+                  type: 'success'
+                })
+                this.$router.push({ path: '/sendTaskInfo/searchTaskInfo' })
+                this.loading = false
+              } else {
+                this.loading = false
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          return false
+        }
+      })
+    }
+  }
+}
+</script>
+<style rel="stylesheet/scss" lang="scss">
+.conjointAnalysisAdd {
+  .el-select {
+    display: block;
+  }
+  .line {
+    text-align: center;
+  }
+  // .el-checkbox-group label:first-child {
+  //   margin-left: 30px;
+  // }
+  .itme-block {
+    width: 84%;
+  }
+  .start-end {
+    .start {
+      width: 400px;
+      display: inline-block;
+    }
+    .end {
+      display: inline-block;
+      width: 400px;
+    }
+  }
+
+  .el-table thead tr th {
+    padding: 8px 0;
+  }
+  .el-table .el-table__row td {
+    height: 62px;
+    padding: 14px 0 0 0;
+    .cell {
+      height: 100%;
+      .el-form-item {
+        margin-bottom: 0;
+      }
+    }
+  }
+  .upload-demo {
+    margin-bottom: 5px;
+  }
+  .inline-input {
+    margin-left: 30px;
+  }
+}
+</style>

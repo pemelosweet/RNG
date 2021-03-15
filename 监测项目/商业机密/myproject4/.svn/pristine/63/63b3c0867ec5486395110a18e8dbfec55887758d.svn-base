@@ -1,0 +1,431 @@
+<template>
+  <div class="indicatorWay">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>{{titleName}}</span>
+      </div>
+      <el-form ref="tabForm" :model="tabForm" class="clearfix">
+        <el-table :data="tabForm.tableData" :span-method="objectSpanMethod" border>
+          <el-table-column prop="integrationFirstTarget" min-width="50px" label="一级指标" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <span>{{scope.row.integrationFirstTarget}}（{{scope.row.firstWeight}}）</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="targetName" label="二级指标" min-width="120px">
+            <template slot-scope="scope">
+              <span v-if="weightAdjustment === false">{{scope.row.targetName}}（{{scope.row.giftWeight+'%'}}）</span>
+              <el-form-item v-if="weightAdjustment" :label="scope.row.targetName" label-width="150px" :prop="'tableData.' + scope.$index + '.giftWeight'" :rules="[{required: true, message: '请输入权重', trigger: 'blur'},{ validator: validateNumber, trigger: 'blur'}]">
+                <el-input v-model="scope.row.giftWeight" style="width:50%" maxlength="4"></el-input><span>{{' %'}}</span>
+              </el-form-item>
+            </template>
+          </el-table-column>
+          <el-table-column prop="grading" label="指标分值分布说明" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="officeName" label="处室" show-overflow-tooltip></el-table-column>
+          <!-- <el-table-column label="是否选用">
+            <template slot-scope="scope">
+              <el-checkbox v-model="arrType[scope.$index]"></el-checkbox>
+            </template>
+          </el-table-column> -->
+        </el-table>
+      </el-form>
+      <el-row style="margin-top: 10px;">
+        <el-col :span="12" v-if="$route.query.type === '2'">
+          <el-button type="primary" :loading="saveSendLoading" @click="saveSend">保存并生成评价结果</el-button>
+          <el-button type="primary" :disabled="$route.query.isType === 3 || $route.query.isType === '3'" v-if="!weightAdjustment" @click="openWeight">调整权重</el-button>
+          <el-button type="primary" v-if="weightAdjustment" @click="closeWeight">取消调整</el-button>
+          <el-button type="primary" v-if="$route.query.userName" @click="trial">试算</el-button>
+        </el-col>
+        <el-col :span="12" v-if="$route.query.type === '2'" class="btnalign">
+          <el-button type="primary" @click="download">下载</el-button>
+          <el-button type="primary" plain @click="routerBack">返回</el-button>
+        </el-col>
+        <el-col :span="24" v-if="$route.query.type === '1'" class="btnalign">
+          <el-button type="primary" @click="download">下载</el-button>
+          <el-button type="primary" plain @click="routerBack">返回</el-button>
+        </el-col>
+      </el-row>
+
+      <el-dialog title="录入版本：" :visible.sync="dialogVisible" width="30%" @open="openDia">
+        <el-form :model="newDiaForm" ref="newDiaForm">
+          <el-form-item prop="name" :rules="[{required: true, message: '请输入版本号', trigger: 'blur'}]">
+            <el-input v-model="newDiaForm.name" placeholder="输入格式例如：V1.0，最多输入15位" maxlength="15"></el-input>
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="weightPreservation" :loading="weightPreservationLoading">确定</el-button>
+        </span>
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { integratedIndicatorProgram, saveAndSend } from '@/api/sys-monitoringAnalysis/evaluate/integratedEvaluationController.js'
+export default {
+  data() {
+    return {
+      weightPreservationLoading: false,
+      saveSendLoading: false,
+      titleName: '',
+      arrType: [],
+      chinaNull: /[\u4e00-\u9fa5]/, // 校验中文
+      specialEnglish: /[`~!@#$^&*()_+%<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      englishNull: /[abcdefghijklmnopqrstuvwxyz]/im, // 校验英文
+      numberNull: /[1234567890]/im, // 校验数字
+      blankSpace: /[ ]/im, // 校验空格
+      weightAdjustment: false,
+      dialogVisible: false, // 弹框
+      tabForm: {
+        tableData: []
+      },
+      spanArr: [],
+      pos: '',
+      oldData: [],
+      newDiaForm: {
+        name: ''
+      },
+      newForm: {
+        name: ''
+      },
+      baoType: false
+    }
+  },
+  mounted() {
+    this.initData()
+  },
+  destroyed() {
+    if (this.$route.name !== 'dataGovernance_qualityEvaluation_result') {
+      if (sessionStorage.getItem('returnMemoryJyl')) {
+        sessionStorage.removeItem('returnMemoryJyl')
+      }
+    }
+  },
+  methods: {
+    trial() {
+      // const arr = []
+      // this.form.tableData.forEach(v => {
+      //   arr.push(v.targetId)
+      // })
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_thinIndicator_queryTrial',
+        query: {
+          type: 'indicatorWay',
+          // quanzhong: '1',
+          evaluationTaskId: this.$route.query.id,
+          evaluationTaskName: this.$route.query.name
+          // officeStaff: this.$route.query.officeStaff,
+          // officeName: this.$route.query.officeName,
+          // feedBackStatus: this.$route.query.feedBackStatus,
+          // officeStaffId: this.$route.query.officeStaffId,
+          // evaluationDate: this.ininData.evaluationDate,
+          // targetIdList: arr.join()
+        }
+      })
+    },
+    openDia() {
+      this.newDiaForm.name = ''
+    },
+    //
+    // aaaaaaaa() {
+    //   indicatorWay(this.titleName)
+    // },
+    // 下载
+    download() {
+      this.baoType = true
+      location.href = `/monitor/integratedEvaluation/downloadExcel/${this.titleName.slice(0, -6)}`
+      // downloadExcel(this.getParamter()).then(res => {
+      //   if (res.code === 200) {
+      //     alert(1)
+      //   }
+      // })
+    },
+    // 保存发送按钮 判断是否勾选数据
+    saveSend() {
+      const len = []
+      this.arrType.forEach(o => {
+        if (o === true) {
+          len.push(o)
+        }
+      })
+      if (len.length > 0) {
+        this.$refs.tabForm.validate((valid) => {
+          if (valid) {
+            this.baoType = false
+            this.dialogVisible = true
+          } else {
+            return false
+          }
+        })
+      } else {
+        this.saveSendLoading = true
+        this.$message({
+          type: 'warning',
+          message: '请至少选择一条数据',
+          duration: 6000,
+          showClose: true,
+          onClose: function() {
+            this.saveSendLoading = false
+          }.bind(this)
+        })
+      }
+    },
+    // 定义保存以及下载参数
+    getParamter() {
+      const arr = [] // 存放勾选数据或所有数据
+      let newArr = [] // 记录索引位置
+      const returnList = [] // 修改后的数据结构
+      var flag = true
+      if (this.baoType) {
+        // 下载 = true 取所有数据  保存发送 = fase 取勾选的数据
+        this.tabForm.tableData.forEach((el, index) => {
+          arr.push(el)
+        })
+      } else {
+        this.arrType.forEach((el, index) => {
+          if (el === true) {
+            arr.push(this.tabForm.tableData[index])
+          }
+        })
+      }
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i + 1] === undefined) {
+          newArr[0] = i
+          newArr[1] = i // 记录终止位置
+          const oArr = arr.slice(newArr[0], newArr[1] + 1)
+          const list = []
+          oArr.forEach(el => {
+            list.push({
+              targetName: el.targetName + '(' + el.giftWeight + ')',
+              grading: el.grading,
+              officeName: el.officeName,
+              firstTargetId: el.firstTargetId,
+              officeStaff: el.officeStaff,
+              officeStaffId: el.officeStaffId,
+              secondTargetId: el.secondaryIndicatorId
+            })
+          })
+          returnList.push({
+            integrationFirstTarget: oArr[0].integrationFirstTarget + '(' + oArr[0].firstWeight + ')',
+            integratedSecondIndicators: list
+          })
+          newArr = [] // 重置缓存
+          flag = true
+        } else {
+          if (arr[i].firstTargetId === arr[i + 1].firstTargetId && flag) {
+            newArr[0] = i // 记录起始位置
+            flag = false
+          } else if (arr[i].firstTargetId !== arr[i + 1].firstTargetId && !flag) {
+            if (newArr.length === 0) {
+              newArr[0] = i
+            }
+            newArr[1] = i // 记录终止位置
+            const oArr = arr.slice(newArr[0], newArr[1] + 1)
+            const list = []
+            oArr.forEach(el => {
+              list.push({
+                targetName: el.targetName + '(' + el.giftWeight + ')',
+                grading: el.grading,
+                officeName: el.officeName,
+                firstTargetId: el.firstTargetId,
+                officeStaff: el.officeStaff,
+                officeStaffId: el.officeStaffId,
+                secondTargetId: el.secondaryIndicatorId
+              })
+            })
+            returnList.push({
+              integrationFirstTarget: oArr[0].integrationFirstTarget + '(' + oArr[0].firstWeight + ')',
+              integratedSecondIndicators: list
+            })
+            newArr = [] // 重置缓存
+            flag = true
+          } else if (arr[i].firstTargetId !== arr[i + 1].firstTargetId && flag) {
+            newArr[0] = i
+            newArr[1] = i // 记录终止位置
+            const oArr = arr.slice(newArr[0], newArr[1] + 1)
+            const list = []
+            oArr.forEach(el => {
+              list.push({
+                targetName: el.targetName + '(' + el.giftWeight + ')',
+                grading: el.grading,
+                officeName: el.officeName,
+                firstTargetId: el.firstTargetId,
+                officeStaff: el.officeStaff,
+                officeStaffId: el.officeStaffId,
+                secondTargetId: el.secondaryIndicatorId
+              })
+            })
+            returnList.push({
+              integrationFirstTarget: oArr[0].integrationFirstTarget + '(' + oArr[0].firstWeight + ')',
+              integratedSecondIndicators: list
+            })
+            newArr = [] // 重置缓存
+            flag = true
+          }
+          if (i === arr.length - 2 && arr[i].firstTargetId === arr[i + 1].firstTargetId && !flag) {
+            newArr[1] = i + 1 // 注意是i + 1
+            const nArr = arr.slice(newArr[0], newArr[1] + 1)
+            const _list = []
+            nArr.forEach(v => {
+              _list.push({
+                targetName: v.targetName + '(' + v.giftWeight + ')',
+                grading: v.grading,
+                officeName: v.officeName,
+                firstTargetId: v.firstTargetId,
+                officeStaff: v.officeStaff,
+                officeStaffId: v.officeStaffId,
+                secondTargetId: v.secondaryIndicatorId
+              })
+            })
+            returnList.push({
+              integrationFirstTarget: nArr[0].integrationFirstTarget + '(' + nArr[0].firstWeight + ')',
+              integratedSecondIndicators: _list
+            })
+            break
+          }
+        }
+      }
+      return returnList
+    },
+    // 保存
+    weightPreservation() {
+      this.$refs.newDiaForm.validate((valid) => {
+        if (valid) {
+          saveAndSend(this.titleName, this.newDiaForm.name, this.$route.query.id, this.$route.query.name, this.getParamter()).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: '发送成功',
+                duration: 6000,
+                showClose: true
+              })
+              this.$router.go(-1)
+              this.dialogVisible = false
+            } else {
+              this.weightPreservationLoading = true
+              this.$message({
+                type: 'warning',
+                message: res.message,
+                duration: 6000,
+                showClose: true,
+                onClose: function() {
+                  this.weightPreservationLoading = false
+                }.bind(this)
+              })
+            }
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    openWeight() {
+      this.weightAdjustment = true
+      this.oldData = JSON.parse(JSON.stringify(this.tabForm.tableData))
+    },
+    closeWeight() {
+      this.weightAdjustment = false
+      this.tabForm.tableData = JSON.parse(JSON.stringify(this.oldData))
+    },
+    // 校验只能输入数字
+    validateNumber(rule, value, callback) {
+      if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+        callback(new Error('禁止输入特殊字符'))
+      } else if (this.blankSpace.test(value)) {
+        callback(new Error('禁止输入空格'))
+      } else if (this.chinaNull.test(value)) {
+        callback(new Error('禁止输入中文'))
+      } else if (this.englishNull.test(value)) {
+        callback(new Error('禁止输入英文'))
+      } else if (value > 100 || value < 0) {
+        callback(new Error('范围0~100'))
+      } else {
+        callback()
+      }
+    },
+    initData() {
+      integratedIndicatorProgram(this.$route.query.name).then(res => {
+        if (res.code === 200) {
+          this.titleName = res.data.name
+          this.tabForm.tableData = res.data.returnList
+          this.tabForm.tableData.forEach(res => {
+            res.giftWeight = res.giftWeight.replace('%', '')
+          })
+          res.data.returnList.forEach(el => {
+            this.arrType.push(true)
+          })
+          this.getSpanArr()
+        }
+      })
+    },
+    getSpanArr() {
+      for (var i = 0; i < this.tabForm.tableData.length; i++) {
+        if (i === 0) {
+          this.spanArr.push(1)
+          this.pos = 0
+        } else {
+          // 判断当前元素与上一个元素是否相同
+          if (this.tabForm.tableData[i].firstTargetId === this.tabForm.tableData[i - 1].firstTargetId) {
+            this.spanArr[this.pos] += 1
+            this.spanArr.push(0)
+          } else {
+            this.spanArr.push(1)
+            this.pos = i
+          }
+        }
+      }
+    },
+    objectSpanMethod({ row, column, rowIndex, columnIndex }) {
+      if (columnIndex === 0) {
+        const _row = this.spanArr[rowIndex]
+        const _col = _row > 0 ? 1 : 0
+        return {
+          rowspan: _row,
+          colspan: _col
+        }
+      }
+    },
+    routerBack() {
+      if (sessionStorage.getItem('returnMemoryJyl')) {
+        const obj = JSON.parse(sessionStorage.getItem('returnMemoryJyl'))
+        obj.returnBtn = 'Y'
+        sessionStorage.setItem('returnMemoryJyl', JSON.stringify(obj))
+      }
+      if (this.$route.query.type === '1') {
+        this.$router.go(-1)
+      } else {
+        this.$router.push({
+          name: 'dataGovernance_qualityEvaluation_standard',
+          query: {
+            evaluationTaskName: this.$route.query.name,
+            boolType: false
+          }
+        })
+      }
+    }
+  },
+  watch: {
+    dialogVisible: function(nl, ol) {
+      if (ol !== nl) {
+        setTimeout(() => {
+          this.$refs.newDiaForm.clearValidate()
+        }, 0)
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.indicatorWay {
+  .btnalign {
+    text-align: right;
+  }
+  .el-form-item__error {
+  line-height: 5px !important;
+  margin-left: 28px
+  }
+}
+
+</style>

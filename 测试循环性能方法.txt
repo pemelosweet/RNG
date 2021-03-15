@@ -1,0 +1,5 @@
+console.time('test')
+console.timeEnd('test')
+
+
+括号里的名字是由自己定制的

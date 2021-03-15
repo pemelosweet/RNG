@@ -1,0 +1,2364 @@
+<template>
+  <div class="analywraper">
+      <el-card>
+        <div slot="header"><span>境内情报类文件管理</span></div>
+        <el-tabs v-model="activeName" @tab-click="handleClick">
+            <!-- 情报文件 -->
+            <el-tab-pane name="first">
+              <el-badge slot="label"><span>情报文件</span></el-badge>
+              <div class="analytitle filetitle">情报文件查询</div>
+                <el-form :model="form" :rules="formRules" ref="formRef" label-width="150px">
+                  <el-row :gutter="20">
+                    <el-col :span="8">
+                        <el-form-item label="索引号：" prop="title">
+                            <el-input v-model="form.title" placeholder="索引号,最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="类  别：" prop="type" >
+                        <el-select v-model="form.type" style="width: 100% !important" clearable placeholder="请选择">
+                          <el-option label="线索" value="线索"></el-option>
+                          <el-option label="通报" value="通报"></el-option>
+                          <el-option label="协查--受托" value="协查--受托"></el-option>
+                          <el-option label="协查--受托--境外" value="协查--受托--境外"></el-option>
+                        </el-select>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="情报字号：" prop="qingNum" >
+                            <el-input v-model="form.qingNum" placeholder="情报字号,最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    </el-row>
+                    <el-row :gutter="20">
+                    <el-col :span="8">
+                        <el-form-item label="表编号：" prop="bianNum" >
+                            <el-input v-model="form.bianNum"  placeholder="表编号,最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="触发来源：">
+                            <el-select v-model="form.from" style="width: 100% !important" clearable placeholder="请选择">
+                              <el-option label="境内受托协查" value="境内受托协查"></el-option>
+                              <el-option label="可疑交易报告预警" value="可疑交易报告预警"></el-option>
+                              <el-option label="举报" value="举报"></el-option>
+                              <el-option label="境外受托协查" value="境外受托协查"></el-option>
+                              <el-option label="普通名单预警" value="普通名单预警"></el-option>
+                              <el-option label="高级名单预警" value="高级名单预警"></el-option>
+                              <el-option label="报告机构专报" value="报告机构专报"></el-option>
+                              <el-option label="上报分析申请" value="上报分析申请"></el-option>
+                              <el-option label="专项行动" value="专项行动"></el-option>
+                              <el-option label="国际情报转介" value="国际情报转介"></el-option>
+                              <el-option label="模型预警" value="模型预警"></el-option>
+                              <el-option label="规则预警" value="规则预警"></el-option>
+                              <el-option label="其他" value="其他"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="情报状态：" >
+                        <el-select v-model="form.analystate" clearable placeholder="请选择" style="width: 100% !important">
+                            <el-option label="保存" value="保存"></el-option>
+                            <el-option label="完成移送" value="完成移送"></el-option>
+                            <el-option label="首次提交" value="首次提交"></el-option>
+                        </el-select>
+                        </el-form-item>
+                    </el-col>
+                    </el-row>
+                    <el-row :gutter="20">
+                    <el-col :span="8">
+                        <el-form-item label="触发来源索引号：" prop="chuSourceNum">
+                            <el-input v-model="form.chuSourceNum" placeholder="触发来源索引号,最长为45字符" :maxlength="45"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="创建时间：">
+                        <el-date-picker   v-model="form.createTime" :picker-options="pickerOptions1"  format="yyyy-MM-dd"
+                            value-format="yyyy-MM-dd" type="daterange" range-separator="至" unlink-panels start-placeholder="开始日期" end-placeholder="结束日期" >
+                        </el-date-picker>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                  <el-row>
+                    <el-col :span="24" style="text-align: right">
+                      <el-button type="primary" @click="searchQBList">查询</el-button>
+                      <el-button type="primary" plain @click="clearTable">清空</el-button>
+                    </el-col>
+                  </el-row>
+                  </el-form>
+
+              <!-- </el-row> -->
+              <div class="btnlist">
+                <span class="analytitle listtitle">情报文件列表</span>
+                <el-button type="primary" @click="handleDraft('yiDan')" v-if="isCenter" plain>起草（一单制）</el-button>
+                <el-button type="primary" @click="handleDraft('meiDan')" v-if="isCenter" plain>起草（每单制）</el-button>
+                <!-- <router-link to="analysis/fileList"><el-button type="primary" style="margin-left:10px" v-if="isCenter" plain>新建情报档案表</el-button></router-link>
+                <el-button type="primary" style="margin-left:10px" v-if="isCenter" plain>分 发</el-button>
+                <el-button type="primary" style="margin-left:10px" plain  v-if="isCenter">删 除</el-button>
+                <el-button type="primary" @click="submitVisible = true" plain>下一步</el-button> -->
+                <!-- <el-button type="primary" plain>取 回</el-button>
+                <el-button type="primary" plain>签 收</el-button>
+                <el-button type="primary" plain>委 派</el-button> -->
+              </div>
+                  <el-table style="width: 100%" :data="table.list"  ref="multipleTable" v-loading="loadingtechno1"
+                  element-loading-text="拼命加载中"
+                  element-loading-spinner="el-icon-loading"
+                  element-loading-background="rgba(0, 0, 0, 0.1)" @selection-change="handleSelectionChangeQB">
+                    <el-table-column type="selection" width="55" fixed></el-table-column>
+                    <el-table-column type="index" label="序号" width="80" fixed></el-table-column>
+                    <el-table-column prop="indexNumber" label="索引号" min-width="180" show-overflow-tooltip>
+                      <template slot-scope="scope">
+                        <el-button type="text" @click="seeInfo(scope)">{{scope.row.indexNumber}}</el-button>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="infoType" label="类别" min-width="100" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="nnum" label="情报字号" min-width="120" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="tblCode" label="表编号" min-width="120" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="triggerSource" label="触发来源" min-width="140" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="triggerSourceNum" label="触发来源索引号" min-width="140" show-overflow-tooltip></el-table-column>
+                    
+                    <el-table-column prop="infoState" label="情报状态" min-width="120" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="receDate" label="创建时间" min-width="120" show-overflow-tooltip>
+                      <!-- <template slot-scope="scope">
+                        {{scope.row.receDate.slice(0,10)}}
+                      </template> -->
+                    </el-table-column>
+                    <el-table-column prop="option" fixed="right" label="操作" min-width="100">
+                    <template slot-scope="scope">
+                      <el-button v-if="scope.row.triggerSource === '上报分析申请' && scope.row.infoState==='保存'" type="text" @click="updateInfoZiZhu(scope)">编辑</el-button>
+                      <el-button v-else type="text" @click="seeInfoZiZhu(scope)">查看</el-button>
+                    </template>
+                    </el-table-column>
+                </el-table>
+                  <el-pagination v-if="table.total" @size-change="handleSizeChangeQB" @current-change="handleCurrentChangeQB" :current-page="table.currentPage" :page-sizes="[10, 20, 30, 40]"
+                :page-size="table.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="table.total" background>
+                </el-pagination>
+            </el-tab-pane>
+            <!-- 签（呈）批单 -->
+            <el-tab-pane name="second">
+                <el-badge slot="label"><span>签（呈）批单</span></el-badge>
+                <div class="analytitle filetitle">签呈批单查询</div>
+                <el-form :model="formTwo" :rules="formTwoRules" ref="formTwoRef" label-width="150px">
+                  <el-row>
+                    <el-col :span="8" >
+                        <el-form-item label="单标题：" prop="dtitle"  :rules="[ { validator: this.mynoSpaceAndTs, trigger: 'blur' }]">
+                            <el-input v-model="formTwo.dtitle" placeholder="单标题，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="发送单位：" prop="sendeUnit">
+                          <el-select style="width: 100% !important" v-model="formTwo.sendeUnit" clearable placeholder="请选择">
+                            <el-option v-for="(item,index) in departArr" :key="index" :label="item.text" :value="item.code"></el-option>
+                          </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="编号情况：">
+                        <el-select v-model="formTwo.numstate" clearable placeholder="请选择" style="width: 100% !important">
+                          <el-option label="未编号" value="未编号"></el-option>
+                          <el-option label="已编号" value="已编号"></el-option>
+                        </el-select>
+                        </el-form-item>
+                    </el-col>
+                  </el-row>
+                  <el-row>
+                    <el-col :span="8">
+                      <el-form-item label="保存时间：">
+                        <el-date-picker   v-model="formTwo.saveTime" :picker-options="pickerOptions1"  format="yyyy-MM-dd"
+                            value-format="yyyy-MM-dd" type="daterange" range-separator="至" unlink-panels start-placeholder="开始日期" end-placeholder="结束日期" >
+                        </el-date-picker>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="创建时间：">
+                        <el-date-picker   v-model="formTwo.createTime" :picker-options="pickerOptions1"  format="yyyy-MM-dd"
+                            value-format="yyyy-MM-dd" type="daterange" range-separator="至" unlink-panels start-placeholder="开始日期" end-placeholder="结束日期" >
+                        </el-date-picker>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="更新时间：">
+                        <el-date-picker   v-model="formTwo.updateTime" :picker-options="pickerOptions1" format="yyyy-MM-dd"
+                            value-format="yyyy-MM-dd" type="daterange" range-separator="至" unlink-panels start-placeholder="开始日期" end-placeholder="结束日期" >
+                        </el-date-picker>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                  <el-row>
+                    <el-col :span="8">
+                        <el-form-item label="单号：" prop="danNum">
+                        <el-input v-model="formTwo.danNum" style="width: 100% !important" placeholder="单号，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="签/呈：" prop="qianCheng">
+                        <el-select v-model="formTwo.qianCheng" clearable placeholder="请选择" style="width: 100% !important">
+                          <el-option label="签批单" value="签批单"></el-option>
+                          <el-option label="呈批单" value="呈批单"></el-option>
+                        </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="类  别：" prop="type" >
+                            <el-select style="width: 100% !important" v-model="formTwo.type" clearable placeholder="请选择">
+                              <el-option label="线索" value="线索"></el-option>
+                              <el-option label="通报" value="通报"></el-option>
+                              <el-option label="协查--受托" value="协查--受托"></el-option>
+                              <!-- <el-option label="协查--受托" value="协查--受托"></el-option> -->
+                            </el-select>
+                          </el-form-item>
+                    </el-col>
+                  </el-row>
+                  <el-row>
+                    <el-col :span="8">
+                        <el-form-item label="份数：" prop="fenNum">
+                        <el-input v-model="formTwo.fenNum"  placeholder="份数，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="签批单备注：" prop="qianBei">
+                        <el-input v-model="formTwo.qianBei"  placeholder="签批单备注，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="呈批单备注：" prop="chengBei">
+                        <el-input v-model="formTwo.chengBei"  placeholder="呈批单备注，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                  </el-row>
+                  <el-row>
+                    <el-col :span="8">
+                        <el-form-item label="审核状态：">
+                        <el-select v-model="formTwo.status" clearable placeholder="请选择" style="width: 100% !important">
+                          <el-option label="保存" value="保存"></el-option>
+                          <el-option label="待移送处处长审批" value="待移送处处长审批"></el-option>
+                          <el-option label="待分析处处长会签" value="待分析处处长会签"></el-option>
+                          <el-option label="会签结束" value="会签结束"></el-option>
+                          <el-option label="待移送处领导审核" value="待移送处领导审核"></el-option>
+                          <el-option label="待中心领导审核" value="待中心领导审核"></el-option>
+                          <el-option label="待移送处复核" value="待移送处复核"></el-option>
+                          <el-option label="已审核" value="已审核"></el-option>
+                          <el-option label="已移送" value="已移送"></el-option>
+                          <el-option label="审批不通过" value="审批不通过"></el-option>
+                          <el-option label="退回" value="退回"></el-option>
+                          <el-option label="发起人收回" value="发起人收回"></el-option>
+                        </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="函标题：">
+                        <el-input v-model="formTwo.htitle" placeholder="函标题，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="函正文：">
+                        <el-input v-model="formTwo.hWords" placeholder="函正文，最长为40字符" :maxlength="40"></el-input>
+                        </el-form-item>
+                    </el-col>
+                  </el-row>
+                  <el-row>
+                    <el-col :span="24" style="text-align:right">
+                      <el-button type="primary" @click="searchPDList()">查询</el-button>
+                      <el-button type="primary" plain @click="clearOrderTable()">清空</el-button>
+                    </el-col>
+                  </el-row>
+                </el-form>
+                <div class="btnlist" v-if="!ismanagement && keBianJi">
+                    <span class="analytitle listtitle">签呈批单文件列表</span>
+                    <el-button type="primary" plain @click="downLoadQian">下载</el-button>
+                    <!-- <el-button type="primary" @click="sendVisible = true" v-if="isCenter" plain>在线移送</el-button>
+                    <el-button type="primary" plain v-if="isCenter">下载</el-button> -->
+                    <!-- <el-button type="primary" @click="submitVisible = true" plain>下一步</el-button> -->
+                    <!-- <el-button type="primary" plain>取 回</el-button>
+                    <el-button type="primary" plain>签 收</el-button>
+                    <el-button type="primary" plain>委 派</el-button> -->
+                </div>
+                <div class="btnlist" v-else>
+                    <span class="analytitle listtitle">签呈批单文件列表</span>
+                    <el-button type="primary" @click="managementSave" v-if="ismanagement" plain>保存</el-button>
+                    <el-button type="primary" @click="managementCancel" plain v-if="ismanagement">取消</el-button>
+                    <el-button type="primary" @click="handleDraft('qianAdd')" v-if="!ismanagement" plain>新增</el-button>
+                    <el-button type="primary" @click="bianClue" plain v-if="!ismanagement">编号</el-button>
+                    <!-- <el-button type="primary" @click="printInfo" plain>打印</el-button> -->
+                    <el-button type="primary" @click="delect" plain v-if="!ismanagement">删除单</el-button>
+                    <el-button type="primary" @click="showClueVisible" plain v-if="!ismanagement">增减线索</el-button>
+                    <el-button type="primary" @click="callWorkFlow" plain v-if="!ismanagement" :loading="isQingBaoLoading">提交审核</el-button>
+                    <el-button type="primary" plain @click="downLoadQian" v-if="!ismanagement">下载</el-button>
+                    <el-button type="primary" plain @click="sendClue" v-if="!ismanagement">发送</el-button>
+                    <!-- <el-button type="primary" @click="sendVisible = true" v-if="isCenter" plain>在线移送</el-button>
+                    <el-button type="primary" plain v-if="isCenter">下载</el-button> -->
+                    <!-- <el-button type="primary" @click="submitVisible = true" plain>下一步</el-button> -->
+                    <!-- <el-button type="primary" plain>取 回</el-button>
+                    <el-button type="primary" plain>签 收</el-button>
+                    <el-button type="primary" plain>委 派</el-button> -->
+                </div>
+
+                <el-table style="width: 100%" :data="orderTable.list" ref="bianMultipleTable" v-loading="loadingtechno"
+        element-loading-text="拼命加载中"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)" @selection-change="handleSelectionChange">
+                    <el-table-column type="selection" width="55"></el-table-column>
+                    <el-table-column type="index" label="序号" width="55" fixed="left"></el-table-column>
+                    <el-table-column prop="number" label="单号"    width="100" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="sign" label="签/呈" ></el-table-column>
+                    <el-table-column prop="saveDt" label="保存时间"  show-overflow-tooltip  width="100"></el-table-column>
+                    <el-table-column prop="creTime" label="创建时间"  show-overflow-tooltip  width="100"></el-table-column>
+                    <el-table-column prop="updTime" label="更新时间"  show-overflow-tooltip  width="100"></el-table-column>
+                    <el-table-column prop="s_type" label="类别" ></el-table-column>
+                    <el-table-column prop="stitle" label="单标题"  width="300" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="copiesNum" label="份数" ></el-table-column>
+                    <el-table-column prop="sendDepart" label="发送单位" ></el-table-column>
+                    <el-table-column prop="signRemark" label="签批单备注"  show-overflow-tooltip width="100"  ></el-table-column>
+                    <el-table-column prop="showRemark" label="呈批单备注" show-overflow-tooltip width="100" ></el-table-column>
+                    <el-table-column prop="letterTitle" label="函标题"  show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="letterText" label="函正文" show-overflow-tooltip ></el-table-column>
+                    <!-- <el-table-column prop="enclosureInf" label="附件情况" min-width="100"></el-table-column> -->
+                    <!-- <el-table-column prop="serialNum" label="单内流水号" min-width="140"></el-table-column> -->
+                    <el-table-column prop="numSuit" label="编号情况" ></el-table-column>
+                    <el-table-column prop="status" label="审核状态"  show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="option" label="操作" min-width="140" fixed="right">
+                    <template slot-scope="scope">
+                        <el-button type="text" @click="see(scope)">查看</el-button>
+                        <el-button type="text" v-if="!keBianJi" :disabled="scope.row.status !== '保存'" @click="updateInfo(scope)">编辑</el-button>
+                        <!-- <router-link to="analysis/numTransfer"><el-button type="text">处理</el-button></router-link> -->
+                        <!-- <router-link to="analysis/numTransfer"><el-button type="text">编辑</el-button></router-link> -->
+                    </template>
+                </el-table-column>
+                </el-table>
+                  <el-pagination v-if="orderTable.total" @size-change="handleSizeChange" @current-change="handleCurrentChangeQian" :current-page="orderTable.currentPage" :page-sizes="[10, 20, 30, 40]"
+                :page-size="orderTable.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="orderTable.total" background>
+                </el-pagination>
+                <monitor-workflow></monitor-workflow>
+            </el-tab-pane>
+        </el-tabs>
+      </el-card>
+
+    <!-- 新增签呈批单 -->
+    <el-dialog title="签呈批单表单" :visible.sync="petitionVisible">
+      <el-form :model="petitionForm" :rules="petitionFormRules" ref="petitionFormRef" label-width="140px">
+          <!-- 第一行 -->
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="单号：" prop="number">
+                <el-input v-model="petitionForm.number" :maxlength="30" placeholder="请输入单号，最长为30字符"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="保存时间 :" class="oddinput" prop="saveDt">
+                <el-date-picker
+                  style="width:100% !important"
+                  v-model="petitionForm.saveDt"
+                  :picker-options="pickerOptions1"
+                  type="date"
+                  value-format="yyyy-MM-dd">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 第二行 -->
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="签/呈：" prop="sign" class="oddinput">
+                <el-select style="width:100% !important" v-model="petitionForm.sign" clearable placeholder="请选择">
+                  <el-option label="签批单" value="签批单"></el-option>
+                  <el-option label="呈批单" value="呈批单"></el-option>
+                  <el-option label="均起草" value="均起草"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="类  别：" prop="s_type" class="oddinput">
+                <el-select style="width:100% !important" v-model="petitionForm.s_type" clearable placeholder="请选择" @change="changeSTitle">
+                  <el-option label="线索" value="线索"></el-option>
+                  <el-option label="通报" value="通报"></el-option>
+                  <el-option label="协查--受托" value="协查--受托"></el-option>
+                  <!-- <el-option label="协查--受托" value="协查--受托"></el-option> -->
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 第三行 -->
+          <el-row>
+            <el-form-item label="单标题：" prop="sTitle">
+                <el-input v-model="petitionForm.sTitle" :disabled="sTitleDisabled" placeholder="请先选择类别后，在进行编辑"></el-input>
+            </el-form-item>
+          </el-row>
+          <!-- 第四行 -->
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="份数：" prop="copiesNum">
+                <el-input v-model="petitionForm.copiesNum" :maxlength="20"  placeholder="请输入份数，最长为20字符"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="发送单位：" prop="sendDepart" class="oddinput">
+                <el-select style="width:100% !important" v-model="petitionForm.sendDepart" clearable placeholder="请选择">
+                  <el-option v-for="(item,index) in departArr" :key="index" :label="item.text" :value="item.code"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row v-if="petitionForm.sign==='签批单' ||petitionForm.sign==='均起草' ">
+            <el-form-item label="签批单备注：" prop="signRemark">
+                <el-input type="textarea" v-model="petitionForm.signRemark" :maxlength="200"  placeholder="请输入签批单备注，最长为200字符"></el-input>
+            </el-form-item>
+          </el-row>
+          <el-row v-if="petitionForm.sign==='呈批单' ||petitionForm.sign==='均起草' ">
+            <el-form-item label="呈批单备注：" prop="showRemark">
+                <el-input type="textarea" v-model="petitionForm.showRemark" :maxlength="200"   placeholder="请输入呈批单备注，最长为200字符"></el-input>
+            </el-form-item>
+          </el-row>
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="函标题：" prop="letterTitle">
+                <el-input v-model="petitionForm.letterTitle" :maxlength="50"  placeholder="请输入函标题，最长为50字符"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="来函号：" prop="receNum">
+                <el-input v-model="petitionForm.receNum" :maxlength="50"  placeholder="请输入来函号，最长为50字符"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-form-item label="函正文：" prop="letterText">
+                <el-input type="textarea" v-model="petitionForm.letterText" :maxlength="200"  placeholder="请输入函正文，最长为200字符"></el-input>
+            </el-form-item>
+          </el-row>
+          <!-- <el-row>
+            <el-form-item label="编号情况：" prop="numSuit">
+                <el-input v-model="petitionForm.numSuit" :maxlength="50" placeholder="请输入编号情况，最长为50字符"></el-input>
+            </el-form-item>
+          </el-row> -->
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" :loading="qianLoading" @click="submitQBInfo">保 存</el-button>
+        <el-button @click="petitionVisible = false">关 闭</el-button>
+      </span>
+    </el-dialog>
+
+    <!-- 编号弹框 -->
+    <el-dialog title="编号列表" :visible.sync="numVisible">
+      <el-form :model="numVisibleTable" :rules="numVisibleTableRules" ref="numVisibleTableRulesRef">
+        <el-table :data="numVisibleTable.list">
+          <el-table-column prop="formNum" label="单号" min-width="100"></el-table-column>
+          <el-table-column prop="infoType" label="类别" min-width="100"></el-table-column>
+          <el-table-column prop="attachSuit" label="附件情况" min-width="100"></el-table-column>
+          <el-table-column prop="infoTitleNum"  label="情报字号" min-width="185">
+            <template slot-scope="scope">
+              <el-form-item :prop="'list.' + scope.$index + '.infoTitleNum'" :rules="numVisibleTableRules.infoTitleNum">
+                <el-input v-model="scope.row.infoTitleNum" :maxlength="32"></el-input>
+              </el-form-item>
+            </template>
+          </el-table-column>
+          <el-table-column prop="tableNum" label="表编号" min-width="135">
+            <template slot-scope="scope">
+              <el-form-item :prop="'list.' + scope.$index + '.tableNum'" :rules="numVisibleTableRules.tableNum">
+                <el-input v-model="scope.row.tableNum" :maxlength="32"></el-input>
+              </el-form-item>
+
+            </template>
+          </el-table-column>
+          <!-- <el-table-column prop="dispatchDate" label="发送日期" min-width="120"></el-table-column> -->
+        </el-table>
+      </el-form>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="numVisibleTable.currentPage" :page-sizes="[10, 20, 30, 40]"
+        :page-size="numVisibleTable.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="numVisibleTable.total" background></el-pagination>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="numVisible = false">关 闭</el-button>
+        <el-button type="primary" @click="bianHaoSub">确 认</el-button>
+      </span>
+    </el-dialog>
+
+    <!-- 打印弹框 -->
+    <el-dialog title="打印页面" :visible.sync="printVisible">
+      <el-table :data="printTable.list">
+        <el-table-column prop="" type="selection" label="单号" min-width="100"></el-table-column>
+        <el-table-column type="index" prop="num" label="单号" width="60" fixed>
+        </el-table-column>
+        <!-- <el-table-column min-width="100" label="签批单">
+          <template slot-scope="scope">
+            <el-checkbox v-model="checked"></el-checkbox>
+          </template>
+        </el-table-column>
+        <el-table-column label="呈批单" min-width="100">
+          <template slot-scope="scope">
+            <el-checkbox v-model="checked"></el-checkbox>
+          </template>
+        </el-table-column>
+        <el-table-column label="情报字函" min-width="100">
+          <template slot-scope="scope">
+            <el-checkbox v-model="checked"></el-checkbox>
+          </template>
+        </el-table-column>
+        <el-table-column label="线索表" min-width="100">
+          <template slot-scope="scope">
+            <el-checkbox v-model="checked"></el-checkbox>
+          </template>
+        </el-table-column> -->
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="printTable.currentPage" :page-sizes="[10, 20, 30, 40]"
+        :page-size="printTable.pagesize" layout="total, sizes, prev, pager, next" :total="printTable.total" background></el-pagination>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="printVisible = false">取 消</el-button>
+        <el-button type="primary" @click="windowPrint">确 定</el-button>
+
+      </span>
+    </el-dialog>
+
+    <!-- 增减线索 -->
+    <el-dialog title="线索列表" :visible.sync="clueVisible">
+      <el-dialog title="增加线索" :visible.sync="clueinnerVisible" append-to-body>
+        <el-form :model="addMoveXS" :rules="addMoveXSRules">
+          <el-row>
+            <el-col :span="8">
+              <el-form-item label="索引号：" label-width="100px" prop="indexNum">
+                <el-input v-model="addMoveXS.indexNum" :maxlength="50"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="类别：" label-width="100px">
+                <el-select v-model="addMoveXS.xSType" clearable placeholder="类别">
+                  <el-option label="线索" value="线索"></el-option>
+                  <el-option label="协查" value="协查"></el-option>
+                  <el-option label="通报" value="通报"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="2">
+              <el-button type="primary" @click="searchClueTitle">查询</el-button>
+
+            </el-col>
+            <el-col :span="2"><el-button type="primary" plain @click="clearClueTitle">清空</el-button></el-col>
+          </el-row>
+        </el-form>
+        <el-table :data="table3.list" @selection-change="handleSelectionChangeXS" ref="changeXS">
+          <el-table-column prop="" type="selection"  width="80"></el-table-column>
+          <el-table-column prop="infoType" label="类别" min-width="100" fixed></el-table-column>
+          <el-table-column prop="indexNum" label="索引号" min-width="100" fixed></el-table-column>
+          <el-table-column prop="sendDate" label="发送日期" min-width="100"></el-table-column>
+        </el-table>
+        <el-pagination @size-change="handleSizeChangetable3" @current-change="handleSizeChangetable3Size" :current-page="table3.currentPage" :page-sizes="[10, 20, 30, 40]"
+        :page-size="table3.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="table3.total" background></el-pagination>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="clueinnerVisible = false">取 消</el-button>
+          <el-button type="primary" :loading="addLoading" @click="addXSInfo">提 交</el-button>
+        </span>
+      </el-dialog>
+      <el-row>
+        <el-button type="primary" @click="addDelInfoIds">增 加</el-button><el-button type="primary" @click="removeClue">去 除</el-button>
+      </el-row>
+      <el-table :data="clueTable.list" @selection-change="handleSelectionChangeXSDe">
+        <el-table-column type="selection" label="全选" width="80"></el-table-column>
+        <!-- <el-table-column prop="processName" label="流水号" width="80"></el-table-column> -->
+        <el-table-column type="index" label="单号" min-width="80"></el-table-column>
+        <el-table-column prop="infoType" label="类别" min-width="160"></el-table-column>
+        <el-table-column prop="indexNum" label="索引号" min-width="120"></el-table-column>
+        <el-table-column prop="sendDate" label="发送日期" min-width="150"></el-table-column>
+      </el-table>
+      <el-pagination @size-change="handleSizeChangeXSList" @current-change="handleSizeChangeXSListSize" :current-page="clueTable.currentPage" :page-sizes="[10, 20, 30, 40]"
+        :page-size="clueTable.pagesize" layout="total, sizes, prev, pager, next" :total="clueTable.total" background></el-pagination>
+      <!-- <span slot="footer" class="dialog-footer">
+        <el-button @click="clueVisible = false">取 消</el-button>
+        <el-button type="primary" @click="clueVisible = false">提 交</el-button>
+      </span> -->
+    </el-dialog>
+
+    <!-- 提交弹框内容 -->
+    <!-- <el-dialog class="submitwrap"
+      title="任务提交"
+      :visible.sync="submitVisible">
+      <div>
+        <div class="dialogtitle">任务流向：</div>
+        <el-row class="radiowrap"><el-radio v-model="radio" label="1">送移送处处长审核</el-radio></el-row>
+        <el-transfer :titles="['待选用户', '已选用户']" :button-texts="['', '']" v-model="value" :data="data"></el-transfer>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="submitVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitVisible = false">确 定</el-button>
+      </span>
+    </el-dialog> -->
+    <!-- <el-dialog title="任务提交" :visible.sync="dialogVisible" width="600px" class="dialog-block">
+      <div class="task">
+        <el-form :model="form" label-width="100px">
+          <el-form-item label="任务流向：">
+            <el-tag style="margin-left:10px">送移送处处长审核</el-tag>
+          </el-form-item>
+          <el-form-item label="待选用户：">
+            <el-radio v-model="form.radio" label="1">备选项1</el-radio>
+            <el-radio v-model="form.radio" label="2">备选项2</el-radio>
+            <el-radio v-model="form.radio" label="3">备选项3</el-radio>
+            <el-radio v-model="form.radio" label="4">备选项4</el-radio>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="moveShen">确 定</el-button>
+      </div>
+    </el-dialog> -->
+    <el-dialog title="任务提交" :visible.sync="submitVisible" width="600px" class="dialog-block">
+      <div class="task">
+        <el-form :model="form" label-width="100px">
+          <el-form-item label="任务流向：">
+            <el-tag style="margin-left:10px">送移送处处长审核</el-tag>
+          </el-form-item>
+          <el-form-item label="待选用户：">
+            <el-radio v-model="form.radio" label="1">领导1</el-radio>
+            <el-radio v-model="form.radio" label="2">领导2</el-radio>
+            <el-radio v-model="form.radio" label="3">领导3</el-radio>
+            <el-radio v-model="form.radio" label="4">领导4</el-radio>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="submitVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitVisible = false">确 定</el-button>
+      </div>
+    </el-dialog>
+    <el-dialog title="在线移送" :visible.sync="sendVisible" class="dialogBox">
+        <el-form :model="form">
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="主送单位：" :label-width="formLabelWidth">
+                <el-select v-model="form.name" filterable placeholder="请选择">
+                  <el-option label="公安部经济犯罪侦查局" value="china"></el-option>
+                  <el-option label="国家安全部反洗钱办公室" value="china"></el-option>
+                  <el-option label="中央纪委案件监督管理室" value="china"></el-option>
+                  <el-option label="海关总署缉私局" value="china"></el-option>
+                  <el-option label="国家外汇管理局管理检查司" value="china"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="抄送单位：" :label-width="formLabelWidth">
+                <el-select v-model="form.name" filterable placeholder="请选择">
+                  <el-option label="公安部经济犯罪侦查局" value="china"></el-option>
+                  <el-option label="国家安全部反洗钱办公室" value="china"></el-option>
+                  <el-option label="中央纪委案件监督管理室" value="china"></el-option>
+                  <el-option label="海关总署缉私局" value="china"></el-option>
+                  <el-option label="国家外汇管理局管理检查司" value="china"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="primary">确定</el-button>
+        </div>
+      </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getAnalysisiIndex } from '@/api/cueManage'
+import { mapGetters } from 'vuex'
+// 情报文件接口引用
+import { getList, getListSearch, getInfoId } from '@/api/sys-monitoringAnalysis/cueManage/intelligence/intelligence.js'
+// 签呈批单接口引用
+import { getQianList, getQianListSearch, getClueLists, getInfoByTitle, getNumberedLists, deleteodd, submitCheck, addClue, deleteClue, startDraftByMultiInfo, startDraftByOneInfo, insertQian, updateNumber, getDepart, sendClue } from '@/api/sys-monitoringAnalysis/cueManage/intelligence/intelligence.js'
+// 自主分析接口引用
+import { getSBId } from '@/api/sys-monitoringAnalysis/cueManage/autonomousAnalysis/autonomousAnalysis.js'
+import { isValidBlank, commonPattern, noNothing } from '@/utils/formValidate' // 校验规则
+import { getToken } from '@/utils/auth' // 验权
+import { getRoles } from '@/api/sys-monitoringAnalysis/cueManage/investigation/investigation.js'
+// 自主分析接口引用
+import { getClueInfo } from '@/api/sys-monitoringAnalysis/cueManage/autonomousAnalysis/autonomousAnalysis.js'
+export default {
+  data() {
+    // 提交穿梭框定义
+    const generateData = _ => {
+      const data = []
+      for (let i = 1; i <= 15; i++) {
+        data.push({
+          key: i,
+          label: `领导 ${i}`
+        })
+      }
+      return data
+    }
+    return {
+      pickerOptions1: {
+        disabledDate(time) {
+          return time.getTime() > Date.now()
+        }
+      },
+      saveEventDiagon: false,
+      isQingBaoLoading: false,
+      loadingtechno1: false,
+      loadingtechno: false,
+      addLoading: false,
+      // 工作流处置跳转
+      ismanagement: false,
+      checked: false,
+      submitVisible: false,
+      petitionVisible: false, // 签呈批单弹框
+      waterNum: '',
+      numVisible: false, // 编号弹框
+      printVisible: false, // 打印弹框
+      clueinnerVisible: false, // 线索内嵌弹框
+      dialogVisible: false, // 提交弹框
+      sendVisible: false,
+      formLabelWidth: '120px',
+      petitionValue: '',
+      radio: 1, // 提交弹框单选框
+      // 起草单一制弹窗数据
+      petitionForm: {
+        signId: '', // '主键',
+        number: '', // '单号',
+        sign: '', //  '签/呈/签呈',
+        saveDt: '', // '保存时间',
+        s_type: '', // '类别-线索 协查 通报',
+        sTitle: '', // '单标题',
+        copiesNum: '', // '份数',
+        sendDepart: '', // 'sendDepart',
+        signRemark: '', // '签批单备注',
+        showRemark: '', // '呈批单备注',
+        letterTitle: '', // '函标题',
+        receNum: '', // '来函号',
+        letterText: '', // '函正文',
+        enclosureInf: '', // '附件情况',
+        numSuit: '', // '编号情况',
+        status: '' // '状态'
+      },
+      sTitleDisabled: true,
+      // 起草单一每单新增校验
+      petitionFormRules: {
+        signId: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '主键',
+        number: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '单号',
+        sign: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], //  '签/呈/签呈',
+        saveDt: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ], // '保存时间',
+        s_type: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '类别-线索 协查 通报',
+        sTitle: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: this.mynoSpaceAndTs, trigger: 'blur' }
+        ], // '单标题',
+        copiesNum: [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: this.onlyNumberValidate, trigger: 'blur' }
+        ], // '份数',
+        sendDepart: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // 'sendDepart',
+        signRemark: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ], // '签批单备注',
+        showRemark: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ], // '呈批单备注',
+        letterTitle: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '函标题',
+        receNum: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '来函号',
+        letterText: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ], // '函正文',
+        enclosureInf: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '附件情况',
+        numSuit: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ], // '编号情况',
+        status: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: noNothing, trigger: 'blur' }
+        ] // '状态'
+      },
+      yiDanOrMeiDan: '', // 一单还是每单
+      activeName: 'first',
+      // ----------------以下是情报文件定义的数据-----------------//
+      // 情报文件
+      form: {
+        title: '',
+        sender: '',
+        analystate: '',
+        type: '',
+        from: '',
+        radio: '1',
+        qingNum: '',
+        createTime: [],
+        chuSourceNum: '',
+        bianNum: ''
+      },
+      // 情报文件校验规则
+      formRules: {
+        title: [
+          { validator: isValidBlank, trigger: 'blur' }
+        ]
+      },
+      // 情报文件列表
+      table: {
+        list: [{
+          num: '',
+          title: '',
+          sender: '',
+          sendDate: '',
+          analyState: ''
+        }],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10,
+        // 总条数
+        total: 0
+      },
+      qianLoading: false,
+      infoIdsQB: [],
+      infoIndsQBNo: [],
+      // ----------------以下是签呈批单定义的数据-----------------//
+      // 签呈批单条件查询
+      formTwo: {
+        dtitle: '', // 单标题
+        sendeUnit: '', // 发送单位
+        numstate: '', // 编号情况
+        saveTime: [],
+        createTime: [],
+        updateTime: [],
+        danNum: '',
+        qianCheng: '',
+        htitle: '',
+        hWords: '',
+        type: '',
+        fenNum: '',
+        qianBei: '',
+        chengBei: '',
+        status: ''
+      },
+      // 签呈批单查询校验规则
+      formTwoRules: {
+        // sendeUnit: [
+        //   { validator: noSpaceAndTs, trigger: 'blur' }
+        // ]
+        fenNum: [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: this.onlyNumberValidate, trigger: 'blur' }
+        ]
+      },
+      // 签呈批单列表展示
+      orderTable: {
+        list: [],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10,
+        // 总条数
+        total: 0
+      },
+      // 签呈批单审核状态条件
+      formTwoStatus: [{
+        value: '未提交',
+        label: '未提交'
+      }, {
+        value: '待审批',
+        label: '待审批'
+      }, {
+        value: '审批通过',
+        label: '审批通过'
+      }, {
+        value: '审批未通过',
+        label: '审批未通过'
+      }],
+      isBianHao: '', // 编号数组
+      isBaoCun: '',
+      bianAndAdd: '',
+      clueVisible: false, // 线索弹框
+      signId: '', // 线索列表需要的参数id
+      infoIds: [],
+      infoIds1: '',
+      clueTable: { // 线索列表详情
+        list: [],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10,
+        // 总条数
+        total: 0
+      },
+      //  // 线索查询的参数，
+      addMoveXS: {
+        indexNum: '',
+        xSType: ''
+      },
+      addMoveXSRules: {
+        indexNum: [
+          { validator: isValidBlank, trigger: 'blur' }
+        ]
+      },
+      table3: {
+        list: [],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10,
+        // 总条数
+        total: 0
+      },
+      // 编号列表
+      numVisibleTable: {
+        list: [
+          {
+            formNum: '',
+            infoType: '',
+            attachSuit: '',
+            infoTitleNum: '',
+            tableNum: '',
+            dispatchDate: ''
+          }
+        ],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10,
+        // 总条数
+        total: 0
+      },
+      numVisibleTableRules: {
+        infoTitleNum: [
+          { validator: noNothing, trigger: 'blur' }
+        ],
+        tableNum: [
+          { validator: noNothing, trigger: 'blur' }
+        ]
+      },
+      // 签呈批单 --打印
+      printTable: {
+        list: [],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10,
+        // 总条数
+        total: 0
+      },
+      table5: {
+        list: [],
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pagesize: 10
+      },
+      data: generateData(), // 提交穿梭框变量
+      value: [], // 提交穿梭框变量，
+      stopRepeat: 0,
+      // stopXS: 0,
+      deleteQian: [],
+      deleteQian2: [],
+
+      // 下面是工作流处置跳转过来所需数据
+      signNum: [],
+      signCId: [],
+      keBianJi: true,
+      departArr: [],
+      domesticAderrss: ''
+      // sendDeptIds: 'MPS1,TESTMPS2'
+    }
+  },
+  mounted() {
+    this.domesticAderrss = window.domestic
+    this.getDepart()
+    if (sessionStorage.getItem('xtfanalysis') !== null) {
+      this.getSeeion()
+    } else {
+      this.petitionForm.saveDt = this.getNowFormatDate()
+      console.log(this.getNowFormatDate())
+
+      // 获取情报文件列表
+      this.getQingBaoList()
+      // 获取签呈批单文件列表
+      this.getQianListInfo()
+    }
+    if (window.history && window.history.pushState) {
+      // 向历史记录中插入了当前页
+      history.pushState(null, null, document.URL)
+      window.addEventListener('popstate', this.goBack, false)
+    }
+  },
+  methods: {
+    getDepart() {
+      getDepart().then(res => {
+        if (res.code === 200) {
+          this.departArr = res.data
+        }
+      })
+    },
+    goBack() {
+      console.log('点击了浏览器的返回按钮')
+      if (this.ismanagement && this.saveEventDiagon === false) {
+        this.managementCancel()
+      } else {
+        window.history.back()
+      }
+    },
+    // 获取权限
+    getRoles() {
+      getRoles().then(res => {
+        if (res.data === 'open') {
+          this.keBianJi = false
+        } else {
+          this.keBianJi = true
+        }
+      })
+    },
+    zzInfo(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else {
+        callback()
+      }
+    },
+    getNowFormatDate() {
+      var date = new Date()
+      var seperator1 = '-'
+      var year = date.getFullYear()
+      var month = date.getMonth() + 1
+      var strDate = date.getDate()
+      if (month >= 1 && month <= 9) {
+        month = '0' + month
+      }
+      if (strDate >= 0 && strDate <= 9) {
+        strDate = '0' + strDate
+      }
+      var currentdate = year + seperator1 + month + seperator1 + strDate
+      return currentdate
+    },
+    getSeeion() {
+      const xtfSessionChuLi = JSON.parse(sessionStorage.getItem('xtfanalysis'))
+      this.activeName = xtfSessionChuLi[0].activeName
+      this.form.title = xtfSessionChuLi[0].title
+      this.form.from = xtfSessionChuLi[0].from
+      this.form.analystate = xtfSessionChuLi[0].analystate
+      this.formTwo.dtitle = xtfSessionChuLi[0].dtitle
+      this.formTwo.sendeUnit = xtfSessionChuLi[0].sendeUnit
+      this.formTwo.numstate = xtfSessionChuLi[0].numstate
+      this.formTwo.status = xtfSessionChuLi[0].status
+      this.table.currentPage = xtfSessionChuLi[0].tableCurrentPage
+      this.table.pagesize = xtfSessionChuLi[0].tablePagesize
+      this.orderTable.currentPage = xtfSessionChuLi[0].orderTableCurrentPage
+      this.orderTable.pagesize = xtfSessionChuLi[0].orderTablePagesize
+      this.searchTable()
+      this.searchOrderTable()
+      this.sessionStorageClear()
+      // this.$$nextTick(() => {
+      //   this.sessionStorageClear()
+      // })
+    },
+    setSeeion() {
+      const sess = [{
+        activeName: this.activeName,
+        title: this.form.title,
+        from: this.form.from,
+        analystate: this.form.analystate,
+        dtitle: this.formTwo.dtitle,
+        sendeUnit: this.formTwo.sendeUnit,
+        numstate: this.formTwo.numstate,
+        status: this.formTwo.status,
+        tableCurrentPage: this.table.currentPage,
+        tablePagesize: this.table.pagesize,
+        orderTableCurrentPage: this.orderTable.currentPage,
+        orderTablePagesize: this.orderTable.pagesize
+      }]
+      console.log(sess)
+      sessionStorage.setItem('xtfanalysis', JSON.stringify(sess))
+    },
+    sessionStorageClear() {
+      sessionStorage.removeItem('xtfanalysis')
+    },
+    // ------------以下是情报文件定义的方式------------//
+    seeInfo(scope) {
+      this.setSeeion()
+      if (scope.row.infoType === '线索' && scope.row.triggerSource === '上报分析申请') {
+        getSBId(scope.row.indexNumber).then(res => {
+          if (res.code === 200) {
+            this.sbypxsId = res.data
+            this.$router.push({
+              name: 'judgedClues_add',
+              query: {
+                sbypxsId: this.sbypxsId,
+                fenxiIndex: '0'
+              }
+            })
+          }
+        }).catch(() => {
+          this.$message({
+            type: 'error',
+            message: '查询失败',
+            showClose: true,
+            duration: 6000
+          })
+        })
+      } else {
+        getInfoId(scope.row.infoId).then(res => {
+          if (res.code === 200) {
+            if (scope.row.infoType === '协查') {
+              this.$router.push({
+                name: 'cueManage_investigation_archives',
+                query: {
+                  key: '007',
+                  assistId: res.data,
+                  bianhao: 'bianhao'
+                }
+              })
+            } else {
+              this.$router.push({
+                name: 'cueManage_autonomousAnalysisInfo',
+                query: {
+                  keyIndex: '1',
+                  anaId: res.data,
+                  status: scope.row.anaStatus
+                }
+              })
+            }
+          } else if (res.code === 205) {
+            this.$message({
+              type: 'error',
+              message: res.message,
+              showClose: true,
+              duration: 6000
+            })
+          }
+        })
+      }
+    },
+    // 编辑研判线索
+    updateInfoZiZhu(scope) {
+      getClueInfo(scope.row.infoId).then(res => {
+        if (res.code === 205) {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            showClose: true,
+            duration: 6000
+          })
+          return false
+        } else if (res.code === 200) {
+          this.setSeeion()
+          this.$router.push({
+            name: 'cueManage_autonomousAnalysisInfo',
+            query: {
+              keyIndex: '1991',
+              noWrite: false,
+              indexNumber: scope.row.infoId
+            }
+          })
+        }
+      }).catch(() => {
+        console.log('11')
+      })
+    },
+    seeInfoZiZhu(scope) {
+      getClueInfo(scope.row.infoId).then(res => {
+        if (res.code === 205) {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            showClose: true,
+            duration: 6000
+          })
+          return false
+        } else if (res.code === 200) {
+          this.setSeeion()
+          if (scope.row.infoType === '线索' && scope.row.triggerSource === '上报分析申请') {
+            this.$router.push({
+              name: 'cueManage_autonomousAnalysisInfo',
+              query: {
+                keyIndex: '1991',
+                indexNumber: scope.row.infoId,
+                noWrite: true
+                // indexNumber: scope.row.indexNumber,
+
+              }
+            })
+          } else {
+            getInfoId(scope.row.infoId).then(res => {
+              if (res.code === 200) {
+                if (scope.row.infoType === '协查') {
+                  this.$router.push({
+                    name: 'cueManage_investigation_archives',
+                    query: {
+                      key: '007',
+                      assistId: res.data
+                    }
+                  })
+                } else {
+                  this.$router.push({
+                    name: 'cueManage_autonomousAnalysisInfo',
+                    query: {
+                      keyIndex: '1',
+                      anaId: res.data,
+                      status: scope.row.anaStatus
+                    }
+                  })
+                }
+              } else if (res.code === 205) {
+                this.$message({
+                  type: 'error',
+                  message: res.message,
+                  showClose: true,
+                  duration: 6000
+                })
+              }
+            })
+          }
+        }
+      }).catch(() => {
+        console.log('11')
+      })
+    },
+    // 情报文件列表
+    getQingBaoList() {
+      this.loadingtechno1 = true
+      const obj = {
+        pageNum: this.table.currentPage,
+        pageSize: this.table.pagesize
+      }
+      getList(obj).then(res => {
+        if (res.code === 200) {
+          this.loadingtechno1 = false
+          this.table.list = res.data.list
+          this.table.total = res.data.total
+        } else {
+          this.loadingtechno1 = false
+        }
+      }).catch(() => {
+        this.loadingtechno1 = false
+      })
+    },
+    searchQBList() {
+      this.table.currentPage = 1
+      this.searchTable()
+    },
+    // 情报文件查询
+    searchTable() {
+      this.$refs['formRef'].validate((valid) => {
+        if (valid) {
+          this.loadingtechno1 = true
+          if (this.form.createTime === null) {
+            this.form.createTime = []
+          }
+          const obj = {
+            pageNum: this.table.currentPage,
+            pageSize: this.table.pagesize,
+            infoTitle: encodeURI(this.form.title),
+            triggerSource: this.form.from,
+            infoType: this.form.type,
+            infoNumb: encodeURI(this.form.qingNum),
+            tableNum: encodeURI(this.form.bianNum),
+            triggerSourceNum: this.form.chuSourceNum,
+            receDate: this.form.createTime.join(','),
+            infoState: this.form.analystate
+          }
+          getListSearch(obj).then(res => {
+            if (res.code === 200) {
+              this.loadingtechno1 = false
+              this.table.list = res.data.list
+              this.table.total = res.data.total
+            } else {
+              this.loadingtechno1 = false
+            }
+          }).catch(() => {
+            this.loadingtechno1 = false
+          })
+        }
+      })
+    },
+    clearTable() {
+      this.form.title = ''
+      this.form.type = ''
+      this.form.qingNum = ''
+      this.form.bianNum = ''
+      this.form.chuSourceNum = ''
+      this.form.from = ''
+      this.form.createTime = []
+      this.form.analystate = ''
+    },
+    // 查看情报文件列表中某一条数据
+    submit(scope) {
+      this.$router.push({
+        name: 'interAddForm',
+        query: {
+          infoId: scope.row.infoId
+        }
+      })
+    },
+    handleSelectionChangeQB(val, rows) {
+      console.log(val)
+      if (val.length > 0) {
+        this.infoIdsQB = []
+        this.infoIndsQBNo = []
+        val.forEach(ele => {
+          if (ele.infoState === '保存') {
+            this.infoIdsQB.push(ele.infoId)
+          } else {
+            this.infoIndsQBNo.push(ele.infoId)
+
+            // this.$refs.multipleTable.toggleRowSelection(ele)
+          }
+        })
+      } else {
+        this.infoIdsQB = []
+        this.infoIndsQBNo = []
+      }
+    },
+    handleDraft(info) { // 点击起草按钮和签呈批单新增
+      if (this.infoIndsQBNo.length > 0) {
+        this.$message({
+          type: 'error',
+          message: '只能选择保存状态的情报文件进行起草',
+          showClose: true,
+          duration: 6000
+        })
+        return false
+      }
+      this.sTitleDisabled = true
+      this.yiDanOrMeiDan = info
+      // 新增
+      if (this.yiDanOrMeiDan === 'qianAdd') {
+        this.petitionVisible = true
+        this.$refs['petitionFormRef'].resetFields()
+      } else {
+        if (this.infoIdsQB.length === 0 || this.infoIdsQB === []) {
+          this.$message({
+            type: 'error',
+            message: '最少选择一条情报'
+          })
+          return false
+        }
+        this.activeName = 'second'
+        this.petitionVisible = true
+        this.$refs['petitionFormRef'].resetFields()
+      }
+    },
+    // 起草按钮弹窗的提交
+    submitQBInfo() {
+      if (this.stopRepeat === 1) {
+        return false
+      } else {
+        this.$refs['petitionFormRef'].validate((valid) => {
+          if (valid) {
+            this.stopRepeat++
+            this.qianLoading = true
+            console.log(this.stopRepeat)
+            // 如果是qianAdd说明是新增签呈批单
+            if (this.yiDanOrMeiDan === 'qianAdd') {
+              const obj = {
+                signId: '', // '主键',
+                number: this.petitionForm.number, // '单号',
+                sign: this.petitionForm.sign, //  '签/呈/签呈',
+                saveDt: this.petitionForm.saveDt, // '保存时间',
+                s_type: this.petitionForm.s_type, // '类别-线索 协查 通报',
+                stitle: this.petitionForm.sTitle, // '单标题',
+                copiesNum: this.petitionForm.copiesNum, // '份数',
+                sendDepart: this.petitionForm.sendDepart, // 'sendDepart',
+                signRemark: this.petitionForm.signRemark, // '签批单备注',
+                showRemark: this.petitionForm.showRemark, // '呈批单备注',
+                letterTitle: this.petitionForm.letterTitle, // '函标题',
+                receNum: this.petitionForm.receNum, // '来函号',
+                letterText: this.petitionForm.letterText, // '函正文',
+                enclosureInf: this.petitionForm.enclosureInf, // '附件情况',
+                numSuit: this.petitionForm.numSuit, // '编号情况',
+                status: '' // '状态'
+              }
+              insertQian(obj).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: '提交成功'
+                  })
+                  this.stopRepeat = 0
+                  this.qianLoading = false
+                  this.petitionVisible = false
+                  this.getQianListInfo()
+                }
+              }).catch(() => {
+                this.qianLoading = false
+                this.stopRepeat = 0
+              })
+            } else {
+              const obj = {
+                infoIds: this.infoIdsQB.join(','),
+                signDO: {
+                  signId: '', // '主键',
+                  number: this.petitionForm.number, // '单号',
+                  sign: this.petitionForm.sign, //  '签/呈/签呈',
+                  saveDt: this.petitionForm.saveDt, // '保存时间',
+                  s_type: this.petitionForm.s_type, // '类别-线索 协查 通报',
+                  sTitle: this.petitionForm.sTitle, // '单标题',
+                  copiesNum: this.petitionForm.copiesNum, // '份数',
+                  sendDepart: this.petitionForm.sendDepart, // 'sendDepart',
+                  signRemark: this.petitionForm.signRemark, // '签批单备注',
+                  showRemark: this.petitionForm.showRemark, // '呈批单备注',
+                  letterTitle: this.petitionForm.letterTitle, // '函标题',
+                  receNum: this.petitionForm.receNum, // '来函号',
+                  letterText: this.petitionForm.letterText, // '函正文',
+                  enclosureInf: this.petitionForm.enclosureInf, // '附件情况',
+                  numSuit: this.petitionForm.numSuit, // '编号情况',
+                  status: '' // '状态'
+                }
+              }
+              // 一单制
+              if (this.yiDanOrMeiDan === 'yiDan') {
+                startDraftByMultiInfo(obj).then(res => {
+                  if (res.code === 200) {
+                    this.$message({
+                      type: 'success',
+                      message: '提交成功'
+                    })
+                    this.stopRepeat = 0
+                    this.qianLoading = false
+                    this.petitionVisible = false
+                    this.getQianListInfo()
+                  }
+                }).catch(() => {
+                  this.qianLoading = false
+                  this.stopRepeat = 0
+                })
+              } else {
+              // 每单制
+                startDraftByOneInfo(obj).then(res => {
+                  if (res.code === 200) {
+                    this.$message({
+                      type: 'success',
+                      message: '提交成功'
+                    })
+                    this.stopRepeat = 0
+                    this.qianLoading = false
+                    this.petitionVisible = false
+                    this.getQianListInfo()
+                  }
+                }).catch(() => {
+                  this.qianLoading = false
+                  this.stopRepeat = 0
+                })
+              }
+            }
+          }
+        })
+      }
+    },
+    // ------------以下是签呈批单定义的方法-----------//
+    // 签呈批单打印
+    windowPrint() {
+      window.print()
+    },
+    // 下载签呈批单
+    downLoadQian() {
+      console.log(this.bianAndAdd)
+      if (this.bianAndAdd.length > 0) {
+        this.isBaoCun = []
+        this.isBianHao = []
+        for (let index = 0; index < this.bianAndAdd.length; index++) {
+          if (this.bianAndAdd[index].status === '已审核' || this.bianAndAdd[index].status === '已移送') {
+            this.isBaoCun.push(this.bianAndAdd[index].signId)
+          } else {
+            this.isBianHao.push(this.bianAndAdd[index].signId)
+          }
+        }
+      }
+      // 判断isBaoCun是否为空，为空表示没有选择
+      if ((this.isBaoCun.length !== 1 || this.isBaoCun === []) || (this.isBianHao.length !== 0)) {
+        this.$message({
+          type: 'error',
+          message: '只能勾选一个状态为已审核状态的签呈单'
+        })
+        return false
+      } else {
+        location.href = `monitor/numberTrans/fileDownloadFormatZip?signIds=` + this.signId.join(',') + `&token=` + getToken()
+      }
+
+      // downloadQian(this.signId.join(',')).then(res => {
+      //   if (res.code === 200) {
+      //     console.log(11111)
+      //   }
+      // })
+    },
+    // 签呈批单表单类别联动
+    changeSTitle() {
+      // this.petitionForm.sTitle = ''
+      this.sTitleDisabled = false
+      if (this.petitionForm.s_type === '线索') {
+        this.petitionForm.sTitle = '关于移送X某等账户可疑交易线索的函'
+      } else if (this.petitionForm.s_type === '通报') {
+        this.petitionForm.sTitle = '关于通报X某等账户可疑交易信息的函'
+      } else if (this.petitionForm.s_type === '协查--受托') {
+        this.petitionForm.sTitle = 'XXX函[' + new Date().getFullYear() + ']Y号协查结果反馈'
+      } else {
+        this.petitionForm.sTitle = ''
+        this.sTitleDisabled = true
+      }
+    },
+    // 签呈批单列表展示
+    getQianListInfo() {
+      this.loadingtechno = true
+      const obj = {
+        pageNum: this.orderTable.currentPage,
+        pageSize: this.orderTable.pagesize
+      }
+      getQianList(obj).then(res => {
+        if (res.code === 200) {
+          this.loadingtechno = false
+          const arr = res.data.list
+          arr.forEach(el => {
+            if (el.numSuit === '') {
+              el.numSuit = '未编号'
+            }
+          })
+          this.orderTable.list = arr
+          this.orderTable.total = res.data.total
+        } else {
+          this.loadingtechno = false
+        }
+      }).catch(() => {
+        this.loadingtechno = false
+      })
+    },
+    // 签呈批单查询
+    searchPDList() {
+      this.orderTable.currentPage = 1
+      this.searchOrderTable()
+    },
+    // 签呈批单条件查询
+    searchOrderTable() {
+      this.$refs['formTwoRef'].validate((valid) => {
+        if (valid) {
+          this.loadingtechno = true
+          if (this.formTwo.saveTime === null) {
+            this.formTwo.saveTime = []
+          }
+          if (this.formTwo.updateTime === null) {
+            this.formTwo.updateTime = []
+          }
+          if (this.formTwo.createTime === null) {
+            this.formTwo.createTime = []
+          }
+          const obj = {
+            pageNum: this.orderTable.currentPage,
+            pageSize: this.orderTable.pagesize,
+            title: encodeURI(this.formTwo.dtitle),
+            // title: this.formTwo.dtitle,
+            number: this.formTwo.danNum,
+            signType: this.formTwo.qianCheng,
+            saveDt: this.formTwo.saveTime.join(','),
+            updTime: this.formTwo.updateTime.join(','),
+            creTime: this.formTwo.createTime.join(','),
+            originType: this.formTwo.type,
+            copyNum: this.formTwo.fenNum,
+            signRemark: this.formTwo.qianBei,
+            showRemark: this.formTwo.chengBei,
+            letterTitle: this.formTwo.htitle,
+            letterText: this.formTwo.hWords,
+            sendDepart: this.formTwo.sendeUnit,
+            numSuit: this.formTwo.numstate,
+            verifyStatus: this.formTwo.status
+          }
+          getQianListSearch(obj).then(res => {
+            if (res.code === 200) {
+              this.loadingtechno = false
+              const arr = res.data.list
+              arr.forEach(el => {
+                if (el.numSuit === '') {
+                  el.numSuit = '未编号'
+                }
+              })
+              this.orderTable.list = res.data.list
+              this.orderTable.total = res.data.total
+            } else {
+              this.loadingtechno = false
+            }
+          }).catch(() => {
+            this.loadingtechno = false
+          })
+        }
+      })
+    },
+    clearOrderTable() {
+      this.formTwo.dtitle = ''
+      this.formTwo.sendeUnit = ''
+      this.formTwo.numstate = ''
+      this.formTwo.saveTime = []
+      this.formTwo.createTime = []
+      this.formTwo.updateTime = []
+      this.formTwo.danNum = ''
+      this.formTwo.qianCheng = ''
+      this.formTwo.type = ''
+      this.formTwo.fenNum = ''
+      this.formTwo.qianBei = ''
+      this.formTwo.chengBei = ''
+      this.formTwo.htitle = ''
+      this.formTwo.hWords = ''
+      this.formTwo.status = ''
+    },
+    // 签呈批单--编号列表
+    bianClue() {
+      console.log(this.bianAndAdd)
+      if (this.bianAndAdd.length > 0) {
+        this.isBaoCun = []
+        this.isBianHao = []
+        for (let index = 0; index < this.bianAndAdd.length; index++) {
+          if (this.bianAndAdd[index].status === '已审核') {
+            this.isBaoCun.push(this.bianAndAdd[index].signId)
+          } else {
+            this.isBianHao.push(this.bianAndAdd[index].signId)
+          }
+        }
+      }
+      // 判断isBaoCun是否为空，为空表示没有选择
+      if ((this.isBaoCun.length !== 1 || this.isBaoCun === []) || (this.isBianHao.length !== 0)) {
+        this.$message({
+          type: 'error',
+          message: '有且只能勾选一个状态为已审核状态的签呈单'
+        })
+        return false
+      }
+      this.numVisible = true
+      const obj = {
+        signId: this.isBaoCun[0] || '',
+        pageNum: this.numVisibleTable.currentPage,
+        pageSize: this.numVisibleTable.pagesize
+      }
+      getNumberedLists(obj).then(res => {
+        this.numVisibleTable.list = res.data.list || ''
+        this.numVisibleTable.total = res.data.total || 0
+      }).catch(() => {
+        console.log(122)
+      })
+    },
+    // 签呈批单编号保存
+    bianHaoSub() {
+      this.$refs['numVisibleTableRulesRef'].validate((valid) => {
+        if (valid) {
+          const newArr = []
+          this.numVisibleTable.list.forEach(ele => {
+            newArr.push({ numId: ele.numId, infoTitleNum: ele.infoTitleNum, tableNum: ele.tableNum })
+          })
+          // const obj = {
+          //   list: newArr
+          // }
+          updateNumber(newArr).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: '编辑成功',
+                showClose: true,
+                duration: 6000
+              })
+              this.numVisible = false
+              this.getQianListInfo()
+              this.getQingBaoList()
+            } else if (res.code === 205) {
+              this.$message({
+                type: 'success',
+                message: res.message,
+                showClose: true,
+                duration: 6000
+              })
+            }
+          }).catch(() => {
+            console.log(1111)
+          })
+        }
+      })
+    },
+    // 删除签呈批单
+    delect() {
+      if (this.bianAndAdd.length === 0 || this.bianAndAdd === []) {
+        this.$message({
+          type: 'error',
+          message: '至少勾选一个签呈单'
+        })
+        return false
+      }
+      this.deleteQian = []
+      this.deleteQian2 = []
+      // this.signId = []
+      this.bianAndAdd.forEach(res => {
+        if (res.status === '保存') {
+          this.deleteQian.push(res.signId)
+        } else {
+          this.deleteQian2.push(res.signId)
+        }
+      })
+      if (this.deleteQian2.length > 0) {
+        this.$message({
+          type: 'error',
+          message: '只能选择已保存状态的签呈单进行删除'
+        })
+        return false
+      } else {
+        this.$confirm('您确定要删除签/呈单批号?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          const obj = {
+            signIds: this.deleteQian
+          }
+          deleteodd(obj).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: '删除成功'
+              })
+              this.getQianListInfo()
+            }
+          })
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          })
+        })
+      }
+    },
+    onlyNumberValidate(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (!commonPattern.number.test(value) && value !== '') {
+        callback(new Error('必须输入数值'))
+      } else {
+        callback()
+      }
+    },
+    // 签呈批单--增减线索
+    showClueVisible() {
+      // 判断signId是否为空，为空表示没有选择
+      if (this.signId.length !== 1 || this.signId === []) {
+        this.$message({
+          type: 'error',
+          message: '有且只能勾选一个签呈单'
+        })
+        return false
+      }
+      this.clueVisible = true
+      const obj = {
+        signId: this.signId[0] || '',
+        pageNum: this.clueTable.currentPage,
+        pageSize: this.clueTable.pagesize
+      }
+      getClueLists(obj).then(res => {
+        this.clueTable.list = res.data.list
+        this.clueTable.total = res.data.total
+      })
+    },
+    // 签呈批单选择某条数据增加线索
+    handleSelectionChange(val, rows) {
+      this.bianAndAdd = val
+      if (val.length > 0) {
+        this.signId = []
+        // this.isBianHao = []
+        // this.isBaoCun = []
+        val.forEach(ele => {
+          this.signId.push(ele.signId)
+        })
+      } else {
+        this.signId = []
+      }
+    },
+    sendClue() {
+      if (this.signId.length === 0) {
+        this.$message({
+          type: 'error',
+          message: '最少选择一条线索'
+        })
+        return false
+      } else {
+        sendClue({ signIds: this.signId.join(',') }).then(res => {
+          if (res.code === 200) {
+            if (res.data === 206) {
+              this.$message({
+                type: 'success',
+                duration: 6000,
+                message: '发送成功!如有需要请至“国内合作子系统”查看'
+              })
+            } else if (res.data === 204) {
+              this.$confirm('是否跳转到国内合作子系统?', '提示', {
+                distinguishCancelAndClose: true,
+                confirmButtonText: '是',
+                cancelButtonText: '否',
+                showClose: false,
+                type: 'warning'
+              })
+                .then(() => {
+                  location.href = `${this.domesticAderrss}entrustedInvestigation/shortcutInvestigation`
+                })
+                .catch(res => {})
+            } else if (res.data === 205) {
+              this.$confirm('是否跳转到国内合作子系统?', '提示', {
+                distinguishCancelAndClose: true,
+                confirmButtonText: '是',
+                cancelButtonText: '否',
+                showClose: false,
+                type: 'warning'
+              })
+                .then(() => {
+                  location.href = `${this.domesticAderrss}entrustedInvestigation/artificialInvestigation`
+                })
+                .catch(res => {})
+            }
+          }
+        })
+      }
+    },
+    addXSInfo() {
+      // if (this.stopXS === 1) {
+      //   return false
+      // } else {
+      // 判断signId是否为空，为空表示没有选择
+      if (this.infoIds.length === 0 || this.infoIds === []) {
+        this.$message({
+          type: 'error',
+          message: '最少选择一条线索'
+        })
+        return false
+      } else {
+        // this.stopXS++
+        this.addLoading = true
+        const obj = {
+          signId: this.signId[0] || '',
+          infoIds: this.infoIds.join(',')
+        }
+        addClue(obj).then(res => {
+          if (res.code === 200) {
+            this.addLoading = false
+            this.$message({
+              type: 'success',
+              message: '增加线索成功'
+            })
+            // this.stopXS = 0
+            this.clueinnerVisible = false
+            const obj = {
+              signId: this.signId[0] || '',
+              pageNum: this.clueTable.currentPage,
+              pageSize: this.clueTable.pagesize
+            }
+            getClueLists(obj).then(res => {
+              this.clueTable.list = res.data.list
+              this.clueTable.total = res.data.total
+              this.infoIds = []
+            })
+          } else {
+            this.addLoading = false
+          }
+          console.log(res)
+        }).catch(() => {
+          this.addLoading = false
+        })
+      }
+      // }
+    },
+    // 签呈批单选择某条数据增加线索
+    handleSelectionChangeXS(val, rows) {
+      // 如果从前面传过来的this.clueTable.list为空
+      if (this.clueTable.list.length === 0) {
+        if (val.length > 0) {
+          this.infoIds1 = ''
+          this.infoIds = []
+          this.infoIds1 = val[0].infoType
+          val.forEach(ele => {
+            if (ele.infoType === this.infoIds1) {
+              this.infoIds.push(ele.infoId)
+            } else {
+              this.$refs.changeXS.toggleRowSelection(ele)
+              this.$message({
+                type: 'error',
+                message: '只能选择' + this.infoIds1 + '进行线索增加'
+              })
+            }
+          })
+        } else {
+          this.infoIds = []
+          this.infoIds1 = ''
+        }
+      } else {
+        console.log(val)
+        if (val.length > 0) {
+          this.infoIds = []
+          val.forEach(ele => {
+            if (ele.infoType === this.clueTable.list[0].infoType) {
+              this.infoIds.push(ele.infoId)
+            } else {
+              this.$refs.changeXS.toggleRowSelection(ele)
+              this.$message({
+                type: 'error',
+                message: '只能选择' + this.clueTable.list[0].infoType + '进行线索增加'
+              })
+            }
+          })
+        } else {
+          this.infoIds = []
+        }
+      }
+    },
+    // 签呈批单选择某条数据删除线索
+    handleSelectionChangeXSDe(val, rows) {
+      console.log(val)
+      if (val.length > 0) {
+        this.infoIds = []
+        val.forEach(ele => {
+          this.infoIds.push(ele.infoId)
+        })
+      } else {
+        this.infoIds = []
+      }
+    },
+    // 点击增加线索弹窗
+    addDelInfoIds() {
+      console.log(this.clueTable.list)
+      this.clearClueTitle()
+      this.table3.list = []
+      this.infoIds = []
+      this.clueinnerVisible = true
+      if (this.clueTable.list.length !== 0) {
+        const obj = {
+          indexNum: this.addMoveXS.indexNum,
+          type: this.clueTable.list[0].infoType
+        }
+        getInfoByTitle(obj).then(res => {
+          if (res.data) {
+            this.table3.list = res.data
+            this.table3.total = res.data.length
+            console.log(res)
+          }
+        })
+      } else {
+        this.searchClueTitle()
+      }
+    },
+    // 签呈批单-->增减线索-->增加线索-->线索查询
+    searchClueTitle() {
+      const obj = {
+        indexNum: this.addMoveXS.indexNum,
+        type: this.addMoveXS.xSType
+      }
+      getInfoByTitle(obj).then(res => {
+        if (res.data) {
+          this.table3.list = res.data
+          this.table3.total = res.data.length
+          console.log(res)
+        }
+      })
+    },
+    // 清空查询条件
+    clearClueTitle() {
+      this.addMoveXS.indexNum = ''
+      this.addMoveXS.xSType = ''
+    },
+    // 签呈批单线索删除-支持批量
+    removeClue() {
+      // 判断signId是否为空，为空表示没有选择
+      if (this.infoIds.length === 0 || this.infoIds === []) {
+        this.$message({
+          type: 'error',
+          message: '最少选择一条线索'
+        })
+        return false
+      } else {
+        var signId = this.signId[0] || ''
+      }
+      deleteClue(this.infoIds.join(','), signId).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '删除线索成功'
+          })
+          this.clueinnerVisible = false
+          const obj = {
+            signId: this.signId[0] || '',
+            pageNum: this.clueTable.currentPage,
+            pageSize: this.clueTable.pagesize
+          }
+          getClueLists(obj).then(res => {
+            this.clueTable.list = res.data.list
+            this.clueTable.total = res.data.total
+          })
+        }
+        console.log(res)
+      })
+    },
+    // 签呈批单--提交审核
+    // 调取工作流
+    callWorkFlow() {
+      if (this.bianAndAdd.length > 0) {
+        this.isBaoCun = []
+        this.isBianHao = []
+        for (let index = 0; index < this.bianAndAdd.length; index++) {
+          if (this.bianAndAdd[index].status === '保存') {
+            this.isBianHao.push(this.bianAndAdd[index].signId)
+          } else {
+            this.isBaoCun.push(this.bianAndAdd[index].signId)
+          }
+        }
+      }
+      // 判断isBaoCun是否为空，为空表示没有选择
+      if ((this.isBianHao.length !== 1) || (this.isBaoCun.length !== 0)) {
+        this.$message({
+          type: 'error',
+          message: '只能勾选一个状态为保存状态的签呈单'
+        })
+        return false
+      }
+      this.business2workFlow.configId = ''
+      this.business2workFlow.workitemId = ''
+      this.business2workFlow.proInstId = ''
+      this.business2workFlow.proDirId = ''
+      this.business2workFlow.actInstId = ''
+      this.business2workFlow.actDefId = ''
+      this.$store.dispatch('workFlow', { configCode: 'IntelliFile' })
+      this.$store.dispatch('openWorkFlow', true)
+    },
+    nextStep() {
+      const obj = {
+        signId: this.isBianHao.join(','),
+        workflow: this.workFlow2business
+      }
+      this.isQingBaoLoading = true
+      submitCheck(obj)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: res.message
+            })
+            this.isQingBaoLoading = false
+            this.getQianListInfo()
+          } else {
+            this.$confirm(res.message, '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+            this.isQingBaoLoading = false
+          }
+        })
+        .catch(() => {
+          this.isQingBaoLoading = false
+        })
+    },
+    submitShen() {
+      // 判断signId是否为空，为空表示没有选择
+      if (this.signId.length === 0 || this.signId === []) {
+        this.$message({
+          type: 'error',
+          message: '至少勾选一个签呈单'
+        })
+        return false
+      }
+      this.dialogVisible = true
+    },
+    // 签呈批单--打印
+    printInfo() {
+      // 判断signId是否为空，为空表示没有选择
+      if (this.signId.length === 0 || this.signId === []) {
+        this.$message({
+          type: 'error',
+          message: '至少勾选一个签呈单'
+        })
+        return false
+      }
+      this.printVisible = true
+    },
+    // 查看签呈批单数据
+    see(scope) {
+      this.setSeeion()
+      this.$router.push({
+        name: 'intelligenceInfo',
+        query: {
+          signId: scope.row.signId,
+          keyIndex: '1'
+        }
+      })
+    },
+    // 修改
+    updateInfo(scope) {
+      this.setSeeion()
+      this.$router.push({
+        name: 'intelligenceInfo',
+        query: {
+          signId: scope.row.signId,
+          keyIndex: '2'
+        }
+      })
+    },
+    handleClick(tab, event) {
+      // console.log(tab, event)
+    },
+    mynoSpaceAndTs(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else {
+        callback()
+      }
+    },
+    fetchData(listQuery) {
+      this.listLoading = true
+      getAnalysisiIndex(this.listQuery).then(response => {
+        this.table.list = response.data.projects
+        this.table4.list = response.data.table4
+        this.table3.list = response.data.table3
+        this.table5.list = response.data.table5
+        this.orderTable.list = response.data.orderList
+      })
+    },
+    handleSizeChange(size) {
+      this.table.pagesize = size
+      this.orderTable.pagesize = size
+    },
+    handleCurrentChange(currentPage) {
+      this.table.currentPage = currentPage
+    },
+    // 增加线索列表分页切换
+    handleSizeChangetable3(size) {
+      this.table3.pagesize = size
+      this.showClueVisible()
+    },
+    handleSizeChangetable3Size(size) {
+      this.table3.currentPage = size
+      this.showClueVisible()
+    },
+    // 增加线索列表分页切换
+    handleSizeChangeXSList(size) {
+      this.clueTable.pagesize = size
+      this.showClueVisible()
+    },
+    handleSizeChangeXSListSize(size) {
+      this.clueTable.currentPage = size
+      this.showClueVisible()
+    },
+    // 情报列表切换条数
+    handleSizeChangeQB(size) {
+      this.table.pagesize = size
+      this.searchTable()
+    },
+    // 情报列表下一页
+    handleCurrentChangeQB(currentPage) {
+      this.table.currentPage = currentPage
+      this.searchTable()
+    },
+    // 签呈批单分页
+    handleSizeChangeQian(size) {
+      this.orderTable.pagesize = size
+      this.searchOrderTable()
+    },
+    handleCurrentChangeQian(currentPage) {
+      this.orderTable.currentPage = currentPage
+      this.searchOrderTable()
+    },
+
+    // ------------------------工作流处置跳转保存--------------------以下宋显鹏添加两个方法
+    managementSave() {
+      if (this.bianAndAdd.length > 0) {
+        this.signNum = []
+        this.signCId = []
+        this.bianAndAdd.forEach(ele => {
+          this.signNum.push(ele.nnum)
+          this.signCId.push(ele.signId)
+        })
+        this.saveEventDiagon = true
+        if (JSON.parse(sessionStorage.getItem('dealWithInfo'))) {
+          const objDealwithInfo = JSON.parse(sessionStorage.getItem('dealWithInfo'))
+          const bigObject = {
+            objIsDeal1002: objDealwithInfo.objIsDeal1002 ? objDealwithInfo.objIsDeal1002 : {},
+            objIsDeal1003: objDealwithInfo.objIsDeal1003 ? objDealwithInfo.objIsDeal1003 : {},
+            objIsDeal1004: objDealwithInfo.objIsDeal1004 ? objDealwithInfo.objIsDeal1004 : {},
+            objIsDeal1005: objDealwithInfo.objIsDeal1005 ? objDealwithInfo.objIsDeal1005 : {},
+            echoState: this.$route.query.echoState,
+            centerData: this.$route.query.centerData,
+            ifIsmanagement: true
+          }
+          bigObject.objIsDeal1003.objIsmanagement = this.signNum.join(',')
+          bigObject.objIsDeal1003.objIsmanageId = this.signCId.join(',')
+          bigObject.objIsDeal1003.ismanagement = this.$route.query.ismanagement
+          sessionStorage.setItem('dealWithInfo', JSON.stringify(bigObject))
+        } else {
+          const bigObject = {
+            objIsDeal1002: {},
+            objIsDeal1003: {},
+            objIsDeal1004: {},
+            objIsDeal1005: {},
+            echoState: this.$route.query.echoState,
+            centerData: this.$route.query.centerData,
+            ifIsmanagement: true
+          }
+          bigObject.objIsDeal1003.objIsmanagement = this.signNum.join(',')
+          bigObject.objIsDeal1003.objIsmanageId = this.signCId.join(',')
+          bigObject.objIsDeal1003.ismanagement = this.$route.query.ismanagement
+          sessionStorage.setItem('dealWithInfo', JSON.stringify(bigObject))
+        }
+
+        this.$router.go(-1)
+      } else {
+        this.signCId = []
+        this.signNum = []
+        this.$message({
+          type: 'warning',
+          message: '请勾选数据在保存！'
+        })
+      }
+      // JSON.parse(sessionStorage.getItem('searchData'))
+      // 存储数据  objIsmanagement
+      // 唯一返回标识 ifIsmanagement
+    },
+    managementCancel() {
+      // sessionStorage.removeItem('dealWithInfo')
+      this.$refs.bianMultipleTable.clearSelection()
+      // console.log('工作流处置取消')
+      if (JSON.parse(sessionStorage.getItem('dealWithInfo'))) {
+        const objDealwithInfo = JSON.parse(sessionStorage.getItem('dealWithInfo'))
+        const bigObject = {
+          objIsDeal1002: objDealwithInfo.objIsDeal1002 ? objDealwithInfo.objIsDeal1002 : {},
+          objIsDeal1003: objDealwithInfo.objIsDeal1003 ? objDealwithInfo.objIsDeal1003 : {},
+          objIsDeal1004: objDealwithInfo.objIsDeal1004 ? objDealwithInfo.objIsDeal1004 : {},
+          objIsDeal1005: objDealwithInfo.objIsDeal1005 ? objDealwithInfo.objIsDeal1005 : {},
+          echoState: this.$route.query.echoState,
+          centerData: this.$route.query.centerData,
+          ifIsmanagement: true
+        }
+        sessionStorage.setItem('dealWithInfo', JSON.stringify(bigObject))
+      } else {
+        const bigObject = {
+          objIsDeal1002: {},
+          objIsDeal1003: {},
+          objIsDeal1004: {},
+          objIsDeal1005: {},
+          echoState: this.$route.query.echoState,
+          centerData: this.$route.query.centerData,
+          ifIsmanagement: true
+        }
+        sessionStorage.setItem('dealWithInfo', JSON.stringify(bigObject))
+      }
+      this.$router.go(-1)
+    }
+  },
+  computed: {
+    ...mapGetters(['institution']),
+    ...mapGetters(['businessFlag', 'workFlow2business', 'business2workFlow', 'userInfo']),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    }
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  filters: {
+    statusFilter(status) {
+      const statusMap = {
+        published: 'success',
+        draft: 'gray',
+        deleted: 'danger'
+      }
+      return statusMap[status]
+    }
+  },
+  destroyed() {
+    window.removeEventListener('popstate', this.goBack, false)
+  },
+  created() {
+    this.getRoles()
+    if (this.$route.query.activePane) {
+      this.activeName = this.$route.query.activePane
+      //  宋显鹏添加 工作流处置按钮标识
+      if (this.$route.query.ismanagement) {
+        this.ismanagement = true
+      }
+    }
+    // var listQuery = { currentPage: this.currentPage, pageSize: this.pageSize }
+    // this.fetchData(listQuery)
+  }
+}
+</script>
+
+<style lang="scss">
+.analywraper {
+  .btnlist {
+    padding-bottom: 10px;
+  }
+  .widthKuan .el-input__inner {
+    width: 350px !important;
+    }
+
+    // 模块标题样式
+  .analytitle {
+    font-size: 0.9em;
+  }
+  .datePickerWidth{
+    width: 350px !important;
+    max-width: 100%;
+  }
+  .widthKuan .el-select {
+    width: 350px !important;
+  }
+  .filetitle {
+    padding: 15px 0;
+  }
+  .listtitle {
+    margin-right:10px;
+  }
+  .icon-add {
+    font-size: 24px;
+    cursor: pointer;
+    vertical-align: middle;
+    color: #999;
+    margin-left: 6px;
+  }
+  .oddinput .el-date-editor--date{
+    width: 100% !important;
+  }
+  .oddinput .el-select {
+    display: block
+  }
+  .ptitle {
+    font-size: 0.9em;
+    font-weight:bold;
+    padding:0 0 10px 0;
+  }
+  .btnalign {
+    text-align: right;
+  }
+  .dialog-block{
+    .el-radio{
+      width: 100%;
+      margin-left:30px;
+    }
+  }
+  // 提交弹框样式
+  // .submitwrap {
+  //   .el-dialog__body {
+  //     padding-top: 10px;
+  //     .dialogtitle {
+  //       margin-bottom: 8px;
+  //     }
+  //     .radiowrap {
+  //       padding-left: 30px;
+  //       padding-bottom: 10px;
+  //       border-bottom: 1px dashed #409eff;
+  //     }
+  //     .el-transfer {
+  //       margin: 10px 0 0 5%;
+  //     }
+  //   }
+  // }
+}
+</style>

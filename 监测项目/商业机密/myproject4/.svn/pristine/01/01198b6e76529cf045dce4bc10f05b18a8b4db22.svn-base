@@ -1,0 +1,620 @@
+<template>
+  <el-row class="noticewrap">
+    <el-row>
+      <el-form :model="suspForm" ref="suspForm" :rules="rules" label-width="280px">
+        <el-row>
+          <el-col :span="24" style="font-weight:bold; font-size:16px; margin:0 0 15px 22px;">基本信息</el-col>
+          <el-col :span="24">
+            <el-form-item label="行业类型：" prop="industry">
+              <el-select v-model="suspForm.industry" placeholder="行业类型" v-if="!isView" clearable @change="handleIndustryChange">
+                <el-option label="银行业" value="B"></el-option>
+                <el-option label="证券业" value="S"></el-option>
+                <el-option label="保险业" value="I"></el-option>
+                 <el-option label="银联业" value="U001"></el-option>
+                <el-option label="支付业" value="P001"></el-option>
+                <el-option label="资金清算" value="Z001"></el-option>
+                <el-option label="信托公司等八类" value="J"></el-option>
+                <el-option label="贵金属" value="PM"></el-option>
+                <el-option label="房地产" value="RP"></el-option>
+                <el-option label="会计师事务所" value="AF"></el-option>
+                <el-option label="社会组织" value="ORG"></el-option>
+                <el-option label="律师事务所" value="LO"></el-option>
+                <el-option label="公证机构" value="NO"></el-option>
+                <el-option label="公司服务提供" value="ISP"></el-option>
+                <el-option label="互联网金融" value="NF"></el-option>
+              </el-select>
+              <span v-if="isView">{{suspForm.industry}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">  
+            <el-form-item label="报告机构：" prop="ricd">
+              <el-select v-model="suspForm.ricd" placeholder="报告机构" v-if="!isView" filterable clearable remote :remote-method="querySearchRinm" @focus="querySearchRinm" style="width:60%;">
+                <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm + '（' +item.ricd + '）'" :value="item.ricd"></el-option>
+              </el-select>
+              <!-- <el-autocomplete v-if="!isView" v-model="suspForm.ricd" value-key="ricd" placeholder="报告机构编码" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" @select="handleRinmChange"></el-autocomplete> -->
+              <span v-if="isView">{{suspForm.ricd}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="补充完成时限：" prop="supplyLimitTime">
+              <el-date-picker v-if="!isView" v-model="suspForm.supplyLimitTime" value-format="yyyy-MM-dd" type="date" placeholder="选择日期" :picker-options="updataPickerOptions">
+              </el-date-picker>
+              <span v-if="isView">{{suspForm.supplyLimitTime}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="补充填报要求：" prop="supplyAsk">
+              <el-input v-if="!isView" type="textarea" v-model="suspForm.supplyAsk" placeholder="最大长度为1000位" maxlength="1000" show-word-limit rows="5"></el-input>
+              <span v-if="isView">{{suspForm.supplyAsk}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24" style="font-weight:bold; font-size:16px; margin:0 0 15px 22px;">补充条件信息</el-col>
+          <!-- 第三块 -->
+          <el-col :span="24">
+            <el-form-item label="补充开始日期：" prop="supplyStartTime">
+              <el-date-picker v-if="!isView" v-model="suspForm.supplyStartTime" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" :picker-options="startPickerOptions">
+              </el-date-picker>
+              <span v-if="isView">{{suspForm.supplyStartTime}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="补充结束日期：" prop="supplyEndTime">
+              <el-date-picker v-if="!isView" v-model="suspForm.supplyEndTime" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" :picker-options="endPickerOptions">
+              </el-date-picker>
+              <span v-if="isView">{{suspForm.supplyEndTime}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="客户身份证件/证明文件类型：" prop="citp" :rules="rules.citp">
+              <el-select v-if="!isView" v-model="suspForm.citp" clearable @change="handleCitpChange" style="width: 60%;"> 
+                <el-option v-for="(item, index) in citpOptions" :key="index" :label="'（' + item.codeId + '）' + item.codeName" :value="item.codeId"></el-option>
+              </el-select>
+              <el-select v-if="isView" disabled v-model="suspForm.citp" clearable @change="handleCitpChange" style="width: 60%;"> 
+                <el-option v-for="(item, index) in citpOptions" :key="index" :label="'（' + item.codeId + '）' + item.codeName" :value="item.codeId"></el-option>
+              </el-select>
+            </el-form-item>
+
+          </el-col>
+          <el-col :span="24">   
+            <el-form-item label="客户身份证件/证明文件号码：" prop="ctid" :rules="rules.ctid">
+              <el-input v-if="!isView" v-model="suspForm.ctid" style="width: 60%;" placeholder="长度在 6 到 30 位之间" minlength="6" maxlength="30" @change="handleCtidChange"></el-input>
+              <span v-if="isView">{{suspForm.ctid}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24" v-if="isInstury">
+            <el-form-item label="交易行为主体名称/姓名：" prop="ctnm" :rules="rules.ctnm">
+              <el-input v-if="!isView" v-model="suspForm.ctnm" @change="handleCtnmChange" style="width:60%;" placeholder="最大长度为512位" maxlength="512"></el-input>
+              <span v-if="isView">{{suspForm.ctnm}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="客户账号：" prop="ctac" :rules="rules.ctac">
+              <el-input v-if="!isView" v-model="suspForm.ctac"  @change="handleCtacChange"   style="width:60%;" placeholder="最大长度为64位" maxlength="64"></el-input>
+              <span v-if="isView">{{suspForm.ctac}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24" v-if="isInstury">
+            <el-form-item label="银行账户卡类型：" prop="cbat" :rules="rules.cbat">
+              <el-select v-if="!isView" v-model="suspForm.cbat" placeholder="请选择" clearable @change="handleCbatChange">
+                <el-option label="10借记卡" value="10借记卡"></el-option>
+                <el-option label="20贷记卡" value="20贷记卡"></el-option>
+                <el-option label="30准贷记卡" value="30准贷记卡"></el-option>
+              </el-select>
+              <span v-if="isView">{{suspForm.cbat}}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="20" v-if="isInstury">
+            <el-form-item label="客户银行卡号码：" prop="cbcn" :rules="rules.cbcn">
+              <el-input v-if="!isView" v-model="suspForm.cbcn" placeholder="最大长度为50位" maxlength="50" @change="handleCbcnChange"></el-input>
+              <span v-if="isView">{{suspForm.cbcn}}</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div class="dialog-footer" v-if="!isView">
+          <el-button @click="onCancel">取 消</el-button>
+          <el-button type="primary" @click="callWorkFlow" :loading="spLoading">提交审批</el-button>
+          <!-- onSubmit -->
+        </div>
+        <div class="dialog-footer" v-if="isView">
+          <el-button @click="onCancel">返 回</el-button>
+        </div> 
+      </el-form>
+    </el-row>
+  </el-row>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import {
+  dataFiled,
+  addSupplyData
+} from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch.js'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { isValidInput, onlyNumberValidate, isValidBlank } from '@/utils/formValidate.js'
+
+export default {
+  props: {
+    dialogVisible: {
+      type: Boolean
+    },
+    correctParams: {
+      type: Object
+    },
+    closeLoading: {
+      type: Boolean
+    }
+  },
+  data() {
+    return {
+      updataPickerOptions: { // 补充时限时间 选中今天及以后
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7
+        }
+      },
+      tradeId: null,
+      correctType: null,
+      nVisible: this.dialogVisible,
+      isView: false,
+      rinmOptions: [], // 报告机构列表
+      isInstury: false,
+      suspForm: {
+        industry: '',
+        ricd: '',
+        supplyLimitTime: '',
+        supplyAsk: '',
+        supplyStartTime: '',
+        supplyEndTime: '',
+        citp: '',
+        ctid: '',
+        ctac: '',
+        cbcn: '',
+        cbat: '', // 银行账户卡类型
+        ctnm: '' // 交易行为主体名称/姓名
+      },
+      rules: {
+        industry: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        ricd: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        supplyLimitTime: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        supplyAsk: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidBlank, trigger: 'blur' },
+          { max: 1000, message: '最大长度为1000位', trigger: 'blur' }
+        ],
+        supplyStartTime: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        supplyEndTime: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        ctnm: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 512, message: '最大长度为512位', trigger: 'blur' }
+        ], // 交易行为主体名称/姓名
+        ctac: [
+          // 客户账号（CTAC）
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }
+        ],
+        cbcn: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ], // 客户银行卡号码
+        cbat: [{ required: true, message: '内容不能为空', trigger: 'change' }], // 银行账户卡类型
+        citp: [{ required: false, message: '内容不能为空', trigger: 'change' }],
+        ctid: [{ required: false, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }] // 客户身份证件/证明文件号码
+      },
+      citpOptions: [],
+      startPickerOptions: {
+        disabledDate: (time) => {
+          const beginDateVal = this.suspForm.supplyEndTime
+          if (beginDateVal) {
+            return new Date(beginDateVal).getTime() < time.getTime()
+          } else {
+            return time.getTime() > Date.now() - 8.64e6
+          }
+        }
+      },
+      endPickerOptions: {
+        disabledDate: (time) => {
+          const beginDateVal = this.suspForm.supplyStartTime
+          if (beginDateVal) {
+            return new Date(beginDateVal).getTime() - 1 * 24 * 60 * 60 * 1000 > time.getTime() || time.getTime() > Date.now() - 8.64e6 // 减去一天的时间代表可以选择同一天
+          } else {
+            return time.getTime() > Date.now() - 8.64e6
+          }
+        }
+      },
+      ricdName: '',
+      spLoading: false
+    }
+  },
+  computed: {
+    ...mapGetters(['roles', 'businessFlag', 'workFlow2business'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    },
+    dialogVisible(val) {
+      if (val) this.getData()
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    callWorkFlow() {
+      this.$refs['suspForm'].validate(val => {
+        if (val) {
+          if (this.suspForm.industry === 'B' || this.suspForm.industry === 'S' || this.suspForm.industry === 'I') {
+            if (this.suspForm.citp === '' && this.suspForm.ctid === '' && this.suspForm.ctac === '') {
+              this.$confirm('客户身份证件/证明文件类型和客户身份证件/证明文件号码与客户账号必填其一', '提示', {
+                confirmButtonText: '确 定',
+                showCancelButton: false,
+                type: 'warning'
+              })
+              return false
+            }
+          }
+          if (this.suspForm.ctid === '' && this.suspForm.citp === '' && this.suspForm.cbat === '' && this.suspForm.cbcn === '' && this.suspForm.ctac === '' && this.suspForm.ctnm === '') {
+            this.$confirm('客户身份证件/证明文件类型和客户身份证件/证明文件号码，客户账号，交易行为主体名称/姓名，银行账号卡类型和客户银行卡号码必填其一', '提示', {
+              confirmButtonText: '确 定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+              .then(() => {
+              })
+              .catch(() => {
+
+              })
+          } else if ((this.suspForm.ctid === '' && this.suspForm.citp !== '') || (this.suspForm.ctid !== '' && this.suspForm.citp === '')) {
+            this.$confirm('客户身份证件/证明文件类型和客户身份证件/证明文件号码必须同时填写', '提示', {
+              confirmButtonText: '确 定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+              .then(() => {
+              })
+              .catch(() => {
+
+              })
+          } else if ((this.suspForm.cbat === '' && this.suspForm.cbcn !== '') || (this.suspForm.cbat !== '' && this.suspForm.cbcn === '')) {
+            this.$confirm('银行账户卡类型和客户银行卡号码必须同时填写', '提示', {
+              confirmButtonText: '确 定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+              .then(() => {
+              })
+              .catch(() => {
+
+              })
+          } else {
+            console.log(1991)
+            setTimeout(() => {
+              this.$store.dispatch('workFlow', { configCode: 'supplyCorrect' })
+              this.$store.dispatch('openWorkFlow', true)
+            }, 500)
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    getData() {
+      this.spLoading = this.closeLoading
+      this.ricdName = ''
+      this.correctType = this.correctParams.correctType
+      this.tradeId = this.correctParams.tradeId
+      this.isInstury = false
+      this.resetForm()
+    },
+    querySearchRinm(query) {
+      if (query !== '') {
+        const paramsObj = {
+          industry: this.suspForm.industry,
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            // cb(res.data)
+            this.rinmOptions = res.data
+            return this.rinmOptions
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    onCancel() {
+      this.spLoading = false
+      this.nVisible = false
+      this.$emit('dialogState', this.nVisible)
+    },
+    resetForm() {
+      this.$refs['suspForm'].resetFields()
+    },
+    handleIndustryChange(val) {
+      this.resetForm()
+      this.suspForm.industry = val
+      if (!val) {
+        this.suspForm.ricd = ''
+        this.rinmOptions = []
+      }
+      let type = ''
+      if (this.suspForm.industry === 'B' || this.suspForm.industry === 'S' || this.suspForm.industry === 'I' || this.suspForm.industry === 'J' || this.suspForm.industry === 'PM' || this.suspForm.industry === 'RP' || this.suspForm.industry === 'AF' || this.suspForm.industry === 'ORG' || this.suspForm.industry === 'LO' || this.suspForm.industry === 'NO' || this.suspForm.industry === 'ISP' || this.suspForm.industry === 'NF') {
+        this.isInstury = false
+        type = 'SFZJ'
+      } else {
+        this.isInstury = true
+        type = 'CITP'
+      }
+      dataFiled(type)
+        .then(res => {
+          if (res.code === 200) {
+            this.citpOptions = res.data
+          }
+        })
+        .catch()
+      this.initXSLRule()
+    },
+    handleRinmChange(item) {
+      if (item) {
+        this.ricdName = item.ricd
+      }
+    },
+    handleCitpChange(val) {
+      if ((val !== '') || (val === '' && this.suspForm.ctid !== '')) {
+        this.rules.citp = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        if (this.suspForm.citp === '110001' || this.suspForm.citp === '110003') {
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { max: 18, message: '最大长度为18位', trigger: 'blur' }, { pattern: /(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{2}[0-9Xx]$)/, message: '证件号码格式有误！', trigger: 'blur' }]
+        } else {
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+        }
+      } else {
+        this.rules.citp = [{ required: false, trigger: 'change' }]
+        this.rules.ctid = [{ required: false, trigger: 'change' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }] // 客户身份证件/证明文件号码
+      }
+      this.$refs['suspForm'].clearValidate(['citp', 'ctid'])
+    },
+    handleCtidChange(val) {
+      if ((val !== '') || (val === '' && this.suspForm.citp !== '')) {
+        this.rules.citp = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        if (this.suspForm.citp === '110001' || this.suspForm.citp === '110003') {
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { max: 18, message: '最大长度为18位', trigger: 'blur' }, { pattern: /(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{2}[0-9Xx]$)/, message: '证件号码格式有误！', trigger: 'blur' }]
+        } else {
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+        }
+      } else {
+        this.rules.citp = [{ required: false, trigger: 'change' }]
+        this.rules.ctid = [{ required: false, trigger: 'change' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }] // 客户身份证件/证明文件号码
+      }
+      this.$refs['suspForm'].clearValidate(['citp', 'ctid'])
+    },
+    handleCtnmChange(val) {
+      if (val !== '') {
+        this.rules.ctnm = [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 512, message: '最大长度为512位', trigger: 'blur' }
+        ]
+      } else {
+        this.$refs['suspForm'].clearValidate('ctnm')
+        this.rules.ctnm = [
+          { required: false, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 512, message: '最大长度为512位', trigger: 'blur' }
+        ]
+      }
+    },
+    handleCtacChange(val) {
+      if (val !== '') {
+        this.rules.ctac = [
+          // 客户账号（CTAC）
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }
+        ]
+      } else {
+        this.$refs['suspForm'].clearValidate('ctac')
+        this.rules.ctac = [
+          // 客户账号（CTAC）
+          { required: false, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }
+        ]
+      }
+    },
+    handleCbatChange(val) {
+      if ((val !== '') || (val === '' && this.suspForm.cbcn !== '')) {
+        this.rules.cbat = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        this.rules.cbcn = [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ]
+      } else {
+        this.$refs['suspForm'].clearValidate('cbat')
+        this.$refs['suspForm'].clearValidate('cbcn')
+        this.rules.cbat = [{ required: false, trigger: 'change' }]
+        this.rules.cbcn = [
+          { required: false, trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ]
+      }
+    },
+    handleCbcnChange(val) {
+      if ((val !== '') || (val === '' && this.suspForm.cbat !== '')) {
+        this.rules.cbat = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        this.rules.cbcn = [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ]
+      } else {
+        this.$refs['suspForm'].clearValidate('cbat')
+        this.$refs['suspForm'].clearValidate('cbcn')
+        this.rules.cbat = [{ required: false, trigger: 'change' }]
+        this.rules.cbcn = [
+          { required: false, trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ]
+      }
+    },
+    nextStep() {
+      this.spLoading = true
+      const paramsObj = {
+        correctType: this.correctType,
+        tradeId: this.tradeId,
+        industry: this.suspForm.industry,
+        reportCode: this.suspForm.ricd,
+        correctLimitTime: this.suspForm.supplyLimitTime,
+        correctAsk: this.suspForm.supplyAsk,
+        supplyStartTime: this.suspForm.supplyStartTime,
+        supplyEndTime: this.suspForm.supplyEndTime,
+        citp: this.suspForm.citp,
+        ctid: this.suspForm.ctid,
+        ctac: this.suspForm.ctac,
+        cbat: this.suspForm.cbat,
+        ctnm: this.suspForm.ctnm,
+        cbcn: this.suspForm.cbcn,
+        workflow: this.workFlow2business
+      }
+      addSupplyData(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.spLoading = false
+            this.nVisible = false
+            this.$emit('dialogState', this.nVisible)
+
+            this.$message({
+              type: 'success',
+              message: '提交成功！'
+            })
+          } else {
+            this.spLoading = false
+            this.$message.error('提交失败！')
+          }
+        })
+        .catch(() => {
+          this.spLoading = false
+        })
+    },
+    initXSLRule() {
+      if (this.suspForm.industry === 'B' || this.suspForm.industry === 'S' || this.suspForm.industry === 'I') {
+        this.citpRuleNew()
+      } else if (this.suspForm.industry === 'J' || this.suspForm.industry === 'PM' || this.suspForm.industry === 'RP' || this.suspForm.industry === 'AF' || this.suspForm.industry === 'ORG' || this.suspForm.industry === 'LO' || this.suspForm.industry === 'NO' || this.suspForm.industry === 'ISP' || this.suspForm.industry === 'NF') {
+        // this.citpRule()
+        // 更改为和银证保相同
+        this.citpRuleNew()
+      } else {
+        this.rules.ctnm = [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 512, message: '最大长度为512位', trigger: 'blur' }
+        ] // 交易行为主体名称/姓名
+        this.rules.ctac = [
+        // 客户账号（CTAC）
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }
+        ]
+        this.rules.cbcn = [
+          { required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ] // 客户银行卡号码
+        this.rules.cbat = [{ required: false, message: '内容不能为空', trigger: 'change' }] // 银行账户卡类型
+        this.rules.citp = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        this.rules.ctid = [{ required: false, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }] // 客户身份证件/证明文件号码
+      }
+    },
+    // 新三类的校验
+    citpRuleNew() {
+      if (this.suspForm.citp === '' && this.suspForm.ctid === '' && this.suspForm.ctac === '') {
+        this.rules.citp = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+        this.rules.ctid = [{ required: false, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }] // 客户身
+        this.rules.ctac = [{ required: false, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }]
+      } else if (this.suspForm.citp === '' && this.suspForm.ctid === '') {
+        this.rules.ctac = [{ required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }]
+      } else if (this.suspForm.ctac === '') {
+        this.rules.citp = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }] // 客户身
+      }
+    },
+    citpRule() {
+      if (this.suspForm.citp !== '' && this.suspForm.ctid !== '' && this.suspForm.ctac !== '') {
+        this.rules.citp = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+        this.rules.ctac = [{ required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 64, message: '最大长度为64位', trigger: 'blur' }]
+        if (this.suspForm.citp === '110001' || this.suspForm.citp === '110003') {
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { max: 18, message: '最大长度为18位', trigger: 'blur' }, { pattern: /(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{2}[0-9Xx]$)/, message: '证件号码格式有误！', trigger: 'blur' }]
+        } else {
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+        }
+      } else {
+        if (this.suspForm.citp !== '' && this.suspForm.ctid !== '') {
+        // 客户证件类型和客户证件号码
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+          this.rules.ctac = [{ required: false, message: '请填写客户账号', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+            { max: 64, message: '最大长度为64位', trigger: 'blur' }]
+          if (this.suspForm.citp === '110001' || this.suspForm.citp === '110003') {
+            this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+              { max: 18, message: '最大长度为18位', trigger: 'blur' }, { pattern: /(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{2}[0-9Xx]$)/, message: '证件号码格式有误！', trigger: 'blur' }]
+          } else {
+            this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' },
+              { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+          }
+        } else if (this.suspForm.ctac !== '') {
+          this.rules.citp = [{ required: false, message: '内容不能为空', trigger: 'change' }]
+          this.rules.ctid = [{ required: false, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+          this.rules.ctac = [{ required: true, message: '内容不能为空', trigger: 'blur' },
+            { validator: isValidInput, trigger: 'blur' },
+            { max: 64, message: '最大长度为64位', trigger: 'blur' }]
+        } else {
+          this.rules.citp = [{ required: true, message: '内容不能为空', trigger: 'change' }]
+          this.rules.ctid = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { min: 6, max: 30, message: '长度在 6 到 30 位之间', trigger: 'blur' }]
+          this.rules.ctac = [{ required: true, message: '内容不能为空', trigger: 'blur' },
+            { validator: isValidInput, trigger: 'blur' },
+            { max: 64, message: '最大长度为64位', trigger: 'blur' }]
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.noticewrap {
+  .inforow {
+    padding-bottom: 15px;
+    font-weight: bold;
+  }
+  .infoalign {
+    text-align: right;
+  }
+  .dialog-footer {
+    text-align: right;
+  }
+}
+</style>

@@ -1,0 +1,4020 @@
+<template> 
+  <div class="reportLibraryHadle" 
+    v-loading="loadings"
+    element-loading-text="正在加载..."
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.1)">
+      <div class="headerTip">
+        <span v-if="this.isBranch">分支机构：{{this.name}}</span>
+        <span v-if="this.isCenter">分支机构：{{form.ricd}}</span>
+        <span>状态：{{form.clewState}}</span>
+        <span>编号：{{form.clueNo}}</span>
+      </div>
+      <el-form ref="validForm" :rules="rules" :model="form" disabled>
+        <div class="block" v-if="topHide">
+          <el-form-item label="上报分析申请名称： " label-width="160px" prop="clueName">
+            <el-input
+              :disabled="this.greys"
+              v-model="form.clueName"
+              placeholder="xx个人/单位/账户可疑交易线索,最长50字符"
+              maxlength="50"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label=" 报告机构： " label-width="160px" prop="reportingBody">
+            <!-- <el-input v-model="form.reportingBody" placeholder></el-input> -->
+            <el-select
+              v-loading="load"
+              element-loading-spinner="el-icon-loading"
+              element-loading-background="rgba(0, 0, 0, 0.0)"
+              :disabled="this.greys"
+              clearable
+              multiple
+              v-model="form.reportingBody"
+              filterable
+              remote
+              reserve-keyword
+              placeholder="请输入或选择报告机构"
+              :remote-method="remoteMethod"
+              :loading="loading"
+            >
+              <el-option
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.label"
+              ></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            label="关联移送记录： "
+            label-width="160px"
+            prop="linkId"
+            :rules="[{validator: isValidInput, trigger: 'blur'}]"
+          >
+            <el-input
+              v-model="form.linkId"
+              placeholder="请输入关联移送记录,最长50字符"
+              
+              maxlength="50"
+              :disabled="this.greys"
+            ></el-input>
+          </el-form-item>
+          <div>
+            <el-form-item
+              label="分析触发点： "
+              label-width="160px"
+              prop="triggerOther"
+              :rules="[{validator: isValidInputs, trigger: 'blur'}]"
+            >
+              <el-radio-group v-model="form.triggerPoint" :disabled="this.greys">
+                <el-radio label="1">可疑交易报告</el-radio>
+                <el-radio label="2">行政调查</el-radio>
+                <el-radio label="3">现场检查</el-radio>
+                <el-radio label="4">举报</el-radio>
+                <el-radio label="5">
+                  其他
+                  <el-input
+                    v-if="form.triggerPoint==='5'"
+                    :disabled="this.greys"
+                    v-model="form.triggerOther"
+                    placeholder="其他,最长20字符"
+                    
+                    maxlength="20"
+                  ></el-input>
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </div>
+          <div>
+            <el-form-item label="涉罪类型：" label-width="160px" prop="psclueId">
+              <el-select
+                :disabled="this.greys"
+                filterable
+                v-model="form.psclueId"
+                multiple
+                placeholder="请选择涉罪类型"
+                @change="replenish"
+              >
+                <el-option
+                  v-for="(item,index) in dialogJudgmentData"
+                  :key="index"
+                  :label="item.codeName"
+                  :value="item.codeId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label-width="160px"
+              v-if="isReplenishOne"
+              prop="supplementOne"
+              :rules="[{required:true, validator: szisValidInput1, trigger: 'blur'}]"
+            >
+              <el-input
+                :disabled="this.greys"
+                maxlength="100"
+                v-model="supplementOne"
+                placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充,最长100字符"
+              ></el-input>
+            </el-form-item>
+            <el-form-item
+              label-width="160px"
+              v-if="isReplenishTwo"
+              prop="supplementTwo"
+              :rules="[{required:true, validator: szisValidInput2, trigger: 'blur'}]"
+            >
+              <el-input
+                :disabled="this.greys"
+                maxlength="100"
+                v-model="supplementTwo"
+                placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充,最长100字符"
+              ></el-input>
+            </el-form-item>
+            <!-- <preliminary-judgment
+              :lableWidth="150"
+              ref="judgment"
+              :propVal="'psclueId'"
+              :judgmentInp1="judgmentInp1"
+              :judgmentInp2="judgmentInp2"
+              @judgment="getJudgment"
+              :echoJudgment="reportCluePreJudgment"
+              @judgmentOther="getJudgmentOther"
+            ></preliminary-judgment>-->
+          </div>
+        </div>
+
+        <div class="block" v-if="topHide">
+          <el-row class="blckTitle">
+            <el-col :span="12">
+              <span>主要交易主体及交易对手基本情况</span>
+            </el-col>
+          </el-row>
+          <div class="itemBlock" v-if="!this.greys">
+            <el-form-item label="身份信息：" label-width="100px" class="messageLine">
+              <el-row class="messageContent" v-if="!this.greys">
+                <el-col :span="16">
+                  <el-upload
+                    :action="IDCardUrl"
+                    class="upload-btn"
+                    :on-error="onError"
+                    :on-success="onSuccess"
+                    :show-file-list="false"
+                    :accept="'.xlsx'"
+                  >
+                    <el-button type>点击上传身份信息文件</el-button>
+                  </el-upload>
+                  <el-button @click="downIDCard" type="text" icon="el-icon-download">身份信息导入模板下载</el-button>
+                </el-col>
+                <el-col :span="8" style="textAlign:right">
+                  <el-button type icon="el-icon-plus" @click="addIdentity">添加一行</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+            <div class="dataList">
+              <el-table :data="form.IDCardData">
+                <el-table-column type="index" label="序号"></el-table-column>
+                <el-table-column label="姓名/单位名称">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.' + scope.$index + '.attachTitle'"
+                      :rules="[{required: true,validator: delDataValidInput, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        v-model="scope.row.attachTitle"
+                        placeholder="请输入单位名称,最长20字符"
+                        maxlength="20"
+                      >{{scope.$index}}</el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="证件类型">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.'+scope.$index+'.attachType'"
+                      :rules="[{ required:true, validator: isValidInput,trigger: 'change'}]"
+                    >
+                      <el-select
+                        v-model="scope.row.attachType"
+                        placeholder="请选择"
+                        :disabled="this.greys"
+                      >
+                        <el-option
+                          v-for="(item, index ) in attachTypeArr"
+                          :key="index"
+                          :value="item.codeId"
+                          :label="item.codeName"
+                        ></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="证件号码">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.'+scope.$index+'.attachContent'"
+                      :rules="[{ required:true, message:'证件号码应在6-128位之间', trigger: 'blur'},{validator: validateAgentNum, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        :disabled="this.greys"
+                        v-model="scope.row.attachContent"
+                        placeholder="请输入证件号码,最长128字符"
+                        
+                        maxlength="128"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="主体/对手">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.'+scope.$index+'.uploadUser'"
+                      :rules="[{ required: true, message: '请选择主体/对手', trigger: 'change' }]"
+                    >
+                      <el-radio-group v-model="scope.row.uploadUser" :disabled="this.greys">
+                        <el-radio label="主体">主体</el-radio>
+                        <el-radio label="对手">对手</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="80px" v-if="!this.greys">
+                  <template slot-scope="scope">
+                    <el-button type="text" @click="delIdentity(scope.$index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+          <div class="itemBlock" v-if="!this.greys">
+            <el-form-item label="账户信息：" label-width="100px" class="messageLine">
+              <el-row class="messageContent" v-if="!this.greys">
+                <el-col :span="16">
+                  <el-upload
+                    :action="AccountUrl"
+                    class="upload-btn"
+                    :show-file-list="false"
+                    :on-success="account_onSuccess"
+                    :on-error="account_onError"
+                    accept=".xlsx"
+                  >
+                    <el-button>点击上传账户信息文件</el-button>
+                  </el-upload>
+                  <el-button type="text" icon="el-icon-download" @click="downAccount">账户信息导入模板下载</el-button>
+                </el-col>
+                <el-col :span="8" style="textAlign:right">
+                  <el-button type icon="el-icon-plus" @click="addAccount">添加一行</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+            <div class="dataList">
+              <el-table :data="form.accountData">
+                <el-table-column type="index" label="序号"></el-table-column>
+                <el-table-column label="账户名称">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.accountTitle'"
+                      :rules="[{ required:true, validator: spaceBarAndSpecial, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        :disabled="this.greys"
+                        v-model="scope.row.accountTitle"
+                        placeholder="请输入账户名称"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="账户号码（卡号）">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.attachTitle'"
+                      :rules="[{ required:true,validator: onlyNumberValidate, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        :disabled="this.greys"
+                        v-model="scope.row.attachTitle"
+                        placeholder="请输入账户号码（卡号）"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="开户行">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.attachType'"
+                      :rules="[{ required:true,validator: isValidInput, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        :disabled="this.greys"
+                        v-model="scope.row.attachType"
+                        placeholder="请输入开户行"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="代办人名称">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.attachContent'"
+                      :rules="[{ required:true,validator: isValidInput, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        :disabled="this.greys"
+                        v-model="scope.row.attachContent"
+                        placeholder="请输入代办人名称"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="代办人证件号">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.uploadUser'"
+                      :rules="[{validator: onlyNumberValidate, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        :disabled="this.greys"
+                        v-model="scope.row.uploadUser"
+                        placeholder="请输入代办人证件号"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="80px" v-if="!this.greys">
+                  <template slot-scope="scope">
+                    <el-button type="text" @click="delAccount(scope.$index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+          <div class="itemBlock" v-if="this.greys">
+            <el-form-item label="身份信息：" label-width="100px" class="messageLine">
+              <el-row class="messageContent" v-if="!this.greys">
+                <el-col :span="16">
+                  <el-upload
+                    :action="IDCardUrl"
+                    class="upload-btn"
+                    :on-error="onError"
+                    :on-success="onSuccess"
+                    :show-file-list="false"
+                    :accept="'.xlsx'"
+                  >
+                    <el-button type>点击上传身份信息文件</el-button>
+                  </el-upload>
+                  <el-button @click="downIDCard" type="text" icon="el-icon-download">身份信息导入模板下载</el-button>
+                </el-col>
+                <el-col :span="8" style="textAlign:right">
+                  <el-button type icon="el-icon-plus" @click="addIdentity">添加一行</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+            <div class="dataList">
+              <el-table :data="form.IDCardData">
+                <el-table-column type="index" label="序号"></el-table-column>
+                <el-table-column label="姓名/单位名称">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.' + scope.$index + '.attachTitle'"
+                      :rules="[{required: true,validator: delDataValidInput, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.attachTitle"
+                        placeholder="请输入单位名称,最长20字符"
+                        
+                        maxlength="20"
+                      >{{scope.$index}}</el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="证件类型">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.'+scope.$index+'.attachType'"
+                      :rules="[{ required:true, validator: isValidInput,trigger: 'change'}]"
+                    >
+                      <el-select disabled v-model="scope.row.attachType" placeholder="请选择">
+                        <el-option
+                          v-for="(item, index ) in attachTypeArr"
+                          :key="index"
+                          :value="item.codeId"
+                          :label="item.codeName"
+                        ></el-option>
+                      </el-select>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="证件号码">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.'+scope.$index+'.attachContent'"
+                      :rules="[{ required:true, message:'证件号码不能为空', trigger: 'blur'},{validator: validateAgentNum, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.attachContent"
+                        placeholder="请输入证件号码,最长128字符"
+                        
+                        maxlength="128"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="主体/对手">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'IDCardData.'+scope.$index+'.uploadUser'"
+                      :rules="[{ required: true, message: '请选择主体/对手', trigger: 'change' }]"
+                    >
+                      <el-radio-group v-model="scope.row.uploadUser" disabled>
+                        <el-radio label="主体">主体</el-radio>
+                        <el-radio label="对手">对手</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="80px">
+                  <template slot-scope="scope">
+                    <el-button disabled type="text" @click="delIdentity(scope.$index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+          <div class="itemBlock" v-if="this.greys">
+            <el-form-item label="账户信息：" label-width="100px" class="messageLine">
+              <el-row class="messageContent" v-if="!this.greys">
+                <el-col :span="16">
+                  <el-upload
+                    :action="AccountUrl"
+                    class="upload-btn"
+                    :show-file-list="false"
+                    :on-success="account_onSuccess"
+                    :on-error="account_onError"
+                    accept=".xlsx"
+                  >
+                    <el-button>点击上传账户信息文件</el-button>
+                  </el-upload>
+                  <el-button type="text" icon="el-icon-download" @click="downAccount">账户信息导入模板下载</el-button>
+                </el-col>
+                <el-col :span="8" style="textAlign:right">
+                  <el-button type icon="el-icon-plus" @click="addAccount">添加一行</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+            <div class="dataList">
+              <el-table :data="form.accountData">
+                <el-table-column type="index" label="序号"></el-table-column>
+                <el-table-column label="账户名称">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.accountTitle'"
+                      :rules="[{ required:true, validator: spaceBarAndSpecial, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.accountTitle"
+                        placeholder="请输入账户名称"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="账户号码（卡号）">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.attachTitle'"
+                      :rules="[{ required:true,validator: onlyNumberValidate, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.attachTitle"
+                        placeholder="请输入账户号码（卡号）"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="开户行">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.attachType'"
+                      :rules="[{ required:true,validator: isValidInput, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.attachType"
+                        placeholder="请输入开户行"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="代办人名称">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.attachContent'"
+                      :rules="[{ required:true,validator: isValidInput, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.attachContent"
+                        placeholder="请输入代办人名称"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="代办人证件号">
+                  <template slot-scope="scope">
+                    <el-form-item
+                      :prop="'accountData.'+scope.$index+'.uploadUser'"
+                      :rules="[{validator: onlyNumberValidate, trigger: 'blur'}]"
+                    >
+                      <el-input
+                        disabled
+                        v-model="scope.row.uploadUser"
+                        placeholder="请输入代办人证件号"
+                        
+                        maxlength="20"
+                      ></el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="80px">
+                  <template slot-scope="scope">
+                    <el-button type="text" disabled @click="delAccount(scope.$index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+        <div class="block" v-if="topHide">
+          <el-row class="blckTitle">
+            <el-col :span="12">
+              <span>可疑交易基本情况</span>
+            </el-col>
+          </el-row>
+          <div class="itemBlock">
+            <el-form :model="form.rdesignAreas"   :disabled="this.greys" ref="rdesignAreas" label-width="100px" class="demo-dynamic">
+                <el-row>
+                  <el-col :span="8">
+                    <el-form-item
+                    v-for="(city, index) in form.rdesignAreas.citys"
+                    :label="index===0?'主要交易发生地：':''"
+                    :key="city.key"
+                    :prop="'citys.' + index + '.districtFlag'"
+                    label-width="160px"
+                    :rules="[{ required: true, message:'交易发生地不能为空',trigger: 'change'}]"
+                    
+                  >
+                    <el-select
+                      @change="countryOrProvince(city)"
+                      v-model="city.districtFlag"
+                      placeholder
+                      class="districtFlag"
+                    >
+                      <el-option value="1" label="省市"></el-option>
+                      <el-option value="2" label="国家"></el-option>
+                    </el-select>
+                      
+                  </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                  <el-form-item
+                     label-width="0px"
+                    v-for="(city, index) in form.rdesignAreas.citys"
+                    :key="index"
+                    :prop="'citys.' + index + '.district'"
+                    :rules="[{ required:true, message: '请选择交易发生地',trigger: 'change'}]"
+                  >
+                    <el-select
+                      v-if="city.districtFlag==='2'"
+                      v-model="city.district"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in countryData"
+                        :key="index"
+                        :label="item.chSName"
+                        :value="item.numCode"
+                      ></el-option>
+                    </el-select>
+                    <el-select
+                      v-else
+                      v-model="city.district"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in provinceData"
+                        :key="index"
+                        :label="item.codeName"
+                        :value="item.code"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                  <el-col :span="8">
+                  <el-form-item 
+                    label-width="0px"
+                    v-for="(city, index) in form.rdesignAreas.citys"
+                    :key="index"
+                    :rules="[{validator: validateDept, trigger: 'blur'}]"
+                    :prop="'citys.' + index + '.city'"
+                  >
+                    <el-input
+                      v-if="city.districtFlag==='1'"
+                     style="width:70%"
+                      maxlength="20"
+                      class="city"
+                      v-model="city.city"
+                      placeholder="市,最长20字符"
+                    ></el-input>
+                    <el-button v-if="index>0" style="margin-left:0"  @click.prevent="removecity(city)" icon="el-icon-remove-outline"></el-button>
+                    <el-button    @click="addcity" icon="el-icon-circle-plus-outline"></el-button>
+                  </el-form-item>
+                </el-col>
+                </el-row>
+            </el-form>
+            <!-- <div>
+              <el-row>
+                <el-col :span="8">
+                  <el-form-item
+                    label="主要交易发生地："
+                    label-width="160px"
+                    prop="districtFlag"
+                    :rules="[{ required: true, message: '请选择交易发生地',trigger: 'change'}]"
+                  >
+                    <el-select
+                      :disabled="this.greys"
+                      @change="countryOrProvince"
+                      v-model="form.districtFlag"
+                      placeholder
+                      class="districtFlag"
+                    >
+                      <el-option value="1" label="省市"></el-option>
+                      <el-option value="2" label="国家"></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item
+                    prop="district"
+                    :rules="[{ required:true, message: '请选择交易发生地',trigger: 'change'}]"
+                  >
+                    <el-select
+                      :disabled="this.greys"
+                      v-if="form.districtFlag=='2'"
+                      v-model="form.district"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in countryData"
+                        :key="index"
+                        :label="item.chSName"
+                        :value="item.numCode"
+                      ></el-option>
+                    </el-select>
+                    <el-select
+                      v-else
+                      :disabled="this.greys"
+                      v-model="form.district"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in provinceData"
+                        :key="index"
+                        :label="item.codeName"
+                        :value="item.code"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item prop="city" :rules="[{validator: validateDept, trigger: 'blur'}]">
+                    <el-input
+                      
+                      :disabled="this.greys"
+                      maxlength="20"
+                      v-if="form.districtFlag=='1'"
+                      class="city"
+                      v-model="form.city"
+                      placeholder="市,最长20字符"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div> -->
+            <div>
+              <el-row>
+                <el-col :span="10">
+                  <el-form-item label="交易日期：" label-width="160px" prop="tradeDate">
+                    <el-date-picker
+                      :disabled="this.greys"
+                      v-model="form.tradeDate"
+                      value-format="yyyy-MM-dd"
+                      type="daterange"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      unlink-panels
+                    ></el-date-picker>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+               <el-row>
+                  <el-col :span="12">
+                  <el-form-item
+                    :inline="true"
+                    label="本币金额："
+                    label-width="160px"
+                    prop="moneyRmb"
+                    :rules="[{required: isRmb,validator: isValidMoneys, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      style="width:80%;"
+                      :disabled="this.greys"
+                      v-model="form.moneyRmb"
+                      placeholder="本币金额,最长20字符"
+                      
+                      maxlength="20"
+                    ></el-input>
+                    <span>万元</span>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item
+                    :inline="true"
+                    label="外币金额（折万美元）："
+                    label-width="180px"
+                    prop="moneyUsd"
+                    :rules="[{ required: isDollar,validator: isValidMoneys, trigger: 'blur' }]"
+                  >
+                    <el-input
+                      style="width:70%;"
+                      :disabled="this.greys"
+                      v-model="form.moneyUsd"
+                      placeholder="外币金额,最长20字符"
+                      
+                      maxlength="20"
+                    ></el-input>
+                       <span>万美元</span>
+                  </el-form-item>
+                </el-col>
+               </el-row>
+            </div>
+            <div>
+              <el-form-item
+                label="分析概述："
+                label-width="160px"
+                prop="analysis"
+                :rules="[ {  max: 4000, message: '服务器正在处理中', trigger: 'blur' }]"
+              >
+                <el-input
+                  :disabled="this.greys"
+                  v-model="form.analysis"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="最长4000字符数,如超过限制字数或包含图表等非文本格式的内容,请以附件形式提供,并在此填写“见附件XX”"
+                  maxlength="4000"
+                ></el-input>
+              </el-form-item>
+            </div>
+            <div>
+              <!-- {{this.reportClueAttachDos}} -->
+              <el-form-item label="分析报告：" label-width="160px">
+                <el-upload
+                  :disabled="this.greys"
+                  :action="formUrl"
+                  multiple
+                  class="upload-btn"
+                  :file-list="fileList"
+                  :on-success="fxuploadSuccess"
+                  :on-remove="handleRemove1"
+                  :before-upload="beforeAvatarUpload"
+                  :on-preview="downFile"
+                  :on-error ="errorFile"
+                >
+                  <el-button type="text" :disabled="this.greys">添加附件</el-button>
+                  <div slot="tip" class="el-upload__tip" style="display:inline">（该类型文件必须以00开头）</div>
+                </el-upload>
+              </el-form-item>
+            </div>
+            <div>
+              <el-form-item label="身份信息：" label-width="160px">
+                <el-upload
+                  :disabled="this.greys"
+                  :action="formUrl2"
+                  multiple
+                  class="upload-btn"
+                  :onSuccess="fxuploadSuccess"
+                  :file-list="fileList2"
+                  :before-upload="beforeAvatarUpload2"
+                  :on-remove="handleRemove2"
+                  :on-preview="downFile"
+                   :on-error ="errorFile"
+                >
+                  <el-button type="text" :disabled="this.greys">添加附件</el-button>
+                  <div slot="tip" class="el-upload__tip" style="display:inline">（该类型文件必须以01开头）</div>
+                </el-upload>
+              </el-form-item>
+            </div>
+            <div>
+              <el-form-item label="账户信息：" label-width="160px">
+                <el-upload
+                  :disabled="this.greys"
+                  :action="formUrl3"
+                  multiple
+                  class="upload-btn"
+                  :onSuccess="fxuploadSuccess"
+                  :file-list="fileList3"
+                  :before-upload="beforeAvatarUpload3"
+                  :on-preview="downFile"
+                  :on-remove="handleRemove3"
+                   :on-error ="errorFile"
+                >
+                  <el-button type="text" :disabled="this.greys">添加附件</el-button>
+                  <div slot="tip" class="el-upload__tip" style="display:inline">（该类型文件必须以02开头）</div>
+                </el-upload>
+              </el-form-item>
+            </div>
+            <div>
+              <el-form-item label="交易明细：" label-width="160px">
+                <el-upload
+                  :disabled="this.greys"
+                  :action="formUrl4"
+                  multiple
+                  class="upload-btn"
+                  :onSuccess="fxuploadSuccess"
+                  :file-list="fileList4"
+                  :before-upload="beforeAvatarUpload4"
+                  :on-preview="downFile"
+                  :on-remove="handleRemove4"
+                   :on-error ="errorFile"
+                >
+                  <el-button type="text" :disabled="this.greys">添加附件</el-button>
+                  <div slot="tip" class="el-upload__tip" style="display:inline">（该类型文件必须以03开头）</div>
+                </el-upload>
+              </el-form-item>
+            </div>
+          </div>
+        </div>
+        <div
+          class="block"
+          v-if="(analysisHide&&(this.isCenter||((this.isBranch&&this.form.isvisible==='1')&&this.form.isvisible==='1')))"
+        >
+          <el-row class="blckTitle">
+            <el-col :span="12">
+              <span>分析研判意见</span>
+            </el-col>
+          </el-row>
+          <div class="itemBlock">
+            <div>
+                 <el-form :model="form.AnalysisArea"   :disabled="this.greys" ref="AnalysisArea" label-width="100px" class="demo-dynamic">
+                <el-row>
+                  <el-col :span="8">
+                    <el-form-item
+                    v-for="(city, index) in form.AnalysisArea.citys"
+                    :label="index===0?'主要交易发生地：':''"
+                    :key="city.key"
+                    :prop="'citys.' + index + '.districtFlag'"
+                    label-width="160px"
+                    :rules="[{ required: true, message:'交易发生地不能为空',trigger: 'change'}]"
+                    
+                  >
+                    <el-select
+                      @change="countryOrProvince(city)"
+                      v-model="city.districtFlag"
+                      placeholder
+                      class="districtFlag"
+                    >
+                      <el-option value="1" label="省市"></el-option>
+                      <el-option value="2" label="国家"></el-option>
+                    </el-select>
+                      
+                  </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                  <el-form-item
+                     label-width="0px"
+                    v-for="(city, index) in form.AnalysisArea.citys"
+                    :key="index"
+                    :prop="'citys.' + index + '.district'"
+                    :rules="[{ required:true, message: '请选择交易发生地',trigger: 'change'}]"
+                  >
+                    <el-select
+                      v-if="city.districtFlag==='2'"
+                      v-model="city.district"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in countryData"
+                        :key="index"
+                        :label="item.chSName"
+                        :value="item.numCode"
+                      ></el-option>
+                    </el-select>
+                    <el-select
+                      v-else
+                      v-model="city.district"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in provinceData"
+                        :key="index"
+                        :label="item.codeName"
+                        :value="item.code"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                  <el-col :span="8">
+                  <el-form-item 
+                    label-width="0px"
+                    v-for="(city, index) in form.AnalysisArea.citys"
+                    :key="index"
+                    :rules="[{validator: validateDept, trigger: 'blur'}]"
+                    :prop="'citys.' + index + '.city'"
+                  >
+                    <el-input
+                      v-if="city.districtFlag==='1'"
+                     style="width:70%"
+                      maxlength="20"
+                      class="city"
+                      v-model="city.city"
+                      placeholder="市,最长20字符"
+                    ></el-input>
+                    <el-button v-if="index>0" style="margin-left:0"  icon="el-icon-remove-outline"></el-button>
+                    <el-button   icon="el-icon-circle-plus-outline"></el-button>
+                  </el-form-item>
+                </el-col>
+                </el-row>
+            </el-form>
+              <!-- <el-row>
+                <el-form-item label="主要交易发生地：" label-width="160px" prop="fxdistrict">
+                  <el-col :span="8">
+                    <el-select
+                      :disabled="this.greys"
+                      @change="countryOrProvince3"
+                      v-model="form.fxdistrictFlag"
+                      placeholder
+                      class="districtFlag"
+                    >
+                      <el-option value="1" label="省市"></el-option>
+                      <el-option value="2" label="国家"></el-option>
+                    </el-select>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-select
+                      v-if="form.fxdistrictFlag=='2'"
+                      v-model="form.fxdistrict"
+                      :disabled="this.greys"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in countryData2"
+                        :key="index"
+                        :label="item.chSName"
+                        :value="item.numCode"
+                      ></el-option>
+                    </el-select>
+                    <el-select
+                      v-if="form.fxdistrictFlag=='1'"
+                      :disabled="this.greys"
+                      v-model="form.fxdistrict"
+                      placeholder="请选择"
+                      filterable
+                    >
+                      <el-option
+                        v-for="(item,index) in provinceData2"
+                        :key="index"
+                        :label="item.codeName"
+                        :value="item.code"
+                      ></el-option>
+                    </el-select>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-input
+                      :disabled="this.greys"
+                      
+                      maxlength="20"
+                      v-if="form.fxdistrictFlag=='1'"
+                      class="city"
+                      v-model="form.fxcity"
+                      placeholder="市,最长20字符"
+                    ></el-input>
+                  </el-col>
+                </el-form-item>
+              </el-row> -->
+            </div>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="本币金额：" label-width="160px"   :inline="true">
+                  <el-input style="width:80%" v-model="form.moneyRmbs" placeholder="1000" :disabled="this.greys"></el-input>
+                   <span>万元</span>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="外币金额（折万美元）：" label-width="220px" :inline="true">
+                  <el-input  style="width:70%" v-model="form.moneyUsds" placeholder="200" :disabled="this.greys"></el-input>
+                     <span>万美元</span>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item
+                  label="分析结论是否一致："
+                  label-width="160px"
+                  class="searchBlock_special_formIten"
+                  prop="acac"
+                >
+                  <el-select v-model="form.acac" placeholder="请选择" :disabled="this.greys">
+                    <el-option label="是" value="1"></el-option>
+                    <el-option label="否" value="2"></el-option>
+                    <el-option label="其他" value="3"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="分析结论是否一致其他输入项："
+                  label-width="220px"
+                  class="searchBlock_special_formIten"
+                >
+                  <el-input
+                    :disabled="form.acac!=='3'||this.greys"
+                    v-model="form.acacOther"
+                    placeholder="分析结论其他输入项"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item
+                  label="分析研判意见："
+                  label-width="160px"
+                  class="searchBlock_special_formIten"
+                  prop="analyseOpinion"
+                >
+                  <el-select v-model="form.analyseOpinion" placeholder="请选择" :disabled="this.greys">
+                    <el-option label="中心-移送" value="0"></el-option>
+                    <el-option label="中心-通报" value="1"></el-option>
+                    <el-option label="中心-继续关注" value="2"></el-option>
+                    <el-option label="分支机构-移送" value="10"></el-option>
+                    <el-option label="分支机构-通报" value="11"></el-option>
+                    <el-option label="分支机构-继续关注" value="12"></el-option>
+                    <!-- <el-option label="需补充行政调查" value="13"></el-option>
+                    <el-option label="分支机构-酌情处理" value="14"></el-option>-->
+                    <el-option label="其他" value="15"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="分析研判意见其他输入项："
+                  label-width="220px"
+                  class="searchBlock_special_formIten"
+                >
+                  <el-input
+                    :disabled="form.analyseOpinion!=='7'||this.greys"
+                    v-model="form.analyseOpinionOther"
+                    placeholder="分析研判意见其他输入项"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label=" 线索评价：" label-width="160px" prop="evaluate">
+                  <el-select v-model="form.evaluate" placeholder="请选择" :disabled="this.greys">
+                    <el-option label="1" value="1"></el-option>
+                    <el-option label="2" value="2"></el-option>
+                    <el-option label="3" value="3"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="线索评价其他输入项："
+                  label-width="220px"
+                  class="searchBlock_special_formIten"
+                >
+                  <el-input
+                    v-model="form.evaluateOther"
+                    placeholder="线索评价其他输入项"
+                    :disabled="this.greys"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="分支机构是否可见:" label-width="160px" prop="isvisible">
+                  <el-select v-model="form.isvisible" :disabled="this.greys" placeholder>
+                    <el-option label="不可见" value="0"></el-option>
+                    <el-option label="可见" value="1"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item label="分析概述：" label-width="160px" prop="summary">
+              <el-input
+                :disabled="this.greys"
+                v-model="form.summary"
+                type="textarea"
+                placeholder="请填写分析概述"
+              ></el-input>
+            </el-form-item>
+            <el-form-item label="附件： " label-width="160px">
+              <el-upload
+                :disabled="this.greys"
+                :action="formUrl5"
+                multiple
+                class="upload-btn"
+                :onSuccess="fxuploadSuccess"
+                :file-list="fileList5"
+                :before-upload="beforeAvatarUploads"
+                :on-preview="downFile"
+                :on-remove="handleRemove"
+                 :on-error ="errorFile"
+              >
+                <el-button type="text" :disabled="this.greys">添加附件</el-button>
+              </el-upload>
+              <!-- <el-upload
+                action="https://jsonplaceholder.typicode.com/posts/"
+                multiple
+                :disabled="this.greys"
+              >
+                <el-button type="text" :disabled="this.greys">点击添加附件</el-button>
+              </el-upload>-->
+            </el-form-item>
+          </div>
+        </div>
+        <div
+          class="block"
+          v-if="(auditorHide&&(this.isCenter||(this.isBranch&&this.form.isvisible==='1')))||(form.clewState==='待审核'&&this.isCenter)"
+        >
+          <el-row class="blckTitle">
+            <el-col :span="12">
+              <span>审核意见</span>
+            </el-col>
+          </el-row>
+          <div class="itemBlock">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="审核会议名称：" label-width="160px" prop="meetingName">
+                  <el-input
+                    :disabled="this.greys"
+                    v-model="form.meetingName"
+                    placeholder="请输入审核会议名称,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="审核会议时间：" label-width="220px" prop="meetingDate">
+                  <el-date-picker
+                    :disabled="this.greys"
+                    v-model="form.meetingDate"
+                    placeholder="选择时间"
+                    value-format="yyyy-MM-dd"
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item
+                  label="审核意见是否和分析研判意见一致:"
+                  label-width="160px"
+                  class="searchBlock_special_formIten"
+                  prop="roac"
+                >
+                  <el-select v-model="form.roac" placeholder="请选择" :disabled="this.greys">
+                    <el-option label="是" value="1"></el-option>
+                    <el-option label="否" value="2"></el-option>
+                    <el-option label="其他" value="3"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="审核意见是否和分析研判意见一致其他输入项:"
+                  label-width="220px"
+                  class="searchBlock_special_formIten"
+                >
+                  <el-input
+                    :disabled="form.roac!=='3'||this.greys"
+                    v-model="form.roacOther"
+                    placeholder="请输入审核意见是否和分析研判意见一致其他输入项,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item
+                  label=" 审核意见:"
+                  label-width="160px"
+                  class="searchBlock_special_formIten"
+                  prop="reviewOpinion"
+                >
+                  <el-select v-model="form.reviewOpinion" placeholder="请选择" :disabled="this.greys">
+                    <el-option label="中心-移送" value="0"></el-option>
+                    <el-option label="中心-通报" value="1"></el-option>
+                    <el-option label="中心-继续关注" value="2"></el-option>
+                    <el-option label="分支机构-移送" value="10"></el-option>
+                    <el-option label="分支机构-通报" value="11"></el-option>
+                    <el-option label="分支机构-继续关注" value="12"></el-option>
+                    <!-- <el-option label="需补充行政调查" value="13"></el-option>
+                    <el-option label="分支机构-酌情处理" value="14"></el-option>-->
+                    <el-option label="其他" value="15"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="审核意见其他输入项:"
+                  label-width="220px"
+                  class="searchBlock_special_formIten"
+                >
+                  <el-input
+                    :disabled="form.reviewOpinion!=='7'||this.greys"
+                    v-model="form.reviewOpinionOther"
+                    placeholder="请输入审核意见其他输入项,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item label="领导指示：" label-width="160px">
+              <el-input
+                :disabled="this.greys"
+                v-model="form.ledInstruct"
+                type="textarea"
+                placeholder="请输入领导指示,最长1000字符"
+                
+                maxlength="1000"
+              ></el-input>
+            </el-form-item>
+            <el-form-item label="附件： " label-width="160px">
+              <el-upload
+                :disabled="this.greys"
+                :action="formUrl6"
+                multiple
+                class="upload-btn"
+                :onSuccess="fxuploadSuccess"
+                :file-list="fileList6"
+                :before-upload="beforeAvatarUploads"
+                :on-preview="downFile"
+                :on-remove="handleRemove"
+                 :on-error ="errorFile"
+              >
+                <el-button type="text" :disabled="this.greys">添加附件</el-button>
+              </el-upload>
+            </el-form-item>
+          </div>
+        </div>
+        <!-- {{signs}} -->
+        <div
+          class="block"
+          v-if="transferHide&&((this.isCenter&&(form.clewState==='已移送'||form.clewState==='仅报告'||form.clewState==='不予立案'||form.clewState==='立案'||form.clewState==='结案'||form.clewState==='撤案'||form.reviewOpinion==='15'))||(this.isBranch&&this.form.isvisible==='1'&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'||form.reviewOpinion==='15')))"
+        >
+          <el-row class="blckTitle">
+            <el-col :span="12">
+              <span>移送情况</span>
+            </el-col>
+          </el-row>
+          <div class="itemBlock">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item
+                  label="移送编号："
+                  label-width="160px"
+                  prop="transferNumber"
+                >
+                  <el-input
+                    :disabled="this.ysAsh"
+                    v-model="form.transferNumber"
+                    placeholder="请输入移送编号,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="移送方向："
+                  label-width="220px"
+                  prop="transferDirection"
+                  :rules="[{validator: isValidInput, trigger: 'blur'}]"
+                >
+                  <el-input
+                    :disabled="this.ysAsh"
+                    v-model="form.transferDirection"
+                    placeholder="请输入移送方向,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <!-- <el-col :span="12">
+                <el-form-item label="交易发生地：" label-width="160px" prop="ysdistrict">
+                  <el-input
+                    :disabled="this.ysAsh"
+                    v-model="form.ysdistrict"
+                    placeholder="请输入交易发生地,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col> -->
+              <el-col :span="12">
+                <el-form-item label="移送时间：" label-width="160px">
+                  <el-date-picker
+                    :disabled="this.ysAsh"
+                    v-model="form.transferTime"
+                    placeholder="选择时间"
+                    value-format="yyyy-MM-dd"
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <!-- <el-row :gutter="20">
+              <el-col :span="24">
+                <div>
+                  <el-form-item label="涉罪类型：" label-width="160px" prop="initJudge2">
+                    <el-select
+                      filterable
+                      :disabled="this.ysAsh"
+                      v-model="form.initJudge2"
+                      multiple
+                      placeholder="请选择"
+                      @change="replenish2"
+                    >
+                      <el-option
+                        v-for="(item,index) in dialogJudgmentData"
+                        :key="index"
+                        :label="item.codeName"
+                        :value="item.codeId"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item
+                    label
+                    label-width="160px"
+                    v-if="isReplenishOne2"
+                    prop="supplementOne2"
+                    :rules="[{validator: szisValidInput3, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      maxlength="100"
+                      :disabled="this.ysAsh"
+                      v-model="supplementOne2"
+                      placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充"
+                    ></el-input>
+                  </el-form-item>
+                  <el-form-item
+                    label
+                    label-width="160px"
+                    v-if="isReplenishTwo2"
+                    prop="supplementTwo2"
+                    :rules="[{validator: szisValidInput4, trigger: 'blur'}]"
+                  >
+                    <el-input
+                      maxlength="100"
+                      :disabled="this.ysAsh"
+                      v-model="supplementTwo2"
+                      placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充"
+                    ></el-input>
+                  </el-form-item>
+                </div>
+              </el-col>
+            </el-row> -->
+          </div>
+        </div>
+        <div class="block" v-if="followHide&&((this.form.isvisible==='1'&&this.isBranch)||this.isCenter)">
+          <el-row class="blckTitle">
+            <el-col :span="12">
+              <span>后续办理情况</span>
+            </el-col>
+          </el-row>
+          <div class="itemBlock">
+            <el-row :gutter="20">
+              <el-col :span="24">
+              
+                <div>
+                  <el-form-item label="涉罪类型：" label-width="160px" prop="followJudge">
+                    <el-select
+                      :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                      filterable
+                      v-model="form.followJudge"
+                      multiple
+                      placeholder="请选择涉罪类型"
+                      @change="replenish3"
+                    >
+                      <el-option
+                        v-for="(item,index) in dialogJudgmentData"
+                        :key="index"
+                        :label="item.codeName"
+                        :value="item.codeId"
+                      ></el-option>
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item
+                    label
+                    label-width="160px"
+                    v-if="isReplenishOne3"
+                    prop="supplementOne3"
+                    :rules="[{validator: szisValidInput5, trigger: 'blur'}]"
+                  >
+                    <el-input
+                    :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                      maxlength="100"
+                      v-model="supplementOne3"
+                      placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充,最长100字符"
+                    ></el-input>
+                  </el-form-item>
+                  <el-form-item
+                    label
+                    label-width="160px"
+                    v-if="isReplenishTwo3"
+                    prop="supplementTwo3"
+                    :rules="[{validator: szisValidInput6, trigger: 'blur'}]"
+                  >
+                    <el-input
+                    :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                      maxlength="100"
+                      v-model="supplementTwo3"
+                      placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充,最长100字符"
+                    ></el-input>
+                  </el-form-item>
+
+           
+                </div>
+              </el-col>
+            </el-row>
+       
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="立案名目："
+                  label-width="160px"
+                  prop="register"
+                  :rules="[{ required: isRegister,validator: isValidInput, trigger: 'blur' }]"
+                >
+                  <el-input
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    v-model="form.register"
+                    placeholder="请输入立案名目,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="案件侦破情况："
+                  label-width="160px"
+                  prop="caseNote"
+                  :rules="[{ required: isDetection, validator: isValidInput, trigger: 'blur' }]"
+                >
+                  <el-input
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    v-model="form.caseNote"
+                    placeholder="请输入案件侦破情况,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="专项行动及专案名称："
+                  label-width="160px"
+                  prop="caseName"
+                  :rules="[{validator: isValidInput, trigger: 'blur' }]"
+                >
+                  <el-input
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    v-model="form.caseName"
+                    placeholder="请输入专项行动及专案名称,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="线索状态：" label-width="160px" prop="withState">
+                  <el-select v-model="form.withState" placeholder="请选择" 
+                   :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))">
+                    <el-option label="仅报告" value="仅报告"></el-option>
+                    <el-option label="立案" value="立案"></el-option>
+                    <el-option label="结案" value="结案"></el-option>
+                    <el-option label="撤案" value="撤案"></el-option>
+                    <el-option label="不予立案" value="不予立案"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="接收处室："
+                  label-width="160px"
+                  prop="reviceDep"
+                  :rules="[{validator: isValidInput, trigger: 'blur' }]"
+                >
+                  <el-input
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    v-model="form.reviceDep"
+                    placeholder="请输入接收处室,最长50字符"
+                    
+                    maxlength="50"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  :inline="true"
+                  label="涉案金额："
+                  label-width="160px"
+                  prop="cart"
+                  :rules=" [
+            { required: isDetection, validator:isValidMoney },
+
+          ]"
+                >
+                  <el-input
+                    style="width:80%"
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    v-model="form.cart"
+                    placeholder="请输入涉案金额,最长20字符"
+                    
+                    maxlength="20"
+                  ></el-input>
+                  <span>万元</span>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="报告时间："
+                  label-width="160px"
+                  prop="reportDate"
+                  :rules="[{ required: isReport, message: '时间不能为空', trigger: 'blur' }]"
+                >
+                  <el-date-picker
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    value-format="yyyy-MM-dd"
+                    v-model="form.reportDate"
+                    placeholder="选择日期"
+                    type="date"
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="立案时间："
+                  label-width="160px"
+                  prop="registerTime"
+                  :rules="[{ required: isRegister, message: '时间不能为空', trigger: 'blur' }]"
+                >
+                  <el-date-picker
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    value-format="yyyy-MM-dd"
+                    v-model="form.registerTime"
+                    placeholder="选择日期"
+                    type="date"
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="结案时间："
+                  label-width="160px"
+                  prop="endTime"
+                  :rules="[{ required: isDetection, message: '时间不能为空', trigger: 'blur' }]"
+                >
+                  <el-date-picker
+                  :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                    v-model="form.endTime"
+                    value-format="yyyy-MM-dd"
+                    placeholder="选择日期"
+                    type="date"
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item
+              label="领导批示及有关线索的评价："
+              class="searchBlock_special_formIten"
+              label-width="160px"
+            >
+              <el-input
+              :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                v-model="form.evaluation"
+                type="textarea"
+                placeholder="请输入领导批示及有关线索的评价,最长500字符"
+                
+                maxlength="500"
+              ></el-input>
+            </el-form-item>
+
+            <el-form-item label="案件总结：" label-width="160px">
+              <el-input
+              :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                v-model="form.experience"
+                type="textarea"
+                placeholder="请输入案件总结,最长3000字符"
+                
+                maxlength="3000"
+              ></el-input>
+            </el-form-item>
+
+            <el-form-item label="交办方向：" label-width="160px">
+              <el-input
+              :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                v-model="form.handDirection"
+                placeholder="请输入交办方向,最长100字符"
+                
+                maxlength="100"
+              ></el-input>
+            </el-form-item>
+
+            <el-form-item label="附件： " label-width="160px">
+              <el-upload
+              :disabled="(this.hxAsh||((this.isBranch&&(form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'))||
+                      (this.isCenter&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'))))"
+                :action="formUrl7"
+                multiple
+                class="upload-btn"
+                :onSuccess="hxuploadSuccess"
+                :file-list="fileList7"
+                :before-upload="beforeAvatarUploads"
+                :on-preview="downFile"
+                :on-remove="handleRemove"
+                 :on-error ="errorFile"
+              >
+                <el-button type="text" :disabled="this.hxAsh">添加附件</el-button>
+              </el-upload>
+            </el-form-item>
+          </div>
+        </div>
+        <div class="block">
+          <div class="itemBlock">
+            <div>
+              <el-row :gutter="20">
+                <el-col :span="6">
+                  <el-form-item label="填报联系人：" label-width="120px" prop="createUser">
+                    <el-input
+                      :disabled="this.greys"
+                      v-model="form.createUser"
+                      placeholder="请输入填报联系人"
+                      
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="6">
+                  <el-form-item label="电话：" label-width="120px" prop="createUserTel">
+                    <el-input
+                      :disabled="this.greys"
+                      v-model="form.createUserTel"
+                      placeholder="请输入填报联系人电话"
+                      
+                      maxlength="15"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="6">
+                  <el-form-item label="审核人：" label-width="120px" prop="auditingUser">
+                    <el-input
+                      :disabled="this.greys"
+                      v-model="form.auditingUser"
+                      placeholder="请输入审核人"
+                      maxlength="50"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="6">
+                  <el-form-item label="电话：" label-width="120px" prop="auditingUserTel">
+                    <el-input
+                      :disabled="this.greys"
+                      v-model="form.auditingUserTel"
+                      placeholder="请输入审核人电话"
+                      maxlength="15"
+                    ></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+          </div>
+        </div>
+      </el-form>
+      <div class="saveBtn" >
+        <!-- 申请保存按钮 -->
+        <!-- <el-button
+          :loading="loads"
+          type="primary"
+          @click="saveForm('validForm')"
+          v-if="topHideB&&this.signs&&(this.$route.query.pageFlag==='new'||form.clewState==='已退回'||form.clewState==='已保存')"
+          plain
+        >保 存</el-button> -->
+        <!-- 分析研判意见保存按钮 -->
+        <!-- <el-button type="primary" @click="AnaSaveForm('validForm')" v-if="analysisHideB">保 存</el-button> -->
+        <!-- 审核意见保存按钮 -->
+        <!-- <el-button type="primary" @click="ExamSaveForm('validForm')" v-if="auditorHideB">保 存</el-button> -->
+        <!-- 移送情况保存按钮 -->
+        <!-- <el-button
+          :loading="loads"
+          type="primary"
+          @click="TransferSaveForm('validForm')"
+          v-if="(form.clewState==='已审核'&&(this.isBranch&&(form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'||form.reviewOpinion==='15'))&&this.signs)||
+          (this.isCenter&&form.reviewOpinion==='15'&&form.clewState==='已审核')"
+          plain
+        >保 存</el-button> -->
+        <!-- <el-button
+          :loading="loads"
+          type="primary"
+          @click="TransferSaveForm('validForm')"
+          v-if="transferHideB&&this.isCenter&&this.signs"
+          plain
+        >保 存</el-button> -->
+        <!--后续办理保存按钮 -->
+        <!-- <el-button
+          :loading="loadings"
+          type="primary"
+          @click="AfterSaveForm('validForm')"
+          v-if="this.$route.query.fenxiIndex !== '0' && followHideB&&
+          ((this.isBranch&&this.form.isvisible==='1'&&
+          (form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'||form.reviewOpinion==='15'))||(this.isCenter&&
+          (form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'||form.reviewOpinion==='15'
+          )))
+          &&this.hxlengths<1"
+          plain
+        >保 存</el-button> -->
+        <!-- <el-button type="primary" v-if="this.$route.query.fenxiIndex !== '0' && followHideB&&
+          ((this.isBranch&&this.form.isvisible==='1'&&
+          (form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'||form.reviewOpinion==='15'))||(this.isCenter&&
+          (form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'||form.reviewOpinion==='15'
+          )))" plain @click="hxadd">添加后续办理情况</el-button> -->
+        <!-- <router-link
+          :to="{name: 'judgedClues_subsequent_subsequentHistory',query:{ id: this.id,person:this.person,sbID: this.$route.query.fenxiIndex }}"
+        >
+          <el-button type="primary" v-if="followHideB&&this.hxlengths>0&&
+          ((this.isBranch&&this.form.isvisible==='1'&&
+          (form.reviewOpinion==='10'||form.reviewOpinion==='11'||form.reviewOpinion==='12'||form.reviewOpinion==='15'))||(this.isCenter&&
+          (form.reviewOpinion==='0'||form.reviewOpinion==='1'||form.reviewOpinion==='2'||form.reviewOpinion==='15'
+          )))" plain>查看后续办理情况</el-button>
+        </router-link> -->
+       
+      </div>
+      <!-- <div v-else class="saveBtn">
+        <el-button type="primary" @click="closeT" plain>关 闭</el-button>
+      </div> -->
+    <!-- </el-card> -->
+
+    <!-- 弹出框 -->
+    <!-- <el-dialog title="提示" :visible.sync="dialogVisible" width="70%">
+      <span v-html="dataMessage"></span>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="dataMessageOn"  :loading="loadings">确 定</el-button>
+      </span>
+    </el-dialog> -->
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { mapGetters } from 'vuex'
+import { rinmList } from '@/api/common/industry'
+import {
+  dictionary,
+  province,
+  country
+} from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { common_Validate, commonPattern, spaceBarAndSpecial } from '@/utils/formValidate'
+import {
+  onSubmit,
+  AnalysisSubmit,
+  ExamineSubmit,
+  TransferSubmit,
+  FollowSubmit,
+  getList,
+  getFollowList,
+  Update,
+  delAttach
+} from '@/api/sys-monitoringAnalysis/judgedClues/add.js'
+import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/crimeInvolved.vue'
+export default {
+  props: {
+    tmpInfoId: String
+  },
+  components: {
+    preliminaryJudgment
+  },
+  mounted() {
+    this.getData()
+    this.getDetail()
+    this.getDictionary('SFZJ')
+    this.getDictionary('TOSC')
+    this.getCountry()
+    this.getProvince()
+  },
+  data() {
+    const generateData = _ => {
+      const data = []
+      for (let i = 1; i <= 8; i++) {
+        data.push({
+          key: i,
+          label: `分析${i}处 `
+        })
+      }
+      return data
+    }
+    return {
+      spaceBarAndSpecial: spaceBarAndSpecial,
+      chinaNull: /[\u4e00-\u9fa5]/, // 校验中文
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      englishNull: /[abcdefghijklmnopqrstuvwxyz]/im, // 校验英文
+      numberNull: /[1234567890]/im, // 校验数字
+      blankSpace: /[ ]/im, // 校验空格
+      id: '',
+      cityFlag: false,
+      idFiles: '',
+      greys: false,
+      loadings: false,
+      loads: false,
+      load: true,
+      loading: false,
+      topHide: true,
+      topHideB: true,
+      analysisHide: false,
+      signs: true,
+      hxId: '',
+      sameObj: {},
+      dataMessage: '',
+      // 分割线
+      analysisHideB: false,
+      auditorHideB: false,
+      // 用的分割线
+      auditorHide: false,
+      transferHide: false,
+      transferHideB: false,
+      followHide: false,
+      followHideB: false,
+      ysAsh: false,
+      hxAsh: false,
+      // 分割线
+      TransferId: '',
+      fileList: [],
+      fileList2: [],
+      fileList3: [],
+      fileList4: [],
+      fileList5: [],
+      fileList6: [],
+      fileList7: [],
+      isRmb: true,
+      isDollar: true,
+      attachTypeArr: [],
+      rinmOptions: [], // 报告机构列表
+      list: [],
+      options: [],
+      followObj: {}, // 后续办理情况回显对象
+      isReport: false, // 仅报告
+      isRegister: false, // 立案
+      isDetection: false, // 结案
+      isRetreat: false, // 撤案
+      isNo: false, // 不予立案
+      hxlengths: 0,
+      dialogJudgmentData: [],
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      isReplenishOne2: false,
+      isReplenishTwo2: false,
+      isReplenishOne3: false,
+      isReplenishTwo3: false,
+      supplementOne: '',
+      supplementTwo: '',
+      supplementOne2: '',
+      supplementTwo2: '',
+      supplementOne3: '',
+      supplementTwo3: '',
+      judgmentInp1: '', // 初步判断1401 input
+      judgmentInp2: '', // 初步判断1402 input
+      reportCluePreJudgment: [], // 回显的数据
+      reportCluePreJudgment2: [], // 回显的数据
+      reportCluePreJudgment3: [], // 回显的数据
+      countryData: [], // 国家数据
+      provinceData: [], // 省份数据
+      countryData2: [], // 国家数据
+      provinceData2: [], // 省份数据
+      reportClueAttachDos: [], // 附件参数
+      reportClueAttachDos2: [], // 附件参数
+      reportClueAttachDos3: [], // 附件参数
+      reportClueAttachDos4: [], // 附件参数
+      form: {
+        clewState: '编辑中',
+        clueNo: '提交之后自动显示', // 线索编号
+        ricd: 'xxx分行', // 线索编号
+        IDCardData: [],
+        accountData: [],
+        // 第一模块
+        clueName: '',
+        reportingBody: [],
+        linkId: '',
+        triggerPoint: '',
+        psclueId: [],
+        triggerOther: '',
+        // 可疑交易基本情况
+        rdesignAreas: {
+          citys: [{
+            districtFlag: '',
+            district: '',
+            city: ''
+          }]
+        },
+        tradeDate: '',
+        district: '',
+        city: '',
+        moneyRmb: '',
+        moneyUsd: '',
+        analysis: '',
+        districtFlag: '1',
+        // 分析研判意见
+        AnalysisArea: {
+          citys: [{
+            districtFlag: '',
+            district: '',
+            city: ''
+          }]
+        },
+        fxdistrict: '',
+        fxcity: '',
+        fxdistrictFlag: '',
+        acac: '',
+        acacOther: '',
+        analyseOpinion: '',
+        analyseOpinionOther: '',
+        evaluate: '',
+        evaluateOther: '',
+        isvisible: '',
+        summary: '',
+        analyze: '',
+        // 审核意见
+        meetingName: '',
+        meetingDate: '',
+        roac: '',
+        roacOther: '',
+        reviewOpinion: '',
+        reviewOpinionOther: '',
+        ledInstruct: '',
+        // 移送情况
+        yscity: '',
+        ysdistrictFlag: '',
+        ysdistrict: '',
+        transferTime: '',
+        transferDirection: '',
+        initJudge2: [],
+        transferNumber: '',
+        // followForm: {
+        // 后续办理情况
+        initJudge3: [],
+        followJudge: [],
+        crimeTypeOther: '',
+        withState: '',
+        reviceDep: '',
+        cart: '',
+        reportDate: '',
+        registerTime: '',
+        endTime: '',
+        register: '',
+        caseName: '',
+        evaluation: '',
+        experience: '',
+        caseNote: '',
+        handDirection: '',
+        // },
+        createUser: '',
+        createUserTel: '',
+        auditingUser: '',
+        auditingUserTel: ''
+      },
+
+      dialogVisible: false,
+      dialog: {
+        radio: '1',
+        transferData: generateData(),
+        value: [1, 4],
+        advice: ''
+      },
+
+      rules: {
+        // 第一栏验证
+        clueName: [{ required: true, validator: common_Validate, trigger: 'blur' }],
+        // linkId: [{ validator: common_Validate, trigger: 'blur' }],
+        reportingBody: [
+          { type: 'array', message: '报告机构不能为空', trigger: 'change' }
+        ],
+        psclueId: [
+          { type: 'array', required: true, message: '请至少选择一个类型', trigger: 'change' }
+        ],
+        initJudge2: [{ required: true, message: '请至少选择一个类型', trigger: 'change' }],
+        // 后续办理验证
+        // followForm: {
+        followJudge: [{ required: true, message: '请至少选择一个类型', trigger: 'change' }],
+        // crimeType: [{ required: true, message: '请输入涉罪类型', trigger: 'change' }],
+        // reportDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
+        // registerTime: [{ required: true, message: '请选择日期', trigger: 'blur' }],
+        withState: [{ required: true, message: '请输入线索状态', trigger: 'blur' }],
+        // endTime: [{ required: true, message: '请选择日期', trigger: 'blur' }],
+        // cart: [{ required: true, message: '请输入涉案金额', trigger: 'blur' }],
+        // register: [{ required: true, message: '请输入立案名目', trigger: 'blur' }],
+        // caseNote: [{ required: true, message: '请输入案件侦破情况', trigger: 'blur' }],
+        // },
+        // 可疑交易基本情况验证
+        fxdistrict: [{ required: true, validator: this.iseras, trigger: 'change' }],
+        tradeDate: [{ required: true, message: '交易日期不能为空', trigger: 'blur' }],
+        // 分析研判意见验证
+        // district: [
+        //   { required: true, message: '名称不能为空', trigger: 'blur' }
+        // ],
+        acac: [{ required: true, message: '请选择', trigger: 'blur' }],
+        evaluate: [{ required: true, message: '请选择评价', trigger: 'blur' }],
+        analyseOpinion: [{ required: true, message: '请选择', trigger: 'blur' }],
+        isvisible: [{ required: true, message: '请选择是否可见', trigger: 'blur' }],
+        summary: [{ required: true, message: '请分析概述', trigger: 'blur' }],
+        // 审核意见验证
+        roac: [{ required: false, message: '请选择', trigger: 'blur' }],
+        reviewOpinion: [{ required: false, message: '请选择', trigger: 'blur' }],
+        meetingName: [{ required: false, message: '请输入审核会议名称', trigger: 'blur' }],
+        meetingDate: [{ required: false, message: '请输入审核会议时间', trigger: 'blur' }],
+        // 移送情况验证
+        ysdistrict: [{ required: true, message: '请输入交易发生地', trigger: 'blur' }],
+        // crimeType: [{ required: true, message: '请选择涉罪类型', trigger: 'blur' }],
+
+        // 联系人验证
+        createUser: [{ required: true, validator: common_Validate, trigger: 'blur' }],
+        // createUserTel: [{ required: true, validator: this.onlyNumberValidate1, trigger: 'blur' }],
+        auditingUser: [{ required: true, validator: common_Validate, trigger: 'blur' }]
+        // auditingUserTel: [{ required: true, validator: this.onlyNumberValidate1, trigger: 'blur' }]
+      },
+      token: getToken(),
+      headers: {
+        Authorization: getToken()
+      }
+    }
+  },
+  watch: {
+    pre_withState(val) {
+      switch (val) {
+        case '仅报告':
+          this.whoIsValid('isReport')
+          break
+        case '立案':
+          this.whoIsValid('isRegister')
+          break
+        case '结案':
+          this.whoIsValid('isDetection')
+          break
+        case '撤案':
+          this.whoIsValid('isRetreat')
+          break
+        case '不予立案':
+          this.whoIsValid('isNo')
+          break
+        default:
+          break
+      }
+    },
+    withclewState(val) {
+      switch (val) {
+        case '已保存':
+          this.topHide = true
+          this.analysisHide = false
+          this.auditorHide = false
+          this.transferHide = false
+          this.followHide = false
+          this.transferHideB = false
+          this.topHideB = true
+          this.followHideB = false
+          break
+        case '已退回':
+          this.topHide = true
+          this.analysisHide = false
+          this.auditorHide = false
+          this.transferHide = false
+          this.followHide = false
+          this.transferHideB = false
+          this.topHideB = true
+          this.followHideB = false
+          break
+        case '已分析':
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = false
+          this.transferHide = false
+          this.followHide = false
+          this.transferHideB = false
+          this.topHideB = false
+          this.followHideB = false
+          break
+        case '待审核':
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = false
+          this.transferHide = false
+          this.followHide = false
+          this.transferHideB = false
+          this.topHideB = false
+          this.followHideB = false
+          break
+        case '已审核':
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = false
+          this.transferHideB = true
+          this.topHideB = false
+          this.followHideB = false
+          break
+        case '移送中':
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = false
+          this.followHide = false
+          this.followHideB = false
+          this.topHideB = false
+          this.transferHideB = false
+
+          break
+        case '已移送':
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = true
+          this.followHideB = true
+          this.topHideB = false
+          this.transferHideB = false
+          this.ysAsh = true
+          break
+        case '结案':
+          this.hxAsh = true
+          this.ysAsh = true
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = true
+          this.followHideB = true
+          this.topHideB = false
+          this.transferHideB = false
+          break
+        case '仅报告':
+          this.hxAsh = true
+          this.ysAsh = true
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = true
+          this.followHideB = true
+          this.topHideB = false
+          this.transferHideB = false
+          break
+        case '立案':
+          this.hxAsh = true
+          this.ysAsh = true
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = true
+          this.followHideB = true
+          this.topHideB = false
+          this.transferHideB = false
+          break
+        case '撤案':
+          this.hxAsh = true
+          this.ysAsh = true
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = true
+          this.followHideB = true
+          this.topHideB = false
+          this.transferHideB = false
+          break
+        case '不予立案':
+          this.hxAsh = true
+          this.ysAsh = true
+          this.topHide = true
+          this.analysisHide = true
+          this.auditorHide = true
+          this.transferHide = true
+          this.followHide = true
+          this.followHideB = true
+          this.topHideB = false
+          this.transferHideB = false
+          break
+        default:
+          this.topHide = true
+          this.analysisHide = false
+          this.auditorHide = false
+          this.transferHide = false
+          this.followHide = false
+          this.transferHideB = false
+          this.topHideB = false
+          this.followHideB = false
+
+          break
+      }
+    },
+    moneyObj(val) {
+      if (val.moneyRmb === '' && val.moneyUsd === '') {
+        this.isDollar = true
+        this.isRmb = true
+      } else if (val.moneyRmb !== '' && val.moneyUsd === '') {
+        this.isDollar = false
+        this.isRmb = true
+      } else if (val.moneyRmb === '' && val.moneyUsd !== '') {
+        this.isDollar = true
+        this.isRmb = false
+      } else {
+        this.isDollar = true
+        this.isRmb = true
+      }
+    }
+  },
+  computed: {
+    ...mapGetters(['userInfo', 'institution', 'name']),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    },
+    pre_withState() {
+      return this.form.withState
+    },
+    // 哪个状态进来
+    withclewState() {
+      return this.form.clewState
+    },
+    moneyObj() {
+      const obj = {}
+      obj.moneyRmb = this.form.moneyRmb
+      obj.moneyUsd = this.form.moneyUsd
+      return obj
+    },
+    person() {
+      const obj = {
+        createUser: this.form.createUser,
+        createUserTel: this.form.createUserTel,
+        auditingUser: this.form.auditingUser,
+        auditingUserTel: this.form.auditingUserTel
+      }
+      return obj
+    },
+    IDCardUrl() {
+      return `/monitor/reportLeads/upFileTradeMain?token=${this.token}`
+    },
+    AccountUrl() {
+      return `/monitor/reportLeads/upFileTradeAccount?token=${this.token}`
+    },
+    formUrl() {
+      return `/monitor/reportLeads/upAttach?token=${this.token}&clueId=${this.idFiles}&type=00`
+    },
+    formUrl2() {
+      return `/monitor/reportLeads/upAttach?token=${this.token}&clueId=${this.idFiles}&type=01`
+    },
+    formUrl3() {
+      return `/monitor/reportLeads/upAttach?token=${this.token}&clueId=${this.idFiles}&type=02`
+    },
+    formUrl4() {
+      return `/monitor/reportLeads/upAttach?token=${this.token}&clueId=${this.idFiles}&type=03`
+    },
+    formUrl5() {
+      return `/monitor/reportLeads/upAttach?token=${this.token}&clueId=${this.idFiles}&type=04`
+    },
+    formUrl6() {
+      return `/monitor/reportLeads/upAttach?token=${this.token}&clueId=${this.idFiles}&type=05`
+    },
+    formUrl7() {
+      return `/monitor/reportLeads/upAttachs?token=${this.token}&id=${this.hxId}&type=06`
+    }
+  },
+  methods: {
+    // 下载附件
+    downFile(file) {
+      location.href = '/file-service/upload/download/' + file.attachId
+    },
+    // 删除附件
+    handleRemove(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.response) {
+          this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+        } else if (file.attachId) {
+          this.delUrl = 'file-service/upload/delete-attach/' + file.attachId
+        }
+        delAttach('', this.delUrl).then(res => {
+          this.$message({
+            message: '删除附件成功',
+            type: 'success',
+            duration: 6000
+          })
+        })
+      }
+    },
+    handleRemove1(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.name.substr(0, 2) === '00') {
+          if (file.response) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+          } else if (file.attachId) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.attachId
+          }
+          delAttach('', this.delUrl).then(res => {
+            this.$message({
+              message: '删除附件成功',
+              type: 'success',
+              duration: 6000
+            })
+          })
+        }
+      }
+    },
+    handleRemove2(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.name.substr(0, 2) === '01') {
+          if (file.response) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+          } else if (file.attachId) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.attachId
+          }
+          delAttach('', this.delUrl).then(res => {
+            this.$message({
+              message: '删除附件成功',
+              type: 'success',
+              duration: 6000
+            })
+          })
+        }
+      }
+    },
+    handleRemove3(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.name.substr(0, 2) === '02') {
+          if (file.response) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+          } else if (file.attachId) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.attachId
+          }
+          delAttach('', this.delUrl).then(res => {
+            this.$message({
+              message: '删除附件成功',
+              type: 'success',
+              duration: 6000
+            })
+          })
+        }
+      }
+    },
+    handleRemove4(file, fileList) {
+      if (file && file.status === 'success') {
+        if (file.name.substr(0, 2) === '03') {
+          if (file.response) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.response.data.attachId
+          } else if (file.attachId) {
+            this.delUrl = 'file-service/upload/delete-attach/' + file.attachId
+          }
+          delAttach('', this.delUrl).then(res => {
+            this.$message({
+              message: '删除附件成功',
+              type: 'success',
+              duration: 6000
+            })
+          })
+        }
+      }
+    },
+    // whoIsValid 谁应该验证
+    whoIsValid(type) {
+      this.isReport = false // 仅报告
+      this.isRegister = false // 立案
+      this.isDetection = false // 结案
+      this.isRetreat = false // 撤案
+      this.isNo = false // 不予立案
+      this[type] = true
+    },
+    // 添加身份信息
+    addIdentity() {
+      const hold = {
+        attachTitle: '',
+        attachContent: '',
+        attachType: '',
+        uploadUser: ''
+      }
+      this.form.IDCardData.push(hold)
+    },
+    // 上传账号信息 --Success
+    account_onSuccess(response, file, fileList) {
+      if (response.code === 200) {
+        response.data.forEach(item => {
+          this.form.accountData.push(item)
+        })
+        this.successOrError('上传成功', 'success')
+      } else if (response.code === 205) {
+        this.successOrError(response.message, 'info')
+      } else {
+        this.successOrError('上传失败', 'info')
+      }
+    },
+    account_onError() {
+      this.successOrError('上传失败', 'info')
+    },
+    remoteMethod(query) {
+      if (query !== '') {
+        this.loading = true
+        setTimeout(() => {
+          this.loading = false
+          this.options = this.list.filter(item => {
+            return item.label.indexOf(query) > -1
+          })
+        }, 200)
+      } else {
+        this.options = []
+      }
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.form.psclueId.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.form.psclueId.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    replenish2() {
+      if (this.form.initJudge2.indexOf('1402') !== -1) {
+        this.isReplenishTwo2 = true
+      } else {
+        this.isReplenishTwo2 = false
+      }
+      if (this.form.initJudge2.indexOf('1401') !== -1) {
+        this.isReplenishOne2 = true
+      } else {
+        this.isReplenishOne2 = false
+      }
+    },
+    replenish3() {
+      if (this.form.followJudge.indexOf('1402') !== -1) {
+        this.isReplenishTwo3 = true
+      } else {
+        this.isReplenishTwo3 = false
+      }
+      if (this.form.followJudge.indexOf('1401') !== -1) {
+        this.isReplenishOne3 = true
+      } else {
+        this.isReplenishOne3 = false
+      }
+    },
+    // 获取涉案类型其他
+    getJudgmentOther(val1, val2) {
+      this.form.preliminaryJudgmentInp1 = val1
+      this.form.preliminaryJudgmentInp2 = val2
+    },
+    removecity(item) {
+      var index = this.form.rdesignAreas.citys.indexOf(item)
+      if (index !== -1) {
+        this.form.rdesignAreas.citys.splice(index, 1)
+      }
+    },
+
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput3(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne2)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne2) ||
+        commonPattern.specialEng.test(this.supplementOne2)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne2 === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput4(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo2)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo2) ||
+        commonPattern.specialEng.test(this.supplementTwo2)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo2 === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput5(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne3)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne3) ||
+        commonPattern.specialEng.test(this.supplementOne3)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne3 === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput6(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo3)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo3) ||
+        commonPattern.specialEng.test(this.supplementTwo3)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo3 === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    validateDept(rule, value, callback) {
+      if (this.blankSpace.test(value)) {
+        callback(new Error('禁止输入空格'))
+      } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+        callback(new Error('禁止输入特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    mycityValidate(rule, value, callback) {
+      if (value === '1' || value === '2') {
+        callback()
+      } else {
+        if (value === '') {
+          callback(new Error('内容不能为空'))
+        }
+      }
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    isValidInputs(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('分析触发点中其他不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('分析触发点中其他不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    iseras(rule, value, callback) {
+      if (value === '') {
+        callback(new Error('请选择地区'))
+      } else {
+        if (this.form.districtFlag === '1') {
+          if (this.form.city === '') {
+            callback()
+          } else {
+            if (!commonPattern.spaceBar.test(this.form.city)) {
+              callback(new Error('内容不能含有空格'))
+            } else if (
+              commonPattern.specialChar.test(this.form.city) ||
+              commonPattern.specialEng.test(this.form.city)
+            ) {
+              callback(new Error('内容不能填写特殊字符'))
+            } else {
+              callback()
+            }
+          }
+        } else if (this.form.districtFlag === '2') {
+          callback()
+        }
+      }
+    },
+    // 数字检查
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 数字检查
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== '') {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (!commonPattern.number.test(value) && value !== '') {
+          callback(new Error('必须输入数值'))
+        } else {
+          callback()
+        }
+      } else {
+        callback(new Error('请输入电话号码'))
+      }
+    },
+    // 金额校验
+    isValidMoneys(rule, value, callback) {
+      var money = /(^[1-9]([0-9]+)?(\.[0-9]{1,3})?$)|(^(0){1}$)|(^[0-9]\.[0-9]([0-9])?$)/
+      if (!this.moneyObj.moneyRmb === '' || !this.moneyObj.moneyUsd === '') {
+        callback(new Error('内容不能为空'))
+      }
+      if (this.moneyObj.moneyRmb !== '' && this.moneyObj.moneyUsd !== '') {
+        if (!money.test(this.moneyObj.moneyRmb)) {
+          callback(new Error('请输入正确的数字，最多保留三位小数!'))
+        } else {
+          if (!money.test(this.moneyObj.moneyUsd)) {
+            callback(new Error('请输入正确的数字，最多保留三位小数!'))
+          } else {
+            callback()
+          }
+        }
+      }
+      if (this.moneyObj.moneyRmb !== '' || this.moneyObj.moneyUsd === '') {
+        if (value > 99999999999999999999) {
+          callback(new Error('最多输入20位!'))
+          return
+        } else if (!money.test(this.moneyObj.moneyRmb)) {
+          callback(new Error('请输入正确的数字，最多保留三位小数!'))
+        } else {
+          callback()
+        }
+      }
+      if (this.moneyObj.moneyRmb === '' || this.moneyObj.moneyUsd !== '') {
+        if (value > 99999999999999999999) {
+          callback(new Error('最多输入20位!'))
+          return
+        } else if (!money.test(this.moneyObj.moneyUsd)) {
+          callback(new Error('请输入正确的数字，最多保留三位小数!'))
+        } else {
+          callback()
+        }
+      }
+    },
+    // // 金额校验
+    // isValidMoney(rule, value, callback) {
+    //   var money = /(^[1-9]([0-9]+)?(\.[0-9]{1,3})?$)|(^(0){1}$)|(^[0-9]\.[0-9]([0-9])?$)/
+    //   if (this.isDetection) {
+    //     if (value > 99999999999999999999) {
+    //       callback(new Error('最多输入20位!'))
+    //       return
+    //     }
+    //     if (value === '') {
+    //       callback(new Error('内容不能为空'))
+    //     } else if (!money.test(value)) {
+    //       callback(new Error('请输入正确的数字，最多保留三位小数!'))
+    //     } else {
+    //       callback()
+    //     }
+    //   }
+    //    else {
+    //     callback()
+    //   }
+    // },
+    // 金额校验
+    isValidMoney(rule, value, callback) {
+      var money = /(^[1-9]([0-9]+)?(\.[0-9]{1,3})?$)|(^(0){1}$)|(^[0-9]\.[0-9]([0-9])?$)/
+      if (this.isDetection) {
+        if (value > 99999999999999999999) {
+          callback(new Error('最多输入20位!'))
+          return
+        }
+        if (value === '' || value === null) {
+          callback(new Error('内容不能为空'))
+        } else if (!money.test(value)) {
+          callback(new Error('请输入正确的数字，最多保留三位小数!'))
+        } else {
+          callback()
+        }
+      } else {
+        if (value > 99999999999999999999) {
+          callback(new Error('最多输入20位!'))
+          return
+        }
+        if (value === '' || value === null) {
+          callback()
+        } else if (!money.test(value)) {
+          callback(new Error('请输入正确的数字，最多保留三位小数!'))
+        } else {
+          callback()
+        }
+      }
+    },
+    // isValidMoney(rule, value, callback) {
+    //   var money = /(^[1-9]([0-9]+)?(\.[0-9]{1,3})?$)|(^(0){1}$)|(^[0-9]\.[0-9]([0-9])?$)/
+    //   if (this.isDetection) {
+    //     if (value > 99999999999999999999) {
+    //       callback(new Error('最多输入20位!'))
+    //       return
+    //     }
+    //     if (value === '') {
+    //       callback(new Error('内容不能为空'))
+    //     } else if (!money.test(value)) {
+    //       callback(new Error('请输入正确的数字，最多保留三位小数!'))
+    //     } else {
+    //       callback()
+    //     }
+    //   } else {
+    //     if (value > 99999999999999999999) {
+    //       callback(new Error('最多输入20位!'))
+    //       return
+    //     }
+    //     if (value === '') {
+    //       callback()
+    //     } else if (!money.test(value)) {
+    //       callback(new Error('请输入正确的数字，最多保留三位小数!'))
+    //     } else {
+    //       callback()
+    //     }
+    //   }
+    // },
+    // 校验身份证号位数及特殊字符空格中英文
+    validateAgentNum(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (
+          this.form.IDCardData[rule.field.substr(rule.field.indexOf('.') + 1, 1)].attachType ===
+          '110001' ||
+        this.form.IDCardData[rule.field.substr(rule.field.indexOf('.') + 1, 1)].attachType ===
+          '110003'
+        ) {
+          if (value.length !== 15 && value.length !== 18) {
+            callback(new Error('身份证件格式标准为15及18位'))
+          } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+            callback(new Error('禁止输入特殊字符'))
+          } else if (this.blankSpace.test(value)) {
+            callback(new Error('禁止输入空格'))
+          } else if (this.chinaNull.test(value)) {
+            callback(new Error('禁止输入中文'))
+          } else {
+            callback()
+          }
+        } else {
+          if (value.length <= 5 || value.length >= 129) {
+            callback(new Error('内容应在6-128位之间'))
+          } else if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    // 获取省份
+    getProvince() {
+      province().then(res => {
+        if (res.code === 200) {
+          this.provinceData = res.data
+          this.provinceData2 = res.data
+        }
+      })
+    },
+    // 获取国家
+    getCountry() {
+      country().then(res => {
+        if (res.code === 200) {
+          this.countryData = res.data.list
+          this.countryData2 = res.data.list
+        }
+      })
+    },
+    beforeAvatarUploads(file) {
+      this.loadings = true
+      const isLt500M = file.size / 1024 / 1024 < 500
+      if (!isLt500M) {
+        this.loadings = false
+        this.$message({
+          message: '上传文件大小不能超过500MB',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      return isLt500M
+    },
+    errorFile() {
+      this.loadings = false
+      this.$message({
+        message: '上传失败',
+        type: 'error',
+        duration: 6000
+      })
+    },
+    beforeAvatarUpload(file) {
+      this.loadings = true
+      const isLt500M = file.size / 1024 / 1024 < 500
+      if (!isLt500M) {
+        this.$message({
+          message: '上传文件大小不能超过500MB',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      const names = file.name.substr(0, 2) === '00'
+      if (!names) {
+        this.$message({
+          message: '该类型文件必须以00开头',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      if (!names || !isLt500M) {
+        this.loadings = false
+      }
+      return isLt500M && names
+    },
+    beforeAvatarUpload2(file) {
+      const isLt500M = file.size / 1024 / 1024 < 500
+      if (!isLt500M) {
+        this.$message({
+          message: '上传文件大小不能超过500MB',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      const names = file.name.substr(0, 2) === '01'
+      if (!names) {
+        this.$message({
+          message: '该类型文件必须以01开头',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      this.loadings = true
+      if (!names || !isLt500M) {
+        this.loadings = false
+      }
+      return isLt500M && names
+    },
+    beforeAvatarUpload3(file) {
+      const isLt500M = file.size / 1024 / 1024 < 500
+      if (!isLt500M) {
+        this.$message({
+          message: '上传文件大小不能超过500MB',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      const names = file.name.substr(0, 2) === '02'
+      if (!names) {
+        this.$message({
+          message: '该类型文件必须以02开头',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      this.loadings = true
+      if (!names || !isLt500M) {
+        this.loadings = false
+      }
+      return isLt500M && names
+    },
+    beforeAvatarUpload4(file) {
+      const isLt500M = file.size / 1024 / 1024 < 500
+      if (!isLt500M) {
+        this.$message({
+          message: '上传文件大小不能超过500MB',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      const names = file.name.substr(0, 2) === '03'
+      if (!names) {
+        this.$message({
+          message: '该类型文件必须以03开头',
+          type: 'error',
+          duration: 6000
+        })
+        this.loadings = true
+        if (!names || !isLt500M) {
+          this.loadings = false
+        }
+      }
+      // 不可以相同名字
+      // this.fileList1.push(file)
+      // const isName = this.isFileNameSame(this.fileList1)
+      // const w = !isName
+      // if (isName) {
+      //   this.$confirm('上传的文件名称不能重复', '提示', {
+      //     confirmButtonText: '确 定',
+      //     showCancelButton: false,
+      //     type: 'warning'
+      //   })
+      //     .then(() => {
+      //       this.fileList1.splice(this.fileList1.length - 1, 1)
+      //     })
+      //     .catch()
+      //   return w
+      // }
+      this.loadings = true
+      if (!names || !isLt500M) {
+        this.loadings = false
+      }
+      return isLt500M && names
+    },
+    // isFileNameSame(arr) {
+    //   const hash = {}
+    //   for (const i in arr) {
+    //     if (hash[arr[i].name]) {
+    //       return true
+    //     }
+    //     hash[arr[i].name] = true
+    //   }
+    //   return false
+    // },
+    getData() {
+      rinmList()
+        .then(res => {
+          if (res.code === 200) {
+            this.load = false
+            this.rinmOptions = res.data
+          } else {
+            res.message
+          }
+        })
+        .then(() => {
+          this.list = this.rinmOptions.map(item => {
+            return { value: item.riid, label: item.rinm }
+          })
+        })
+        .catch(() => {
+          this.load = false
+        })
+    },
+    // 获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'SFZJ':
+              this.attachTypeArr = res.data
+              break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 获取子组件发射的信息  ---涉案类型
+    getJudgment(val) {
+      this.form.psclueId = val
+    },
+    getJudgment3(val) {
+      this.form.initJudge3 = val
+    },
+    countryOrProvince(val) {
+      val.district = ''
+    },
+    countryOrProvince2(val) {
+      this.form.ysdistrict = ''
+    },
+    countryOrProvince3(val) {
+      this.form.fxdistrict = ''
+    },
+    downIDCard() {
+      // location.href = `/monitor/reportLeads/downloadTradeIdent?token=${this.token}`
+      location.href = `/monitor/reportLeads/downloadTradeIdent?token=${this.token}`
+    },
+    // 上传回显身份证信息-- Error
+    onError() {
+      this.successOrError('上传失败', 'info')
+    },
+    // 下载账户模板
+    downAccount() {
+      location.href = `/monitor/reportLeads/downloadTradeAccount?token=${this.token}`
+    },
+    // 上传回显身份证信息 --Success
+    onSuccess(response, file, fileList) {
+      if (response.code === 200) {
+        response.data.forEach(item => {
+          this.form.IDCardData.push(item)
+        })
+        this.successOrError('上传成功', 'success')
+      } else if (response.code === 205) {
+        this.successOrError(response.message, 'info')
+      } else {
+        this.successOrError('上传失败', 'info')
+      }
+    },
+    // 删除某条身份信息
+    delIdentity(index) {
+      this.$confirm('确定要删除数据？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.form.IDCardData.splice(index, 1)
+          this.successOrError('删除成功', 'success')
+        })
+        .catch(() => {})
+    },
+    // 成功或失败
+    successOrError(msg, type, time) {
+      this.$message({
+        message: msg || '操作成功',
+        type: type || 'info',
+        duration: time || 6000
+      })
+    },
+    // 添加账户信息
+    addAccount() {
+      const hold = {
+        accountTitle: '',
+        attachContent: '',
+        attachTitle: '',
+        attachType: '',
+        uploadUser: ''
+      }
+      this.form.accountData.push(hold)
+    },
+    addcity() {
+      const obj = {
+        districtFlag: '',
+        district: '',
+        city: ''
+      }
+      this.form.rdesignAreas.citys.push(obj)
+    },
+    // 删除某条账户信息
+    delAccount(index) {
+      this.$confirm('确定要删除数据', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.form.accountData.splice(index, 1)
+          this.successOrError('刪除成功', 'success')
+        })
+        .catch(() => {})
+    },
+    dataMessageOn() {
+      this.sameObj.flag = true
+
+      this.loadings = true
+      setTimeout(() => {
+        onSubmit(this.sameObj).then(res => {
+          if (res.code === 200) {
+            this.loadings = false
+            this.successOrError('保存成功', 'success')
+            setTimeout(() => {
+              this.$router.push({ name: 'judgedClues_index' })
+            }, 1)
+          } else {
+            this.loadings = false
+          }
+        }).catch(
+          () => {
+            this.loadings = false
+          }
+        )
+        this.dialogVisible = false
+      }, 1)
+    },
+    // 保存
+    saveForm(formName) {
+      this.$refs.rdesignAreas.validate(valid => {
+        if (valid) {
+          this.cityFlag = true
+        } else {
+          this.cityFlag = false
+        }
+      })
+      this.$refs[formName].validate(valid => {
+        if (valid && this.cityFlag) {
+          const clueId = this.id
+          const submitObj = {}
+          submitObj.clueName = this.form.clueName
+          const array = []
+          this.form.reportingBody.forEach(el => {
+            const obj = {}
+            obj.reportingBody = el
+            array.push(obj)
+          })
+          submitObj.reportingBodies = array
+          submitObj.linkId = this.form.linkId
+          submitObj.triggerPoint = this.form.triggerPoint
+          submitObj.triggerOther = this.form.triggerOther
+          // const ary0 = []
+          // this.form.psclueId.forEach(el => {
+          //   ary0.push(el)
+          // })
+          // const obj3 = {}
+          // obj3.psclueId = ary0.join(',')
+          // submitObj.rcriminalType = obj3
+          const ary0 = []
+          this.form.psclueId.forEach(el => {
+            const obj3 = {}
+            if (el === '1401') {
+              el = '1401-' + this.supplementOne
+            } else if (el === '1402') {
+              el = '1402-' + this.supplementTwo
+            }
+            obj3.psclueId = el
+            ary0.push(obj3)
+          })
+          submitObj.rcriminalType = ary0
+          const ary = []
+          this.form.IDCardData.forEach(el => {
+            const obj = {}
+            obj.attachTitle = el.attachTitle
+            obj.attachType = el.attachType
+            obj.attachContent = el.attachContent
+            obj.uploadUser = el.uploadUser
+            ary.push(obj)
+          })
+          submitObj.rsubjectIdentity = ary
+          const arr = []
+          this.form.accountData.forEach(el => {
+            const obj1 = {}
+            obj1.attachTitle = el.attachTitle
+            obj1.attachType = el.attachType
+            obj1.attachContent = el.attachContent
+            obj1.uploadUser = el.uploadUser
+            obj1.accountTitle = el.accountTitle
+            arr.push(obj1)
+          })
+          submitObj.raccountInformation = arr
+          submitObj.tradeStartDate = this.form.tradeDate[0] // 交易日期
+          submitObj.tradeEndDate = this.form.tradeDate[1] // 交易日期
+          const obj2 = {}
+          obj2.districtFlag = this.form.districtFlag // 控制地区三个
+          obj2.district = this.form.district
+          obj2.city = this.form.city
+          submitObj.rdesignArea = obj2
+          submitObj.rdesignAreas = this.form.rdesignAreas.citys
+          submitObj.moneyRmb = this.form.moneyRmb // 本币
+          submitObj.moneyUsd = this.form.moneyUsd // 外币
+          submitObj.analysis = this.form.analysis // 分析概况
+          submitObj.annexId = this.idFiles // 附件
+          submitObj.auditingUser = this.form.auditingUser
+          submitObj.auditingUserTel = this.form.auditingUserTel
+          submitObj.createUser = this.form.createUser
+          submitObj.createUserTel = this.form.createUserTel
+          submitObj.flag = false
+          this.sameObj = Object.assign({}, submitObj)
+
+          if (clueId) {
+            if (!this.isBranch) {
+              this.successOrError('修改失败,请登录分支机构修改此线索', 'error')
+            } else {
+              submitObj.clueId = clueId
+              this.loads = true
+              setTimeout(() => {
+                Update(submitObj).then(res => {
+                  if (res.code === 200) {
+                    this.loads = false
+                    this.successOrError('修改成功', 'success')
+                    setTimeout(() => {
+                      this.$router.go(-1)
+                    }, 1)
+                  } else {
+                    this.loads = false
+                    this.successOrError('修改失败', 'error')
+                  }
+                }).catch(
+                  () => {
+                    this.loads = false
+                  }
+                )
+              }, 1)
+            }
+          } else {
+            this.loads = true
+            setTimeout(() => {
+              onSubmit(submitObj).then(res => {
+                if (res.code === 200) {
+                  this.loads = false
+                  this.successOrError('保存成功', 'success')
+                  setTimeout(() => {
+                    this.$router.go(-1)
+                  }, 1)
+                } else if (res.code === 208) {
+                  this.dataMessage = res.message
+                  this.dialogVisible = true
+                  this.loads = false
+                } else {
+                  this.loads = false
+                }
+              }).catch(
+                () => {
+                  this.loads = false
+                }
+              )
+            }, 0)
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    // 分析研判意见保存
+    AnaSaveForm(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          const submitObj = {
+            district: this.form.district,
+            moneyRmb: this.form.moneyRmbs,
+            moneyUsd: this.form.moneyUsds,
+            acac: this.form.acac,
+            acacOther: this.form.acacOther,
+            analyseOpinion: this.form.analyseOpinion,
+            analyseOpinionOther: this.form.analyseOpinionOther,
+            evaluate: this.form.evaluate,
+            evaluateOther: this.form.evaluateOther,
+            isvisible: this.form.isvisible,
+            opinionAnalysis: this.form.summary
+          }
+          AnalysisSubmit(submitObj).then(res => {
+            if (res.code === 200) {
+              this.successOrError('保存成功', 'success')
+              setTimeout(() => {
+                this.$router.go(-1)
+              }, 1)
+            }
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    // 审核意见意见保存
+    ExamSaveForm(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          const submitObj = {
+            meetingName: this.form.meetingName,
+            meetingDate: this.form.meetingDate,
+            roac: this.form.roac,
+            roacOther: this.form.roacOther,
+            reviewOpinion: this.form.reviewOpinion,
+            reviewOpinionOther: this.form.reviewOpinionOther,
+            ledInstruct: this.form.ledInstruct
+          }
+          ExamineSubmit(submitObj).then(res => {
+            if (res.code === 200) {
+              this.successOrError('保存成功', 'success')
+              setTimeout(() => {
+                this.$router.go(-1)
+              }, 1)
+            }
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    // 移送情况保存
+    TransferSaveForm(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          const submitObj = {
+            transferTime: this.form.transferTime,
+            transferDirection: this.form.transferDirection,
+            transferNumber: this.form.transferNumber,
+            // district: this.form.ysdistrict,
+            // city: this.form.yscity,
+            // districtFlag: this.form.ysdistrictFlag,
+            clueId: this.id,
+            clewState: this.form.clewState
+          }
+          // const ary0 = []
+          // this.form.initJudge2.forEach(el => {
+          //   // const obj3 = {}
+          //   if (el === '1401') {
+          //     el = '1401-' + this.supplementOne2
+          //   } else if (el === '1402') {
+          //     el = '1402-' + this.supplementTwo2
+          //   }
+          //   // obj3.psclueId = el
+          //   ary0.push(el)
+          // })
+          // submitObj.crimeType = ary0.join(',')
+          this.loads = true
+          setTimeout(() => {
+            TransferSubmit(submitObj).then(res => {
+              if (res.code === 200) {
+                this.loads = false
+                this.TransferId = res.data
+                this.successOrError('保存成功', 'success')
+                setTimeout(() => {
+                  this.$router.go(-1)
+                }, 1)
+              } else {
+                this.loads = false
+              }
+            }).catch(
+              () => {
+                this.loads = false
+              }
+            )
+          }, 1)
+        } else {
+          return false
+        }
+      })
+    },
+    // 后续办理保存
+    AfterSaveForm(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          const submitObj = {
+            id: this.hxId,
+            clueId: this.id,
+            clewState: this.form.clewState,
+            crimeTypeOther: this.form.crimeTypeOther,
+            withState: this.form.withState,
+            reviceDep: this.form.reviceDep,
+            cart: this.form.cart,
+            reportDate: this.form.reportDate,
+            registerTime: this.form.registerTime,
+            endTime: this.form.endTime,
+            register: this.form.register,
+            caseName: this.form.caseName,
+            evaluation: this.form.evaluation,
+            experience: this.form.experience,
+            caseNote: this.form.caseNote,
+            handDirection: this.form.handDirection
+            // crimeType: this.form.followJudge.join(',')
+          }
+          // const ary0 = []
+          // this.form.followJudge.forEach(el => {
+          //   const obj3 = {}
+          //   if (el === '1401') {
+          //     el = '1401-' + this.supplementOne3
+          //   } else if (el === '1402') {
+          //     el = '1402-' + this.supplementTwo3
+          //   }
+          //   obj3.psclueId = el
+          //   ary0.push(obj3)
+          // })
+          // submitObj.crimeType = ary0
+          const ary0 = []
+          this.form.followJudge.forEach(el => {
+            if (el === '1401') {
+              el = '1401-' + this.supplementOne3
+            } else if (el === '1402') {
+              el = '1402-' + this.supplementTwo3
+            }
+            ary0.push(el)
+          })
+          submitObj.crimeType = ary0.join(',')
+          this.loadings = true
+          setTimeout(() => {
+            FollowSubmit(submitObj).then(res => {
+              if (res.code === 200) {
+                this.loads = false
+                this.successOrError('保存成功', 'success')
+                setTimeout(() => {
+                  this.$router.go(-1)
+                }, 1)
+              } else {
+                this.loads = false
+              }
+            }).catch(
+              () => {
+                this.loads = false
+              }
+            )
+          }, 1)
+        } else {
+          return false
+        }
+      })
+    },
+    // 表单回显
+    getDetail() {
+      if (this.$route.params.clewStates) {
+        if (this.$route.params.clewStates === '已保存') {
+          this.greys = false
+        } else if (this.$route.params.clewStates === '已退回') {
+          this.greys = false
+        } else {
+          this.greys = true
+        }
+      } else {
+        if (this.$route.query.pageFlag === 'new') {
+          this.greys = false
+        } else {
+          this.greys = true
+        }
+      }
+      if (this.$route.params.sign) {
+        if (this.$route.params.sign !== '查看') {
+          this.signs = true
+        } else {
+          this.signs = false
+        }
+      }
+      const clueId = this.tmpInfoId
+      if (clueId) {
+        this.id = clueId
+        this.idFiles = clueId
+        getFollowList({ clueId })
+          .then(res => {
+            var clewStates = ''
+            if (res.data[0]) {
+              clewStates = res.data[0].withState
+            }
+            if (
+              res.code === 200 &&
+              (
+                clewStates === '仅报告' ||
+                clewStates === '立案' ||
+                clewStates === '结案' ||
+                clewStates === '撤案' ||
+                clewStates === '不予立案' ||
+                this.$route.query.fenxiIndex === '0')
+            ) {
+              if (res.data.length !== 0) {
+                const data = res.data[0]
+                this.hxlengths = res.data.length
+                this.followObj.crimeTypeOther = data.crimeTypeOther || ''
+                this.followObj.withState = data.withState
+                this.followObj.reviceDep = data.reviceDep
+                this.followObj.cart = data.cart
+                this.followObj.reportDate = data.reportDate
+                this.followObj.registerTime = data.registerTime
+                this.followObj.endTime = data.endTime
+                this.followObj.register = data.register
+                this.followObj.caseName = data.caseName
+                this.followObj.evaluation = data.evaluation
+                this.followObj.experience = data.experience
+                this.followObj.caseNote = data.caseNote
+                this.followObj.handDirection = data.handDirection
+                // if (this.hxlengths === 1) {
+                //   this.followObj.followJudge = ''
+                // } else {
+                const psclueIdArr = []
+                data.crimeType.split(',').forEach(el => {
+                  if (el.indexOf('1401') !== -1) {
+                    const tempArr = el.split('-')
+                    this.supplementOne3 = tempArr[1]
+                    this.isReplenishOne3 = true
+                    psclueIdArr.push('1401')
+                  } else if (el.indexOf('1402') !== -1) {
+                    const tempArr = el.split('-')
+                    this.supplementTwo3 = tempArr[1]
+                    this.isReplenishTwo3 = true
+                    psclueIdArr.push('1402')
+                  } else {
+                    psclueIdArr.push(el)
+                  }
+                })
+                this.followObj.followJudge = psclueIdArr
+                // }
+
+                if (data.attachDoList06) {
+                  const arrs7 = []
+                  data.attachDoList06.forEach(el => {
+                    const obj = {}
+                    obj.name = el.attachName
+                    obj.url = el.attachPath
+                    obj.attachId = el.attachId
+                    arrs7.push(obj)
+                  })
+                  this.fileList7 = arrs7
+                }
+              }
+            }
+          })
+          .then(() => {
+            getList(clueId)
+              .then(res => {
+                if (res.code === 200) {
+                  const data = res.data.reportLeadsList[0]
+                  const submitObj = {}
+                  submitObj.clueName = data.clueName
+                  // submitObj.reportingBody = data.reportingBody
+                  const arrr = []
+                  res.data.reportingBodies.forEach(el => {
+                    arrr.push(el.reportingBody)
+                  })
+                  var objs2 = {}
+                  objs2.citys = res.data.rdesignAreas
+                  submitObj.rdesignAreas = objs2
+
+                  submitObj.reportingBody = arrr
+                  submitObj.linkId = data.linkId
+                  submitObj.triggerPoint = data.triggerPoint
+                  submitObj.triggerOther = data.triggerOther
+                  submitObj.districtFlag = data.rdesignArea.districtFlag
+                  submitObj.clewState = data.clewState
+                  submitObj.clueNo = data.clueNo
+                  submitObj.ricd = data.ricd
+                  submitObj.city = data.rdesignArea.city
+                  // this. fileList =data.attachDoList00
+
+                  if (data.attachDoList00) {
+                    const arrs = []
+                    data.attachDoList00.forEach(el => {
+                      const obj = {}
+                      obj.name = el.attachName
+                      obj.url = el.attachPath
+                      obj.attachId = el.attachId
+                      arrs.push(obj)
+                    })
+                    this.fileList = arrs
+                  }
+                  if (data.attachDoList01) {
+                    const arrs2 = []
+                    data.attachDoList01.forEach(el => {
+                      const obj = {}
+                      obj.name = el.attachName
+                      obj.url = el.attachPath
+                      obj.attachId = el.attachId
+                      arrs2.push(obj)
+                    })
+                    this.fileList2 = arrs2
+                  }
+                  if (data.attachDoList02) {
+                    const arrs3 = []
+                    data.attachDoList02.forEach(el => {
+                      const obj = {}
+                      obj.name = el.attachName
+                      obj.url = el.attachPath
+                      obj.attachId = el.attachId
+                      arrs3.push(obj)
+                    })
+                    this.fileList3 = arrs3
+                  }
+                  if (data.attachDoList03) {
+                    const arrs4 = []
+                    data.attachDoList03.forEach(el => {
+                      const obj = {}
+                      obj.name = el.attachName
+                      obj.url = el.attachPath
+                      obj.attachId = el.attachId
+                      arrs4.push(obj)
+                    })
+                    this.fileList4 = arrs4
+                  }
+                  if (data.attachDoList04) {
+                    const arrs5 = []
+                    data.attachDoList04.forEach(el => {
+                      const obj = {}
+                      obj.name = el.attachName
+                      obj.url = el.attachPath
+                      obj.attachId = el.attachId
+                      arrs5.push(obj)
+                    })
+                    this.fileList5 = arrs5
+                  }
+                  if (data.attachDoList05) {
+                    const arrs6 = []
+                    data.attachDoList05.forEach(el => {
+                      const obj = {}
+                      obj.name = el.attachName
+                      obj.url = el.attachPath
+                      obj.attachId = el.attachId
+                      arrs6.push(obj)
+                    })
+                    this.fileList6 = arrs6
+                  }
+                  // 涉罪类型
+                  const psclueIdArr = []
+                  res.data.rcriminalTypeList.forEach(el => {
+                    if (el.pSClueId.indexOf('1401') !== -1) {
+                      const tempArr = el.pSClueId.split('-')
+                      // this.judgmentInp1 = tempArr[1]
+                      this.supplementOne = tempArr[1]
+                      this.isReplenishOne = true
+                      psclueIdArr.push('1401')
+                    } else if (el.pSClueId.indexOf('1402') !== -1) {
+                      const tempArr = el.pSClueId.split('-')
+                      this.supplementTwo = tempArr[1]
+                      this.isReplenishTwo = true
+                      psclueIdArr.push('1402')
+                    } else {
+                      psclueIdArr.push(el.pSClueId)
+                    }
+                  })
+                  submitObj.psclueId = psclueIdArr
+                  this.reportCluePreJudgment = submitObj.psclueId
+                  const arr = []
+                  res.data.raccountInformationList.forEach(el => {
+                    const obj1 = {}
+                    obj1.attachTitle = el.attachTitle
+                    obj1.attachType = el.attachType
+                    obj1.attachContent = el.attachContent
+                    obj1.uploadUser = el.uploadUser
+                    obj1.accountTitle = el.accountTitle
+                    arr.push(obj1)
+                  })
+                  submitObj.accountData = arr
+                  const arr1 = []
+                  res.data.rsubjectIdentityList.forEach(el => {
+                    const obj = {}
+                    obj.attachTitle = el.attachTitle
+                    obj.attachType = el.attachType
+                    obj.attachContent = el.attachContent
+                    obj.uploadUser = el.uploadUser
+                    arr1.push(obj)
+                  })
+                  submitObj.IDCardData = arr1
+                  const ary = []
+                  ary.push(data.tradeStartDate)
+                  ary.push(data.tradeEndDate)
+                  submitObj.tradeDate = ary
+                  submitObj.moneyRmb = data.moneyRmb
+                  submitObj.moneyUsd = data.moneyUsd
+                  submitObj.analysis = data.analysis
+                  submitObj.auditingUser = data.auditingUser
+                  submitObj.auditingUserTel = data.auditingUserTel
+                  submitObj.createUser = data.createUser
+                  submitObj.createUserTel = data.createUserTel
+                  // 分析研判意见
+                  if (
+                    data.clewState === '已分析' ||
+                    data.clewState === '待审核' ||
+                    data.clewState === '已审核' ||
+                    data.clewState === '移送中' ||
+                    data.clewState === '已移送' ||
+                    data.clewState === '仅报告' ||
+                    data.clewState === '立案' ||
+                    data.clewState === '结案' ||
+                    data.clewState === '撤案' ||
+                    data.clewState === '不予立案' ||
+                    this.$route.query.fenxiIndex === '0'
+                  ) {
+                    const objsb = {}
+                    objsb.citys = res.data.reportAnalyzeDistricts
+                    submitObj.AnalysisArea = objsb
+                    submitObj.fxdistrict = data.reportAnalyze.district
+                    submitObj.fxcity = data.reportAnalyze.city
+                    submitObj.fxdistrictFlag = data.reportAnalyze.districtFlag
+                    submitObj.acac = data.reportAnalyze.acac
+                    submitObj.acacOther = data.reportAnalyze.acacOther
+                    submitObj.analyseOpinion = data.reportAnalyze.analyseOpinion
+                    submitObj.analyseOpinionOther = data.reportAnalyze.analyseOpinionOther
+                    submitObj.evaluate = data.reportAnalyze.evaluate
+                    submitObj.evaluateOther = data.reportAnalyze.evaluateOther
+                    submitObj.isvisible = data.reportAnalyze.isvisible
+                    submitObj.summary = data.reportAnalyze.opinionAnalysis
+                    submitObj.moneyRmbs = data.reportAnalyze.moneyRmb
+                    submitObj.moneyUsds = data.reportAnalyze.moneyUsd
+                  }
+                  // 审核意见
+                  if (
+                    data.clewState === '待审核' ||
+                    data.clewState === '已审核' ||
+                    data.clewState === '移送中' ||
+                    data.clewState === '已移送' ||
+                    data.clewState === '仅报告' ||
+                    data.clewState === '立案' ||
+                    data.clewState === '结案' ||
+                    data.clewState === '撤案' ||
+                    data.clewState === '不予立案' ||
+                    this.$route.query.fenxiIndex === '0'
+                  ) {
+                    submitObj.meetingName = data.reportAudit.meetingName
+                    submitObj.meetingDate = data.reportAudit.meetingDate
+                    submitObj.roac = data.reportAudit.roac
+                    submitObj.roacOther = data.reportAudit.roacOther
+                    submitObj.reviewOpinion = data.reportAudit.reviewOpinion
+                    submitObj.reviewOpinionOther = data.reportAudit.reviewOpinionOther
+                    submitObj.ledInstruct = data.reportAudit.ledInstruct
+
+                    // 等后端返回移送的涉罪类型的数组替代???
+                    // const psclueIdArr = []
+                    // res.data.???.forEach(el => {
+                    //   if (el.pSClueId.indexOf('1401') !== -1) {
+                    //     const tempArr = el.pSClueId.split('-')
+                    //     this.supplementOne2 = tempArr[1]
+                    //     this.isReplenishOne2 = true
+                    //     psclueIdArr.push('1401')
+                    //   } else if (el.pSClueId.indexOf('1402') !== -1) {
+                    //     const tempArr = el.pSClueId.split('-')
+                    //     this.supplementTwo2 = tempArr[1]
+                    //     this.isReplenishTwo2 = true
+                    //     psclueIdArr.push('1402')
+                    //   } else {
+                    //     psclueIdArr.push(el.pSClueId)
+                    //   }
+                    // })
+                    // submitObj.psclueId = psclueIdArr
+                  }
+                  // 移送情况
+                  if (
+                    data.clewState === '移送中' ||
+                    data.clewState === '已移送' ||
+                    data.clewState === '仅报告' ||
+                    data.clewState === '立案' ||
+                    data.clewState === '结案' ||
+                    data.clewState === '撤案' ||
+                    data.clewState === '不予立案' ||
+                    this.$route.query.fenxiIndex === '0'
+                  ) {
+                    if (data.reportFollowup) {
+                      // submitObj.yscity = data.reportFollowup.city
+                      // submitObj.ysdistrictFlag = data.reportFollowup.districtFlag
+                      // submitObj.ysdistrict = data.reportFollowup.district
+                      submitObj.transferNumber = data.reportFollowup.transferNumber
+                      submitObj.transferDirection = data.reportFollowup.transferDirection
+                      submitObj.transferTime = data.reportFollowup.transferTime
+                      // const psclueIdArr = []
+                      // data.reportFollowup.crimeType.split(',').forEach(el => {
+                      //   if (el.indexOf('1401') !== -1) {
+                      //     const tempArr = el.split('-')
+                      //     this.supplementOne2 = tempArr[1]
+                      //     this.isReplenishOne2 = true
+                      //     psclueIdArr.push('1401')
+                      //   } else if (el.indexOf('1402') !== -1) {
+                      //     const tempArr = el.split('-')
+                      //     this.supplementTwo2 = tempArr[1]
+                      //     this.isReplenishTwo2 = true
+                      //     psclueIdArr.push('1402')
+                      //   } else {
+                      //     psclueIdArr.push(el)
+                      //   }
+                      // })
+                      // submitObj.initJudge2 = psclueIdArr
+                    }
+                  }
+                  this.form = Object.assign({}, this.followObj, submitObj)
+                }
+              })
+              .then(() => {
+                this.$refs.validForm.clearValidate()
+              })
+          })
+      }
+      // setTimeout(() => {
+      //   this.$refs.validForm.clearValidate()
+      // }, 1000)
+    },
+    hxadd() {
+      if (this.hxlengths > 0) {
+        this.$router.push({ name: 'judgedClues_subsequent_subsequentAdd', query: { id: this.id, sbID: this.$route.query.fenxiIndex }})
+      } else {
+        this.$message({
+          message: '请填写当前后续表单',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 分析附件上传
+    fxuploadSuccess(response, file, fileList) {
+      this.loadings = false
+      if (response.code === 200) {
+        if (this.idFiles === '') {
+          this.idFiles = response.data.noteId
+        }
+        this.reportClueAttachDos.push(file.name)
+        this.successOrError('上传成功', 'success')
+      } else {
+        this.$message({
+          message: response.message,
+          type: 'error',
+          duration: 6000
+        })
+      }
+    },
+    hxuploadSuccess(response, file, fileList) {
+      this.loadings = false
+      if (response.code === 200) {
+        if (this.hxId === '') {
+          this.hxId = response.data.noteId
+        }
+        this.successOrError('上传成功', 'success')
+      } else {
+        this.$message({
+          message: response.message,
+          type: 'error',
+          duration: 6000
+        })
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+$border: 1px solid #ebeef5;
+$margin: 20px;
+.reportLibraryHadle {
+  .el-select {
+    width: 100%;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .headerTip {
+    margin-bottom: 10px !important;
+    overflow: hidden  !important;
+    span {
+      padding: 0 20px;
+      float: right  !important
+    }
+  }
+  .block {
+    .blckTitle {
+      padding-bottom: 10px;
+      border-bottom: $border;
+      margin-bottom: $margin;
+    }
+    .itemBlock {
+      margin-bottom: $margin;
+      .messageLine {
+        margin-bottom: 6px;
+      }
+      .upload-btn {
+        display: inline-block;
+        margin: 0 10px;
+      }
+      .dataList {
+        margin-left: 100px;
+        .el-form-item {
+          margin-bottom: 0;
+        }
+        .el-table__row {
+          td {
+            height: 62px;
+            padding: 14px 0 0 0;
+            .cell {
+              height: 100%;
+              .el-checkbox-group {
+                line-height: 28px;
+              }
+            }
+          }
+        }
+        .el-col {
+          text-align: center;
+        }
+        .listHeader {
+          line-height: 40px;
+          background-color: #f6f6f6;
+        }
+        .list {
+          line-height: 50px;
+        }
+      }
+    }
+  }
+  .uploadContent {
+    border: $border;
+    padding: 10px;
+    .fileList {
+      border-left: $border;
+    }
+  }
+  .saveBtn {
+    text-align: center;
+  }
+  .el-date-editor--date {
+    min-width: 100%;
+  }
+  .el-date-editor--daterange {
+    max-width: 100%;
+      min-width: 100%;
+  }
+  .dialog-block {
+    .title {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .task {
+      margin-bottom: 30px;
+      .title {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 10px;
+      }
+    }
+    .el-transfer__button.el-button--primary {
+      min-width: 32px;
+      min-height: 32px;
+    }
+  }
+}
+</style>

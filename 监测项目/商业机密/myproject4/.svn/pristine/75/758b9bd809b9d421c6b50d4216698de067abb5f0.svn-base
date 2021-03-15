@@ -1,0 +1,418 @@
+<template>
+  <div class="scantaskwrap">
+    <el-card>
+      <div slot="header">
+        <span>扫描问题历史记录</span> 
+      </div>
+      <el-form :model="searchForm" ref="searchForm" :rules="rules" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="扫描规则：" prop="scanId">
+              <el-select v-model="searchForm.scanId" placeholder="扫描规则" filterable clearable style="width: 100%;">
+                <el-option v-for="(item,index) in ruleOptions" :key="index" :label="item.srName" :value="item.srId"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="行业类型：" prop="industryType">
+              <el-select v-model="searchForm.industryType" placeholder="行业类型" filterable clearable style="width: 100%;">
+                <el-option v-for="(item,index) in industryTypeOptionsSearch" :label="item.text" :value="item.text" :key="index"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="报告机构：" prop="operator">
+              <el-autocomplete v-model="searchForm.operator" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmSelect"></el-autocomplete>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="标注状态：" prop="annotationState">
+              <el-select v-model="searchForm.annotationState" clearable style="width: 100%;" placeholder="标注状态">
+                <el-option label="已标注" value="1"></el-option>
+                <el-option label="未标注" value="0"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="自动清理：" prop="governanceState">
+              <el-select v-model="searchForm.governanceState" clearable style="width: 100%;" placeholder="自动清理">
+                <el-option label="未治理" value="0"></el-option>
+                <el-option label="已治理" value="1"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="人工补正：" prop="artificialCorrection">
+              <el-select v-model="searchForm.artificialCorrection" clearable style="width: 100%;" placeholder="人工补正">
+                <el-option label="未补正" value="0"></el-option>
+                <el-option label="已补正" value="1"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="扫描时间：" prop="scanDate" clearable>
+              <el-date-picker v-model="searchForm.scanDate" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div class="btnalign">
+          <el-button type="primary" @click="handleQuery" :loading="loading">查询</el-button>
+          <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+        </div>
+      </el-form>
+      <div class="btnrow">
+        <span>扫描日志列表：</span>
+        <el-button type="primary" plain @click="handleAllExport">批量导出</el-button>
+        <span style="color: #f56c6c; font-size: 12px; margin-left: 10px;">列表默认只显示当天的扫描问题数据</span>
+      </div>
+      <el-table style="width: 100%" :data="list" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" width="55" fixed></el-table-column>
+        <el-table-column type="index" label="序号" min-width="55" fixed></el-table-column>
+        <el-table-column prop="tradeId" label="交易ID" min-width="120">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.tradeId }}</div>
+              <span>{{ scope.row.tradeId }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ctnm" label="主体名称" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="ctid" label="证件号码" min-width="140">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.ctid }}</div>
+              <span>{{ scope.row.ctid }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="tstm" label="交易发生日期" min-width="110"></el-table-column>
+        <el-table-column prop="tradeType" label="业务类型" min-width="100">
+          <template slot-scope="scope">
+            {{scope.row.type === 'BH' || scope.row.type === 'IH' || scope.row.type === 'SH' ? '大额' : '可疑'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="ricdName" label="报告机构" min-width="100">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.ricdName }}</div>
+              <span>{{ scope.row.ricdName }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="induType" label="行业类型" min-width="100"></el-table-column>
+        <el-table-column prop="scanName" label="扫描规则" min-width="160">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.scanName }}</div>
+              <span>{{ scope.row.scanName }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="scanTime" label="扫描时间" min-width="100"></el-table-column>
+        <el-table-column prop="markState" label="标注状态" min-width="100">
+          <template slot-scope="scope">
+            {{ scope.row.markState === 0 ? '未标注' : '已标注' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="manageState" label="自动清理" min-width="100">
+          <template slot-scope="scope">
+            {{  scope.row.manageState === 0 || scope.row.manageState === null ? '未治理' : '已治理'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="artificialCorrection" label="人工补正" min-width="100">
+          <template slot-scope="scope">
+             {{  scope.row.artificialCorrection === 0 || scope.row.artificialCorrection === null ? '未补正' : '已补正'}}
+          </template>
+        </el-table-column>
+        <el-table-column fixed="right" label="操作" min-width="80">
+          <template slot-scope="scope">
+            <!-- <router-link :to="{name:'dataGovernance_tradeDetail_tradeDetail', query: { tradeId: scope.row.tradeId, type: scope.row.type}}"> -->
+              <el-button type="text" @click="handleView(scope)">查 看</el-button>   
+            <!-- </router-link> -->
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { getRinmList, industryType } from '@/api/common/industry'
+import { getList, getRuleList } from '@/api/sys-monitoringAnalysis/dataGovernance/rule/scanningTask'
+import { industryXu } from '@/api/sys-monitoringAnalysis/dataGovernance/rule/scanningMonitor'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  data() {
+    // const isValidDate = (rule, value, callback) => {
+    //   if (Date.parse(value[0]) + 3600 * 1000 * 24 * 7 < Date.parse(value[1])) {
+    //     callback(new Error('时间跨度为7天'))
+    //   } else if (value.length === 0 || value === null) {
+    //     callback(new Error('内容不能为空'))
+    //   } else {
+    //     callback()
+    //   }
+    // }
+    return {
+      loading: false,
+      listLoading: false,
+      searchForm: {
+        scanId: '',
+        industryType: '',
+        operator: '',
+        scanDate: '',
+        annotationState: '',
+        governanceState: '',
+        artificialCorrection: ''
+      },
+      ricdCode: '',
+      industryTypeOptions: [],
+      industryTypeOptionsSearch: [],
+      rinmOptions: [], // 报告机构列表
+      ruleOptions: [],
+      rules: {
+        // scanDate: [{ required: false, validator: isValidDate, trigger: 'change' }]
+        operator: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ]
+      },
+      multipleSelection: [],
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1, // 分页当前页面
+        pageSize: 10
+      },
+      token: getToken()
+    }
+  },
+  created() {
+    const obj = JSON.parse(sessionStorage.getItem('scanningTaskSearchData'))
+    if (obj) {
+      if (obj.ifScaningtaskTradeFlag) {
+        this.pageInfo = obj.pageInfo
+        this.searchForm = obj.searchForm
+      }
+    }
+    sessionStorage.removeItem('scanningTaskSearchData')
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    getMarkStateColumn(scope) {
+      if (scope.row.markState === 0) {
+        return '未标注'
+      } else if (scope.row.markState === 1) {
+        return '已标注'
+      } else {
+        return ''
+      }
+    },
+    getManageStateColumn(scope) {
+      if (scope.row.manageState === 0) {
+        return '未治理'
+      } else if (scope.row.manageState === 1) {
+        return '已治理'
+      } else {
+        return ''
+      }
+    },
+    getCorrectionColumn(scope) {
+      if (scope.row.artificialCorrection === 0) {
+        return '未补正'
+      } else if (scope.row.artificialCorrection === 1) {
+        return '已补正'
+      } else {
+        return ''
+      }
+    },
+    getData() {
+      this.getList()
+      industryXu()
+        .then(res => {
+          // 所属行业
+          this.industryTypeOptionsSearch = res.data
+        })
+        .catch()
+      industryType()
+        .then(res => {
+          // 所属行业
+          this.industryTypeOptions = res.data
+        })
+        .catch()
+      getRuleList()
+        .then(res => {
+          // 获取扫鸟规则
+          if (res.code === 200) {
+            this.ruleOptions = res.data
+          }
+        })
+        .catch(() => {})
+    },
+    getList() {
+      const paramsObj = {
+        scanId: this.searchForm.scanId,
+        industryType: this.searchForm.industryType,
+        scanDateStart: this.searchForm.scanDate ? this.searchForm.scanDate[0] : '',
+        scanDateEnd: this.searchForm.scanDate ? this.searchForm.scanDate[1] : '',
+        operator: this.searchForm.operator ? this.ricdCode : '',
+        annotationState: this.searchForm.annotationState,
+        governanceState: this.searchForm.governanceState,
+        artificialCorrection: this.searchForm.artificialCorrection,
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      this.listLoading = true
+      getList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.listLoading = false
+          if (res.data) {
+            this.list = res.data.list
+            this.list.map(item => {
+              if (item.induType) {
+                this.industryTypeOptions.map(el => {
+                  if (item.induType === el.pkMrot) {
+                    item.induType = el.organType
+                  }
+                })
+              }
+            })
+            this.total = res.data.total
+          } else {
+            this.list = []
+            this.total = 0
+          }
+        } else {
+          this.loading = false
+          this.listLoading = false
+        }
+      }).catch(() => {
+        this.loading = false
+        this.listLoading = false
+      })
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].clearValidate()
+      this.searchForm = {
+        scanId: '',
+        industryType: '',
+        operator: '',
+        scanDate: '',
+        annotationState: '',
+        governanceState: '',
+        artificialCorrection: ''
+      }
+      this.ricdCode = ''
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getList()
+    },
+    handleQuery() {
+      // 查询操作
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.getList()
+        } else {
+          return false
+        }
+      })
+    },
+    handleRinmSelect(item) {
+      if (item) {
+        this.ricdCode = item.ricd
+      }
+    },
+    querySearchRinm(query, cb) {
+      this.$refs['searchForm'].validateField('operator', (valid) => {
+        if (!valid) {
+          if (query !== '') {
+            const paramsObj = {
+              industry: this.searchForm.industryType,
+              region: 'all',
+              rinm: encodeURI(query)
+            }
+            getRinmList(paramsObj).then(res => {
+              if (res.code === 200) {
+                cb(res.data)
+              }
+            })
+          } else {
+            // this.rinmData = []
+          }
+        }
+      }
+      )
+    },
+    handleView(scope) {
+      const searchData = {
+        pageInfo: this.pageInfo,
+        searchForm: this.searchForm
+      }
+      sessionStorage.setItem('scanningTaskSearchData', JSON.stringify(searchData))
+      this.$router.push({ name: 'dataGovernance_tradeDetail_tradeDetail', query: { tradeId: scope.row.tradeId, type: scope.row.type, source: 2 }})
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleAllExport() {
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const arr = []
+        const types = []
+        this.multipleSelection
+          .map(function(item) {
+            arr.push(item.tradeId)
+            types.push(item.type)
+          })
+        const ids = arr.join(',')
+        const type = types.join(',')
+        if (ids) {
+          location.href = 'monitor/governance/scaning/history/export/' + ids + '/' + type + '?token=' + this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.scantaskwrap {
+  .item { // 表格加省略号
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .btnrow {
+    padding: 10px 0;
+  }
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

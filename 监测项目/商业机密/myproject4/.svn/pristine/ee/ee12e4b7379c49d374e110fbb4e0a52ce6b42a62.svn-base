@@ -1,0 +1,407 @@
+<template>
+  <div class="suspiciousWarningConfiguration">
+    <el-card>
+      <div slot="header">
+        <span>可疑交易报告预警配置</span>
+        <el-button type="text" style="float:right" @click="handleAdd">新建+</el-button>
+      </div>
+      <el-form :model="modelForm" :rules="rulesForm" ref="refForm" label-width="100px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="涉罪类型：" prop="preliminaryJudgme">
+              <el-select clearable v-model="modelForm.preliminaryJudgme" multiple collapse-tags  placeholder="请选择">
+                <el-option  v-for="item in crimesOptionsSusp" :key="item.codeId" :label="item.codeName" :value="item.codeId"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="预警范围：" prop="warningRange">
+              <el-input  v-model="modelForm.warningRange" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="8">
+            <el-form-item label="预警处室" prop="thrproductlist">
+              <el-input  v-model="modelForm.thrproductlist" placeholder="请输入"></el-input>
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="8">
+            <el-form-item label="更新人：" prop="updateUser">
+              <el-input  v-model="modelForm.updateUser" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="创建人：" prop="creatUser">
+              <el-input  v-model="modelForm.creatUser" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="创建时间：" prop="creatTime">
+              <el-date-picker value-format="yyyy-MM-dd" unlink-panels clearable v-model="modelForm.creatTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="状态：" prop="status">
+              <el-select clearable v-model="modelForm.status" placeholder="请选择" class="w100">
+                <el-option label="启用" value="01"></el-option>
+                <el-option label="停用" value="02"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+
+          <el-col :span="8">
+            <el-form-item label="更新时间：" prop="updateTime">
+              <el-date-picker value-format="yyyy-MM-dd" unlink-panels clearable v-model="modelForm.updateTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="报送方向：" prop="reportDirection">
+              <el-select clearable v-model="modelForm.reportDirection" placeholder="请选择" multiple class="w100">
+                <el-option v-for="(item,idx) in direOptions" :label="item.codeName" :value="item.codeId" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="紧急程度：" prop="emergencyLevel">
+              <el-select clearable v-model="modelForm.emergencyLevel" placeholder="请选择" class="w100">
+                <el-option label="特别紧急" value="1"></el-option>
+                <el-option label="非特别紧急" value="2"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <div style="text-align:right;margin-bottom:6px;">
+            <el-button type="primary" @click="handleSearch">查 询</el-button>
+            <el-button @click="handleClearForm" type="primary" plain>清 空</el-button>
+          </div>
+        </el-row>
+      </el-form>
+
+      <el-table :data="tableData"
+       tooltip-effect="dark"
+       v-loading="loadingSuspWaringTion"
+        element-loading-text="拼命加载中"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column label="序号" type="index" width="50" fixed="left"></el-table-column>
+        <el-table-column label="涉罪类型" prop="preliminaryJudgme" min-width="220" show-overflow-tooltip></el-table-column>
+        <el-table-column label="紧急程度" prop="emergencyLevel" min-width="120" show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ scope.row.emergencyLevel }}
+          </template>
+        </el-table-column>
+        <el-table-column label="预警范围" prop="warningRange" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="报送方向" prop="reportDirection" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="报告机构" prop="reportingBody" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="状态" prop="status" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="创建人" prop="creatUser" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="创建时间" prop="creatTime" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="更新人" prop="updateUser" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="更新时间" prop="updateTime" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" fixed="right" width="125">
+          <template slot-scope="scope">
+            <el-button v-if="scope.row.status === '启用'" type="text" @click="handleStop(scope)">停用</el-button>
+            <el-button v-if="scope.row.status === '停用'" type="text" @click="handleGo(scope)">启用</el-button>
+            <el-button v-if="scope.row.status === '启用'" type="text" @click="handleLook(scope)">查看</el-button>
+            <el-button v-if="scope.row.status === '停用'" type="text" @click="handleEdit(scope)">编辑</el-button>
+            <el-button :disabled="scope.row.status === '启用'"  type="text" @click="handleDel(scope)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination v-if="this.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background>
+      </el-pagination>
+    </el-card>
+
+  </div>
+</template>
+<script>
+import { noSpaceAndTs, noSpaceAndTsModelNeed } from '@/utils/formValidate.js'
+import { getListapi, stopListapi, deleteListapi } from '@/api/sys-monitoringAnalysis/taskManagement/suspiciousWarning/suspiciousWarningConfiguration.js'
+import { getDirectionapi } from '@/api/sys-monitoringAnalysis/taskManagement/suspiciousWarning/newSuspWarningConfigur.js'
+import {
+  getCrimapi
+} from '@/api/sys-monitoringAnalysis/taskManagement/suspiciousWarning/newSuspWarningConfigur.js'
+export default {
+  name: 'suspiciousWarningConfiguration',
+  // filters: {
+  //   filterEmerg(val) {
+  //     switch (val) {
+  //       case '1':
+  //         return '特别紧急'
+  //       case '2':
+  //         return '非特别紧急'
+  //       default:
+  //         return '--'
+  //     }
+  //   }
+  // },
+  data() {
+    return {
+      modelForm: {
+        preliminaryJudgme: [],
+        warningRange: '',
+        emergencyLevel: '',
+        creatUser: '',
+        creatTime: [],
+        status: '',
+        updateUser: '',
+        updateTime: [],
+        reportDirection: []
+        // thrproductlist: ''
+      },
+      loadingSuspWaringTion: false,
+      tableData: [],
+      total: null,
+      pageSize: 10,
+      pageNum: 1,
+      crimesOptionsSusp: [],
+      rulesForm: {
+        // preliminaryJudgme: [
+        //   { validator: noSpaceAndTs, trigger: 'blur' },
+        //   { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        warningRange: [
+          { validator: noSpaceAndTsModelNeed, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        // thrproductlist: [
+        //   { validator: noSpaceAndTs, trigger: 'blur' },
+        //   { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }],
+        creatUser: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        updateUser: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }]
+      },
+      direOptions: []
+    }
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchSuspJySxpForm')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchSuspJySxpForm'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewSxpSuspJy) {
+        this.pageSize = searchData.pageInfo.pageSize
+        this.pageNum = searchData.pageInfo.pageNum
+        this.modelForm = searchData.searchForm
+      }
+      sessionStorage.removeItem('searchSuspJySxpForm')
+    }
+    this.loadingSuspWaringTion = true
+    this.getData()
+    this.getSuspInvolved()
+    this.$refs.refForm.resetFields()
+  },
+  methods: {
+    // 获取涉罪类型
+    getSuspInvolved() {
+      getCrimapi().then(res => {
+        if (res.code === 200) {
+          this.crimesOptionsSusp = res.data
+        }
+      })
+    },
+    getData() {
+      // 报送方向
+      getDirectionapi().then(res => {
+        if (res.code === 200) {
+          this.direOptions = res.data
+        }
+      })
+      // this.$refs.refForm.validate(valid => {
+      //   if (valid) {
+      const obj = JSON.parse(JSON.stringify(this.modelForm))
+      obj.pageNum = this.pageNum
+      obj.pageSize = this.pageSize
+      obj.reportDirection = obj.reportDirection.join(',')
+      obj.createStartTime = obj.creatTime ? obj.creatTime[0] : ''
+      obj.createEndTime = obj.creatTime ? obj.creatTime[1] : ''
+      obj.updateStartTime = obj.updateTime ? obj.updateTime[0] : ''
+      obj.updateEndTime = obj.updateTime ? obj.updateTime[1] : ''
+      obj.preliminaryJudgme = this.modelForm.preliminaryJudgme.join(',')
+      delete obj.creatTime
+      delete obj.updateTime
+      getListapi(obj).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          this.loadingSuspWaringTion = false
+        } else {
+          this.loadingSuspWaringTion = false
+          this.$message({
+            message: res.message,
+            type: 'error',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingSuspWaringTion = false
+        })
+      //   }
+      // })
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.loadingSuspWaringTion = true
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.loadingSuspWaringTion = true
+      this.getData()
+    },
+
+    //   新建
+    handleAdd() {
+      this.$router.push({
+        name: 'new_suspWarningConfigur',
+        query: {
+          pageFlag: 'new'
+        }
+      })
+    },
+
+    // 查询
+    handleSearch() {
+      this.$refs.refForm.validate((valid) => {
+        if (valid) {
+          this.loadingSuspWaringTion = true
+          this.pageNum = 1
+          this.pageSize = 10
+          this.getData()
+        }
+      })
+    },
+
+    // 清空
+    handleClearForm() {
+      this.$refs.refForm.resetFields()
+    },
+
+    // 停用
+    handleStop(scope) {
+      const obj = {
+        suspiciousId: scope.row.suspiciousId,
+        status: '02'
+      }
+      stopListapi(obj).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            message: '已停用',
+            type: 'success',
+            duration: 6000,
+            showClose: true
+          })
+          this.loadingSuspWaringTion = true
+          this.getData()
+        }
+      })
+    },
+
+    // 启用
+    handleGo(scope) {
+      const obj = {
+        suspiciousId: scope.row.suspiciousId,
+        status: '01'
+      }
+      stopListapi(obj).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            message: '已启用',
+            type: 'success',
+            duration: 6000,
+            showClose: true
+          })
+          this.loadingSuspWaringTion = true
+          this.getData()
+        }
+      })
+    },
+
+    // 查看
+    handleLook(scope) {
+      const pageInfo = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum
+      }
+      const searchSuspJySxpForm = {
+        pageName: this.$route.name,
+        pageInfo: pageInfo,
+        searchForm: this.modelForm
+      }
+      sessionStorage.setItem('searchSuspJySxpForm', JSON.stringify(searchSuspJySxpForm))
+      this.$router.push({
+        name: 'new_suspWarningConfigur',
+        query: {
+          pageFlag: 'view',
+          suspiciousId: scope.row.suspiciousId
+        }
+      })
+    },
+
+    // 编辑
+    handleEdit(scope) {
+      const pageInfo = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum
+      }
+      const searchSuspJySxpForm = {
+        pageName: this.$route.name,
+        pageInfo: pageInfo,
+        searchForm: this.modelForm
+      }
+      sessionStorage.setItem('searchSuspJySxpForm', JSON.stringify(searchSuspJySxpForm))
+      this.$router.push({
+        name: 'new_suspWarningConfigur',
+        query: {
+          pageFlag: 'edit',
+          suspiciousId: scope.row.suspiciousId
+        }
+      })
+    },
+
+    // 删除
+    handleDel(scope) {
+      this.$confirm('此操作将永久删除该项，确定要删除？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteListapi(scope.row.suspiciousId).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '删除成功',
+              type: 'success',
+              duration: 6000,
+              showClose: true
+            })
+            this.loadingSuspWaringTion = true
+            this.getData()
+          }
+        }
+        )
+      }).catch(() => { })
+    }
+  }
+}
+</script>
+<style lang="scss" scoped>
+.suspiciousWarningConfiguration {
+  .el-date-editor--daterange {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>
+

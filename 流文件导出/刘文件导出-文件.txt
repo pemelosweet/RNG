@@ -1,0 +1,68 @@
+exportTable: function exportTable() {
+      if (this.meetingTime == '' || this.meetingTime == null) {
+        this.$message({
+          message: '请选择日期',
+          type: 'warning',
+          showClose: true
+        });
+      }else{
+        var headers_authorization="";
+       if(sessionStorage.getItem('token')){
+           headers_authorization=sessionStorage.getItem('token');
+       }
+       var SourceSysKey =''  // X-EOS-SourceSysKey
+       var GrpCode ='' // X-EOS-SourceInstGrpCode
+       // console.log(process.env,'条件');
+       // console.log(process.env.NODE_ENV,'初始值');
+       if (process.env.NODE_ENV === 'development') {
+           SourceSysKey='28a1b70db6ed48839c21f992a526345b'
+           GrpCode ='test'
+           // console.log('开发环境');
+       } else if (process.env.NODE_ENV === 'none') {
+           SourceSysKey='28a1b70db6ed48839c21f992a526345b'
+           GrpCode ='deliver'
+           // console.log('发布环境');
+       } else if(process.env.NODE_ENV === 'production') {
+           SourceSysKey='b0abef6bcd694dc8bc63a8643708b4d8'
+           GrpCode =''
+           // console.log('生产环境');
+       }
+        event.preventDefault(); //使a自带的方法失效，即无法调整到href中的URL
+        var url = this.href; //请求的URl
+        var xhr = new XMLHttpRequest(); //定义http请求对象
+        // var  body =document.body
+        xhr.open("GET", url, true);
+        xhr.setRequestHeader("x-Ajax-Request", "true");
+        xhr.setRequestHeader("X-EOS-SourceSysKey", SourceSysKey);
+        xhr.setRequestHeader("X-EOS-SourceInstGrpCode", GrpCode);
+        xhr.setRequestHeader("Authorization", headers_authorization);
+        xhr.send();
+        xhr.responseType = "blob"; // 返回类型blob
+  
+        xhr.onload = function (e) {
+          // 定义请求完成的处理函数，请求前也可以增加加载框/禁用下载按钮逻辑
+          if (this.status === 200) {
+            var blob = this.response;
+  	    var reader = new FileReader();
+            reader.readAsDataURL(blob); // 转换为base64，可以直接放入a标签href
+            console.log(e); //查看有没有接收到数据流
+              if (!!window.ActiveXObject || 'ActiveXObject' in window) { // IE (包含10)10+
+                window.navigator.msSaveBlob(blob, '导出统计表' + ".xlsx")
+                console.log('走1');
+              } else {
+              reader.onload = function () {
+                      console.log('走2');
+                      // 转换完成，创建一个a标签用于下载
+                      var a = document.createElement('a');
+                      a.download = '导出统计表' + ".xlsx"; //自定义下载文件名称
+                      a.href = e.target.result;
+                      // body.append(a); // 修复firefox中无法触发click
+                      a.click(); //$(a).remove();
+                    }
+            
+          } else {
+            console.log("出现了未知的错误!")
+          }
+        };
+      }
+      },

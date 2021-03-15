@@ -1,0 +1,517 @@
+<template>
+  <div class="c-exceptionwrap">
+    <el-card>
+      <a @click="routerBack" class="back" :style="backImg"></a>
+      <div slot="header"> 
+        比对结果异常数据列表
+      </div>
+      <div style="margin: 10px 0;">
+        <el-button type="primary" plain @click="handelCorrection">人工补正</el-button>
+        <!-- <el-button type="primary" plain @click="autoClean">自动清理</el-button> -->
+        <el-button type="primary" plain @click="handleAllExport">批量导出</el-button>
+      </div>
+      <el-table :data="list" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" fixed></el-table-column>
+        <el-table-column type="index" label="序号" fixed></el-table-column>
+        <el-table-column prop="rinm1" label="报告机构" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="rinm2" label="对手机构" show-overflow-tooltip></el-table-column>
+        <!-- <el-table-column prop="tradeType" label="交易类型" show-overflow-tooltip></el-table-column> -->
+        <el-table-column prop="tradeType" label="交易类型">
+          <template slot-scope="scope">{{ scope.row.tradeType === '0'? '大额': '可疑'}}</template>
+        </el-table-column>
+        <el-table-column prop="rpmn" label="收付款方匹配号" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="factor" label="异常要素" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" fixed="right">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleViewDetail(scope)">查看差异详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total"></el-pagination>
+
+      <!-- 查询对比结果 -->
+      <el-dialog title="查看差异详情" :visible.sync="contrastDialogVisible" width="70%">
+        <!-- <el-row>
+          <el-col :span="11"></el-col>
+          <el-col :span="2"></el-col>
+          <el-col :span="11"></el-col>
+        </el-row> -->
+        <el-row class="codemirror">
+          <el-col :span="11" class="codeMirror-merge-left codeMirror-merge-pane">
+            <div class="codeMirror-left-wrapper" id="codeMainLeft" v-html="leftText"></div>
+          </el-col>
+          <el-col :span="2"  class="codeMirror-merge-gap"></el-col>
+          <el-col :span="11" class="codeMirror-merge-right codeMirror-merge-pane">
+            <div class="codeMirror-right-wrapper" id="codeMainRight" v-html="rightText"></div>
+          </el-col>
+        </el-row>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="contrastDialogVisible = false">取 消</el-button>
+          <!-- <el-button type="primary" @click="contrastDialogVisible = false">确 定</el-button> -->
+        </span>
+      </el-dialog>
+
+      <!-- 自动清理弹框内容 -->
+      <el-dialog title="自动清理" :visible.sync="cleandialogVisible" width="34%">
+        <plan-approval @setCleanVisible="getCleanVisible" :cleanParams="cleanParams" :cleanMulList="cleanMulList" :cleandialogVisible="cleandialogVisible"></plan-approval>
+      </el-dialog>
+
+      <!-- 人工补正弹框 -->
+      <el-dialog :title="correctionDialogTitle" :visible.sync="dialogVisible">
+        <component :is="correctionComName" :correctParams="correctParams" @dialogState="closeDialog" :dialogVisible="dialogVisible"></component>
+      </el-dialog>
+
+      <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+// import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { getResultList } from '@/api/sys-monitoringAnalysis/dataGovernance/crossbodyAlignment/index'
+import { viewResultData } from '@/api/sys-monitoringAnalysis/dataGovernance/crossbodyAlignment/history'
+import { cleanCheck } from '@/api/sys-monitoringAnalysis/dataGovernance/dataClean/program.js'
+import { correctCheck, correctCheckError } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch.js'
+import { getUUIDTo } from '@/utils/index.js'
+import Large from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/large'
+import Suspicious from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/suspicious'
+import PlanApproval from '@/views/sys-monitoringAnalysis/dataGovernance/dataClean/components/planApproval.vue'
+
+export default {
+  components: {
+    Large,
+    Suspicious,
+    PlanApproval
+  },
+  data() {
+    return {
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      listLoading: false,
+      multipleSelection: [],
+      correctionComName: null,
+      correctionDialogTitle: null,
+      cleandialogVisible: false, // 自动清理弹框参数
+      dialogVisible: false, //
+      contrastDialogVisible: false, // 对比弹框
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      correctParams: {}, // 人工补正弹框传值
+      cleanParams: {}, // 自动清理弹框传值
+      cleanMulList: [], // 自动清理弹框传值
+      leftText: null,
+      rightText: null,
+      tempDiffArr: [],
+      token: getToken(),
+      UUID: ''
+    }
+  },
+  computed: {
+    id() {
+      const id = this.$route.query.id
+      return id
+    }
+  },
+  watch: {
+    id(val) {
+      if (val) this.getData()
+    }
+  },
+  mounted() {
+    this.getData()
+    this.UUID = getUUIDTo()
+  },
+  methods: {
+    getData() {
+      const baseTask = {
+        id: this.$route.query.id,
+        taskPerformS: this.$route.query.taskPerformS
+      }
+      this.listLoading = true
+      getResultList(baseTask, this.pageInfo).then(res => {
+        if (res.code === 200) {
+          this.listLoading = false
+          if (res.data === null) {
+            this.$confirm(res.message, '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+          } else {
+            this.list = res.data.list
+            this.total = res.data.total
+          }
+        } else {
+          this.listLoading = false
+        }
+      }).catch(() => {
+        this.listLoading = false
+      })
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    closeDialog(val) {
+      // 人工补正组件接收子组件弹框dialogVisible传值
+      this.dialogVisible = val
+    },
+    getCleanVisible(val) {
+      this.cleandialogVisible = val
+    },
+    handleAllExport() {
+      // 批量导出
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const ids = this.multipleSelection
+          .map(function(item) {
+            return item.compId
+          })
+          .toString()
+        if (ids) {
+          location.href = '/monitor/governance/interagency/task/export/' + ids + '?token=' + this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    handleViewDetail(scope) {
+      this.leftText = null
+      this.rightText = null
+      this.tempDiffArr = []
+      const compId = scope.row.compId
+      viewResultData(compId)
+        .then(res => {
+          if (res.code === 200) {
+            this.contrastDialogVisible = true
+            const dObj = res.data.diff ? res.data.diff : ''
+            for (const val in dObj) {
+              this.tempDiffArr.push(val)
+            }
+            console.log('this.tempDiffArr', this.tempDiffArr)
+            if (res.data.trade1 !== null && res.data.trade1.trade) {
+              const arr = []
+              for (var i in res.data.trade1.trade) {
+                if (res.data.trade1.trade[i]) {
+                  for (var j in res.data.trade1.trade[i]) {
+                    if (res.data.trade1.trade[i][j]) {
+                      const item = res.data.trade1.trade[i][j]
+                      arr.push(item)
+                    }
+                  }
+                }
+              }
+
+              if (arr.length !== 0) {
+                let temp = {}
+                if (arr.length !== 0) {
+                  temp = Object.assign(...arr)
+                }
+                const value = JSON.stringify(temp)
+                this.leftText = '<div>' + value.replace(/"/g, '').replace(/,/g, '\n').replace(/{/g, '').replace(/}/g, '').replace(/\n/g, '</div> <div>') + '</div>'
+              }
+            }
+            if (res.data.trade2 !== null && res.data.trade2.trade) {
+              const arr2 = []
+              for (var i2 in res.data.trade2.trade) {
+                if (res.data.trade2.trade[i2]) {
+                  for (var j2 in res.data.trade2.trade[i2]) {
+                    if (res.data.trade2.trade[i2][j2]) {
+                      const item = res.data.trade2.trade[i2][j2]
+                      arr2.push(item)
+                    }
+                  }
+                }
+              }
+
+              if (arr2.length !== 0) {
+                let temp2 = {}
+                if (arr2.length !== 0) {
+                  temp2 = Object.assign(...arr2)
+                }
+                const value2 = JSON.stringify(temp2)
+                this.rightText = '<div>' + value2.replace(/"/g, '').replace(/,/g, '\n').replace(/{/g, '').replace(/}/g, '').replace(/\n/g, '</div> <div>') + '</div>'
+              }
+            }
+          }
+        })
+        .catch()
+    },
+    handletoggle() {
+      this.isShow = true
+    },
+    routerBack() {
+      const obj = JSON.parse(sessionStorage.getItem('searchCrossbodyData'))
+      if (obj) {
+        obj.ifCrossFlag = true
+        sessionStorage.setItem('searchCrossbodyData', JSON.stringify(obj))
+      }
+      this.$router.go(-1)
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    autoClean() {
+      // 自动清理
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        this.cleanMulList = []
+        this.cleanParams = {
+          origin: '2'
+        }
+        this.multipleSelection.map(item => {
+          const obj = {
+            tradeId: item.tradeId1,
+            tradeType: item.tradeType,
+            reportCode: item.ricd1
+          }
+          this.cleanMulList.push(obj)
+        })
+        cleanCheck(this.cleanMulList[0].tradeId).then(res => {
+          if (res.code === 200) {
+            this.cleandialogVisible = true
+          } else {
+            this.$message.error(res.message)
+          }
+        }).catch()
+      }
+    },
+    handelCorrection() {
+      // 人工补正
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else if (length === 1) {
+        this.validateRinmType()
+      } else {
+        const typeArr = []
+        this.multipleSelection.forEach(item => {
+          typeArr.push(item.tradeType)
+        })
+
+        if (this.isAllEqual(typeArr) === true && this.isAllRinmEqual(this.multipleSelection) === false) {
+          this.$confirm('属于不同机构不同交易类型的交易，不可一起发起人工补正', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else if (this.isAllEqual(typeArr) === false && this.isAllRinmEqual(this.multipleSelection) === false) {
+          this.$confirm('属于不同机构的交易，不可一起发起人工补正', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else if (this.isAllEqual(typeArr) === false && this.isAllRinmEqual(this.multipleSelection)) {
+          this.$confirm('属于不同交易类型的交易，不可一起发起人工补正', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else {
+          this.validateRinmType()
+        }
+      }
+    },
+    validateRinmType() { // 校验列表有无报告机构和交易类型
+      for (let i = 0; i < this.multipleSelection.length; i++) {
+        if (this.multipleSelection[i].rinm1 === '' || this.multipleSelection[i].rinm1 === null) {
+          this.$confirm('所选交易的报告机构不能为空！', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+          return false
+        } else if (this.multipleSelection[i].tradeType === '' || this.multipleSelection[i].tradeType === null) {
+          this.$confirm('所选交易的交易类型不能为空！', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+          return false
+        } else {
+          this.getCorrectionData()
+          return
+        }
+      }
+    },
+    isAllEqual(array) { // type
+      if (array.length > 0) {
+        return !array.some(function(value, index) {
+          return value !== array[0]
+        })
+      } else {
+        return true
+      }
+    },
+    isAllRinmEqual(array) { // ricdName
+      if (array.length > 0) {
+        return !array.some(function(value, index) {
+          return value.rinm1 !== array[0].rinm1
+        })
+      } else {
+        return true
+      }
+    },
+    getCorrectionData() {
+      const arr = []
+      const mulType = this.multipleSelection.map(item => {
+        if (item) {
+          arr.push(item.tradeId1)
+          const type = item.tradeType
+          return type
+        }
+      })
+
+      const type = mulType[0].toString()
+      const indus = 'B'
+      const obj = {
+        tradeId: arr.toString(),
+        correctType: type,
+        industry: indus
+      }
+      // correctCheck(arr.toString(), type, indus).then(res => {
+      correctCheck(obj, this.UUID).then(res => {
+        if (res.code === 200) {
+          correctCheckError(this.UUID).then(response => {
+            if (response.code === 200) {
+              this.dialogVisible = true
+              switch (type) {
+                case '0':
+                  this.correctionComName = 'Large'
+                  this.correctionDialogTitle = '大额信息更正通知'
+                  this.correctParams = {
+                    tradeId: arr.toString(),
+                    correctType: type,
+                    organ: '2',
+                    industry: 'B'
+                  }
+                  break
+                case '1':
+                  this.correctionComName = 'Suspicious'
+                  this.correctionDialogTitle = '可疑信息更正通知'
+                  this.correctParams = {
+                    tradeId: arr.toString(),
+                    correctType: type,
+                    organ: '2',
+                    industry: 'B'
+                  }
+                  break
+                default:
+                  break
+              }
+            }
+          }).catch(() => {})
+        } else {
+          this.$message.error(res.message)
+        }
+      }).catch()
+    }
+  },
+  updated() {
+    const obj = document.getElementById('codeMainLeft')
+    const divs = obj.getElementsByTagName('div')
+    if (divs.length > 0) {
+      for (let i = 0; i < divs.length; i++) {
+        this.tempDiffArr.forEach(item => {
+          if (divs[i].innerHTML.indexOf(item) !== -1) {
+            divs[i].style.background = '#ffffe0'
+            divs[i].style.borderTop = '1px solid #ee8'
+            divs[i].style.borderBottom = '1px solid #ee8'
+          }
+        })
+      }
+    }
+
+    const obj2 = document.getElementById('codeMainRight')
+    const divs2 = obj2.getElementsByTagName('div')
+    if (divs2.length > 0) {
+      for (let i = 0; i < divs2.length; i++) {
+        this.tempDiffArr.forEach(item => {
+          if (divs2[i].innerHTML.indexOf(item) !== -1) {
+            divs2[i].style.background = '#ffffe0'
+            divs2[i].style.borderTop = '1px solid #ee8'
+            divs2[i].style.borderBottom = '1px solid #ee8'
+          }
+        })
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.c-exceptionwrap {
+  position: relative;
+  .codemirror {
+    height: 350px;
+    // position: relative;
+    border: 1px solid #ddd;
+    white-space: pre;
+    overflow: hidden;
+  }
+  .codeMirror-merge-left {
+    width: 47%;
+    height: 100%;
+  }
+  .codeMirror-merge-gap {
+    width: 4%;
+    margin-left: 1%;
+    z-index: 2;
+    display: inline-block;
+    height: 100%;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    position: relative;
+    background: #f8f8f8;
+  }
+  .codeMirror-merge-pane {
+    display: inline-block;
+    vertical-align: top;
+  }
+  .codeMirror-merge-right {
+    width: 47%;
+    height: 100%;
+  }
+  .codeMirror-left-wrapper, .codeMirror-right-wrapper {
+    padding: 10px 0;
+    overflow-y: scroll !important;
+    overflow-x: hidden;
+    margin-bottom: -30px;
+    padding-bottom: 30px;
+    height: 100%;
+    outline: none;
+    position: relative;
+  }
+  #codeMainLeft > div, #codeMainRight > div{
+    padding: 2px 10px;
+    margin: 0;
+  }
+}
+</style>
+

@@ -1,0 +1,239 @@
+@import './variables.scss';
+@import './mixin.scss';
+@import './transition.scss';
+@import './element-ui.scss';
+@import './sidebar.scss';
+
+body {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
+}
+
+html {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 18px 0 10px;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+div:focus{
+  outline: none;
+}
+
+a:focus,
+a:active {
+  outline: none;
+}
+
+a,
+a:focus,
+a:hover {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+
+ul {
+  list-style: none;
+  padding: 0px;
+  margin: 0px;
+}
+
+img {
+  width: 100%;
+  height: auto;
+}
+
+.svg-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  fill: currentColor;
+  overflow: hidden;
+}
+
+.clearfix {
+  &:after {
+    visibility: hidden;
+    display: block;
+    font-size: 0;
+    content: " ";
+    clear: both;
+    height: 0;
+  }
+}
+
+//main-container全局样式
+.app-main{
+  min-height: 100%;
+  min-height: calc(100vh - 120px);
+  // padding: 10px 20px 20px;
+  padding: 16px;
+}
+
+/** 分隔符样式 **/
+.divider {
+  height: 1px;
+  margin: 20px 0;
+  background: #e8e8e8;
+  box-sizing: border-box;
+  padding: 0;
+
+  // 实线分隔符样式  ## <div class="divider divider-horizontal"></div>
+  &.divider-horizontal {
+    display: block;
+  }
+
+  // 虚线分隔符 ## <div class="divider divider-dashed"></div>
+  &.divider-dashed {
+    background: none;
+    border-top: 1px dashed #e8e8e8;
+  }
+}
+
+// 全局按钮组
+.button-group {
+  padding-bottom: 5px;
+  clear: both;
+}
+
+::-moz-placeholder{color:#c0c4cc!important;}              //Firefox
+::-webkit-input-placeholder{color:#c0c4cc!important;}     //Chrome,Safari
+:-ms-input-placeholder{color:#c0c4cc!important;}          //IE
+
+
+// 全局 ul li 排列在一行的布局
+.ul-inline {
+  margin-left: auto;
+  li {
+    padding:0 16px;
+    position: relative;
+    float: left;
+  }
+  & li:first-child {
+    padding-left: 0px;
+  }
+  & li:last-child {
+    padding-right: 0px;
+  }
+  .li-br{
+      border-right: 1px solid rgb(232, 232, 232);
+    }
+  .li-bl{
+      border-left: 1px solid rgb(232, 232, 232);                       
+    }
+}
+
+// 竖线分割线                                     
+.split{
+  background-color: rgb(232, 232, 232);
+  position: absolute;
+  top: 30%;
+  right: 0px;
+  width: 2px;
+  height: 40%;
+}
+// 机构树组件-----黄志虎（原因：由于涉及到嵌套dialog）
+.tree-dialog {
+  .list {
+    height: 350px;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+    display: inline-block;
+    vertical-align: middle;
+    width: 200px;
+    max-height: 100%;
+    box-sizing: border-box;
+    position: relative;
+    .title {
+      position: relative;
+      height: 40px;
+      line-height: 40px;
+      background: #f5f7fa;
+      margin: 0;
+      padding-left: 15px;
+      border-bottom: 1px solid #ebeef5;
+      box-sizing: border-box;
+      color: #000;
+      .title-num {
+        position: absolute;
+        right: 15px;
+        color: #909399;
+        font-size: 12px;
+        font-weight: 400;
+      }
+    }
+    .user {
+      margin: 0;
+      padding: 6px 0;
+      list-style: none;
+      height: 294px;
+      overflow: auto;
+      box-sizing: border-box;
+      .el-checkbox {
+        height: 30px;
+        line-height: 30px;
+        padding-left: 15px;
+        display: block;
+        margin-left: 0;
+        &:hover {
+          color: #409eff;
+        }
+      }
+    }
+  }
+}
+// 初步判断组件-----黄志虎（原因：由于涉及到嵌套dialog）
+.dialogJudgment-dialog {
+  .el-dialog__body {
+    max-height: 60vh;
+    overflow: auto;
+    .el-checkbox {
+      display: block;
+      margin-left: 12px;
+    }
+  }
+}
+
+.data-empty {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, .7);
+  color: #888;
+  font-size: 14px;
+}
+
+.back {
+  width: 47px;
+  height: 47px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 999;
+}
+.el-tooltip__popper{
+  max-width: 50%;
+}
+
+
+
+
+
+

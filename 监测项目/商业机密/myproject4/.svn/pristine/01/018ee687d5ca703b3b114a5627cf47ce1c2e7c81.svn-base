@@ -1,0 +1,670 @@
+<template>
+  <div class="modelWarning_query">
+    <el-card>
+      <div slot="header">
+        <span>排名规则预警任务查询</span>
+      </div>
+      <el-form label-width="130px" :model="form" ref="form">
+        <template v-if="toggleSearch">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="主体名称："
+                prop="ctnm"
+                :rules="[{validator:isValidInput, trigger: 'blur'}]"
+              >
+                <el-input
+                  placeholder="请输入主体名称,最长50字符"
+                  maxlength="50"
+                  v-model="form.ctnm"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item
+                label=" 证件号码："
+                prop="ctid"
+                :rules="[{validator: onlyNumberValidate, trigger: 'blur'}]"
+              >
+                <el-input placeholder="请输入证件号码,最长50字符"  maxlength="50" v-model="form.ctid"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-button type="primary" @click="onSubmit">查 询</el-button>
+              <el-button @click="cleanUp" type="primary" plain>清 空</el-button>
+              <el-button type="text" icon="el-icon-arrow-down" @click="toggleSearch=false">展开</el-button>
+            </el-col>
+          </el-row>
+        </template>
+        <template v-else>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="主体名称："
+                prop="ctnm"
+                :rules="[{validator:isValidInput, trigger: 'blur'}]"
+              >
+                <el-input
+                  placeholder="请输入主体名称,最长50字符"
+                  maxlength="50"
+                  v-model="form.ctnm"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item
+                label=" 证件号码："
+                prop="ctid"
+                :rules="[{validator: onlyNumberValidate, trigger: 'blur'}]"
+              >
+                <el-input placeholder="请输入证件号码,最长50字符"  maxlength="50" v-model="form.ctid"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item
+                label=" 预警编号 ："
+                prop="warningNum"
+                :rules="[{validator: isValidInput, trigger: 'blur'}]"
+              >
+                <el-input placeholder="请输入预警编号,最长50字符"  maxlength="50" v-model="form.warningNum"></el-input>
+              </el-form-item>
+            </el-col>
+
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label=" 预警日期 ：" prop="datBegin">
+                <el-date-picker
+                  value-format="yyyy-MM-dd"
+                  v-model="form.datBegin"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 更新时间 ：" prop="updateTime">
+                <el-date-picker
+                  value-format="yyyy-MM-dd"
+                  v-model="form.updateTime"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+              <el-col :span="8">
+              <el-form-item label=" 是否管理员分配：" prop="administratorAssignment">
+                <el-select placeholder="请选择" v-model="form.administratorAssignment" clearable>
+                  <el-option label="是" value="1"></el-option>
+                  <el-option label="否" value="0"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label=" 操作员 ："
+                prop="operators"
+                :rules="[{validator: isValidInput, trigger: 'blur'}]"
+              >
+                <el-input
+                  placeholder="请输入操作员,最长50字符"
+                  maxlength="50"
+                  v-model="form.operators"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 状态 ：" prop="status">
+                <el-select placeholder="请选择" v-model="form.status" clearable>
+                  <el-option label="未分配" value="未分配"></el-option>
+                  <el-option label="待处理" value="待处理"></el-option>
+                  <el-option label="处理中" value="处理中"></el-option>
+                  <el-option label="已处理" value="已处理"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <div style="text-align:right; margin-bottom:10px">
+            <el-button type="primary" @click="onSubmit">查 询</el-button>
+            <el-button @click="cleanUp" type="primary" plain>清 空</el-button>
+            <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch=true;onsubmitBloorer(true)">收起</el-button>
+          </div>
+        </template>
+      </el-form>
+      <el-table :data="tableData"  tooltip-effect="dark"
+       @selection-change="handleChange"
+       v-loading="loadingNewRule"
+       element-loading-text="拼命加载中"
+       element-loading-spinner="el-icon-loading"
+       element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column label="序号" type="index" fixed="left"></el-table-column>
+        <el-table-column prop="ctnm" label="主体名称 " min-width="280" show-overflow-tooltip></el-table-column>
+         <el-table-column prop="ctid" label="证件号码" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="warningNum" label="预警编号 " min-width="230" show-overflow-tooltip>
+          <!-- <template slot-scope="scope">
+                <el-popover trigger="hover" placement="top">
+                  <p>{{scope.row.dmRankmSynchronizations.warningNum}}</p>
+                  <div slot="reference" class="name-wrapper">
+                      <el-tag size="medium" style="width: 100%;overflow: hidden;">
+                          <el-button type="text" style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" @click="Initiate(scope)">{{scope.row.dmRankmSynchronizations.warningNum}}</el-button>
+                      </el-tag>
+                  </div>
+              </el-popover>
+             </template> -->
+        </el-table-column>
+        <el-table-column prop="datBegin" label="预警日期 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="administratorAssignment" label="是否管理员分配 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="status" label="状态 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="operators" label="操作员 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="updateTime" label="更新时间 " min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" min-width="145" fixed="right">
+          <template slot-scope="scope">
+           <el-button type="text" :disabled="scope.row.status !== '未分配'"  @click="btnDistribution(scope)">分配</el-button>
+            <!--  <el-button type="text" :disabled="scope.row.state!=='待分配'" @click="btnRecovery(scope)">收回</el-button> -->
+            <el-button type="text" @click="Initiate(scope)">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-row style="margin-top:10px;">
+        <!-- <el-col :span="8">
+          <el-button type="primary" plain @click="exportData">导 出</el-button>
+        </el-col>-->
+        <!-- <el-col :span="16"> -->
+        <el-pagination
+          v-if="this.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageNum"
+          :page-size="pageSize"
+          :page-sizes="[5, 10, 15, 20]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          background
+        ></el-pagination>
+        <!-- </el-col> -->
+      </el-row>
+    </el-card>
+    <!-- 弹层 -->
+    <el-dialog title="预警范围"  :visible.sync="warningDialogVisible" width="80%">
+      <!-- <el-card shadow="never">
+        <el-row :gutter="20">
+          <el-col :span="10">
+            <el-tree :data="treeDataList" ref="tree"  @check="handleNodeClick"  show-checkbox node-key="id" :props="defaultProps">
+            </el-tree>
+          </el-col>
+          <el-col :span="14">
+            <el-transfer  v-model="transferDataRange" :data="transferOptions" :props="{key: 'userId',label: 'name'}"></el-transfer>
+          </el-col>
+        </el-row>
+        <div style="text-align:center;margin-top:10px">
+          <el-button type="primary" :loading="distributionCheck" @click="distriButionSure">确定</el-button>
+          <el-button @click="distriButionConsole">取消</el-button>
+        </div>
+      </el-card> -->
+      <el-form>
+        <organization-tree v-on:showParentComp="handlesubmitWaring" type='rule' :lableWidth="114" ref="tree"></organization-tree>
+      </el-form>
+    </el-dialog>
+    <!-- 收回 -->
+    <el-dialog title="提示" :visible.sync="takeBackDialogVisible" width="30%" :before-close="handleClose">
+      <span>请确认是否收回当前任务？</span>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="sureTakeBack">确 定</el-button>
+        <el-button @click="takeBackDialogVisible = false">取 消</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { commonPattern } from '@/utils/formValidate'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import {
+  earlyWarning,
+  doubletainCentratSets
+} from '@/api/sys-monitoringAnalysis/taskManagement/modelWarning/modelWarning.js'
+import {
+  getDataList,
+  giveRuleObjInfo
+} from '@/api/sys-monitoringAnalysis/taskManagement/rulesWarning/rules.js'
+import organizationTree from '@/views/sys-monitoringAnalysis/taskManagement/seniorwarning/components/organizationTree.vue'
+export default {
+  components: {
+    organizationTree
+  },
+  data() {
+    return {
+      tableData: [],
+      delArr: [],
+      sourceDireArr: [],
+      dialogJudgmentData: [],
+      toggleSearch: true,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      supplementOne: '',
+      supplementTwo: '',
+      loadingNewRule: false,
+      distributionCheck: false,
+      form: {
+        warningNum: '',
+        ctnm: '',
+        administratorAssignment: '', // 是否管理员分配
+        ctid: '', // 主体名称
+        operators: '', // 操作员
+        datBegin: '',
+        status: '', // 状态
+        updateTime: ''
+      },
+      pageNum: 1,
+      pageSize: 10,
+      total: 0,
+      // 分配
+      distrDataInfo: {},
+      warningNumJQ: '',
+      ctnmJQ: '',
+      warningDialogVisible: false,
+      treeDataList: [],
+      defaultProps: {
+        children: 'children',
+        label: 'text'
+      },
+      transferOptions: [],
+      transferDataRange: [],
+      // 收回
+      takeBackDialogVisible: false
+    }
+  },
+  computed: {
+    // searchParams() {
+    //   const obj = Object.assign({}, this.form, this.pageInfo)
+    //   delete obj.psclueId
+    //   if (this.form.psclueId.indexOf('1401') !== -1) {
+    //     const i = this.form.psclueId.indexOf('1401')
+    //     this.form.psclueId[i] = '1401-' + this.supplementOne
+    //   }
+    //   if (this.form.psclueId.indexOf('1402') !== -1) {
+    //     const n = this.form.psclueId.indexOf('1402')
+    //     this.form.psclueId[n] = '1402-' + this.supplementTwo
+    //   }
+    //   if (this.form.psclueId) {
+    //     obj.psclueId = this.form.psclueId.join(',')
+    //   }
+    //   return obj
+    // },
+    paramsObj: function() {
+      return {
+        warningNum: this.form.warningNum ? this.form.warningNum : null,
+        ctnm: this.form.ctnm ? this.form.ctnm : null,
+        administratorAssignment: this.form.administratorAssignment ? this.form.administratorAssignment : null,
+        ctid: this.form.ctid ? this.form.ctid : null,
+        operators: this.form.operators ? this.form.operators : null,
+        status: this.form.status ? this.form.status : null,
+        updateStartTime: this.form.updateTime ? this.form.updateTime[0] : null,
+        updateEndTime: this.form.updateTime ? this.form.updateTime[1] : null,
+        datStartBegin: this.form.datBegin ? this.form.datBegin[0] : null,
+        datEndBegin: this.form.datBegin ? this.form.datBegin[1] : null
+      }
+    }
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchDataLookXqSxp')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchDataLookXqSxp'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewLookXqSxp) {
+        this.toggleSearch = searchData.seachInfo
+        this.pageSize = searchData.pageInfo.pageSize
+        this.pageNum = searchData.pageInfo.pageNum
+        this.form = searchData.searchForm
+      }
+      sessionStorage.removeItem('searchDataLookXqSxp')
+    }
+    this.loadingNewRule = true
+    this.getList(this.pageNum, this.pageSize, this.paramsObj)
+    this.requestWaringData()
+
+    // this.getDictionary('TOSC')
+    // this.getDictionary('SCDT')
+  },
+  methods: {
+    // 获取列表数据方法
+    getList(num, size, params) {
+      getDataList(num, size, params).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          this.loadingNewRule = false
+        } else {
+          this.loadingNewRule = false
+          this.$message({
+            type: 'error',
+            message: res.message,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingNewRule = false
+        })
+    },
+    // 查询
+    onSubmit() {
+      this.loadingNewRule = true
+      // setTimeout(() => {
+      //   this.loading = false
+      // }, 5000)
+      this.getList(1, 10, this.paramsObj)
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.form.psclueId.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.form.psclueId.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'SCDT':
+              this.sourceDireArr = res.data
+              break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    // 清空
+    cleanUp() {
+      this.$refs.form.resetFields()
+      this.form.warningNum = ''
+      this.form.ctnm = ''
+      this.form.administratorAssignment = '' // 是否管理员分配
+      this.form.ctid = '' // 主体名称
+      this.form.operators = ''// 操作员
+      this.form.datBegin = ''
+      this.form.status = '' // 状态
+      this.form.updateTime = ''
+    //   this.getList(1, 5, this.paramsObj)
+    },
+    // 选择的数据
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 查看
+    Initiate(scope) {
+      const pageInfo = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum
+      }
+      const rankingModelForm = {
+        pageName: this.$route.name,
+        seachInfo: this.toggleSearch,
+        pageInfo: pageInfo,
+        searchForm: this.form
+      }
+      sessionStorage.setItem('searchDataLookXqSxp', JSON.stringify(rankingModelForm))
+      this.$router.push(
+        {
+          name: 'ruleWarning_details',
+          query: {
+            id: scope.row.warningNum,
+            isView: '0'
+          }
+        }
+      )
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEngMY.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // 数字检查
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== '') {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (!commonPattern.number.test(value) && value !== '') {
+          callback(new Error('必须输入数值'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageSize = size
+      this.loadingNewRule = true
+      this.getList(this.pageNum, this.pageSize, this.paramsObj)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageNum = pageNum
+      this.loadingNewRule = true
+      this.getList(this.pageNum, this.pageSize, this.paramsObj)
+    },
+    // ----分配 勾选----
+    handleNodeClick(data, checked, indeterminate) {
+      this.transferOptions = []
+      this.transferData = []
+      this.transferDataRange = []
+      if (this.$refs.tree.getCheckedKeys().length) {
+        var arrString = this.$refs.tree.getCheckedKeys().join()
+        doubletainCentratSets(arrString).then(res => {
+          if (res.code === 200) {
+            this.selectedRange = res.data
+            const data = res.data
+            const arr = []
+            for (var item in data) {
+              for (let i = 0; i < data[item].length; i++) {
+                arr.push(data[item][i])
+              }
+            }
+            this.transferOptions = arr
+          } else {
+            this.$message({
+              message: res.message,
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+      } else {
+        this.transferOptions = []
+        this.transferData = []
+      }
+    },
+    btnDistribution(scope) {
+      this.warningDialogVisible = true
+      this.warningNumJQ = ''
+      this.ctnmJQ = ''
+      this.ctnmJQ = scope.row.ctnm
+      this.warningNumJQ = scope.row.warningNum
+      this.transferOptions = []
+      this.transferData = []
+      this.transferDataRange = []
+      this.$refs.tree.setCheckedKeys([])
+      this.distrDataInfo = scope.row
+    },
+    // 请求 分配范围数据
+    requestWaringData() {
+      this.treeDataList = []
+      earlyWarning().then(res => {
+        if (res.code === 200) {
+          this.treeDataList = []
+          const totalDataList = res.data.data
+          totalDataList[0].disabled = true
+          this.treeDataList.push(totalDataList[0])
+        } else {
+          console.log('获取预警范围出错！！')
+        }
+      })
+    },
+    handlesubmitWaring(data) {
+      if (data.length !== 0) {
+        this.distributionCheck = true
+        const arr = []
+        data.forEach(res => {
+          arr.push(res.userId)
+        })
+        this.transferDataRange = arr
+        this.warningDialogVisible = false
+        this.distriButionSure()
+      } else {
+        this.warningDialogVisible = false
+      }
+    },
+    // 分配范围 - 确定
+    distriButionSure() {
+      if (this.transferDataRange.length > 0) {
+        // this.doubleWaringData = this.$refs.tree.getCheckedKeys()
+        // this.warningDialogVisible = false
+        const paramsObject = this.distrDataInfo
+        paramsObject.ids = this.transferDataRange.join(',')
+        paramsObject.warningNum = this.warningNumJQ
+        paramsObject.ctnm = this.ctnmJQ
+        giveRuleObjInfo(paramsObject).then(res => {
+          if (res.code === 200) {
+            this.loadingNewRule = true
+            this.getList(this.pageNum, this.pageSize, this.paramsObj)
+            this.warningDialogVisible = false
+            this.distributionCheck = false
+            this.$message({
+              type: 'success',
+              message: '分配成功！',
+              duration: 6000,
+              showClose: true
+            })
+          } else {
+            this.distributionCheck = false
+            this.$message({
+              type: 'error',
+              message: res.message,
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+          .catch(() => {
+            this.distributionCheck = false
+          })
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请选择分配人员！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+    // 分配范围 - 取消
+    distriButionConsole() {
+      this.warningDialogVisible = false
+      this.transferOptions = []
+      this.transferData = []
+      this.$refs.tree.setCheckedKeys([])
+    },
+    // ---收回---
+    btnRecovery(scope) {
+      this.takeBackDialogVisible = true
+    },
+    handleClose() {
+      this.takeBackDialogVisible = false
+    },
+    sureTakeBack() {
+      this.takeBackDialogVisible = false
+    },
+    onsubmitBloorer(blr) {
+      if (blr) {
+        this.form = {
+          warningNum: '',
+          ctnm: this.form.ctnm,
+          administratorAssignment: '', // 是否管理员分配
+          ctid: this.form.ctid, // 主体名称
+          operators: '', // 操作员
+          datBegin: '',
+          status: '', // 状态
+          updateTime: ''
+        }
+      }
+    }
+  },
+  created() {
+  }
+}
+</script>
+<style lang="scss">
+.modelWarning_query {
+  .el-date-editor--daterange {
+    min-width: 100%;
+    max-width: 100%;
+  }
+  .el-date-editor--daterange {
+    width: 100%;
+  }
+  .el-transfer-panel__body {
+    .el-checkbox-group {
+      .el-checkbox {
+        margin-right: 56px;
+      }
+    }
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

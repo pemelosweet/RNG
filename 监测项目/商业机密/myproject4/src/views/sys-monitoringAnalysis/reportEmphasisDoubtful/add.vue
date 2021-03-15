@@ -1,0 +1,285 @@
+<template>
+  <div>
+    <el-card>
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>手工导入</span>
+      </div>
+      <el-form :model="submitForm" label-width="120px" ref="submitForm">
+        <el-row>
+          <el-col :span="14" :offset="5">
+            <el-row>
+              <el-col>
+                <el-form-item label="报文名：" prop="xmlName" :rules="[{ required: true, trigger: 'blur',message:'内容不能为空'},{ validator: validateName, trigger: 'blur' }]">
+                  <el-input v-model="submitForm.xmlName" :disabled="isDisable" placeholder="报文名"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row v-if="!(fileSum == 0)">
+              <el-form-item required label="附件：" label-width="120px">
+                <el-upload
+                  ref="upload"
+                  class="upload-demo"
+                  :action="uploadUrl"
+                  :limit="fileSum"
+                  :on-success="fileSucees"
+                  :before-upload="beforeAvatarUpload"
+                  :on-preview="handlePreview"
+                  :on-error="handleError"
+                  :on-remove="handleRemove"
+                  :file-list="fileList"
+                  :on-change="fileChange"
+                  accept=".zip"
+                  :auto-upload="false"
+                >
+                  <el-button slot="trigger" size="small" type="text">选取文件</el-button>
+                </el-upload>
+              </el-form-item>
+            </el-row>
+            <el-row v-if="!(type=='new'|| fileNames.length==0)">
+              <el-col style="margin-left:52px" :span="12">
+                <span>附件：</span>
+                <div v-for="(item,index) in fileNames" :key="index" style="margin-top:10px;margin-left:57px">
+                  <el-button size="small" type="text" @click="fileDownload(item.attachId)">{{ item.attachName }}</el-button>
+                  <i v-if="type=='detail'" style="float:right;color:red" class="el-icon-circle-close" @click="deleteFile(item.attachId,index)" />
+                  <br>
+                </div>
+              </el-col>
+            </el-row>
+          </el-col>
+          <el-col :span="12" :offset="6" style="margin-top:50px">
+            <div style="color:red;font-size: 14px">
+            <p>说明：附件名必须与报文名一致;</p>
+            <p style="margin-left:43px;">报文名以.XML结尾</p>
+            <p style="margin-left:43px;">报告原件及报告相关的所有附件统一打成一个压缩包，格式统一为zip。</p>
+          </div>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div style="textAlign:center;margin-top:200px">
+        <el-button size="small" type="primary" @click="handleSubmit">提 交</el-button>
+        <el-button @click="goBack">返 回</el-button>
+    </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { getUUIDTo } from '@/utils/index.js'
+import { commonPattern } from '@/utils/formValidate'
+import { submit, getFile, insertFile } from '@/api/sys-monitoringAnalysis/reportEmphasisDoubtful/index.js'
+export default {
+  data() {
+    return {
+      submitForm: {
+        xmlName: '',
+        zipName: ''
+      },
+      uuId: '',
+      type: '',
+      loading: null,
+      fileNames: [],
+      fileList: [],
+      isDisable: false,
+      oldData: {}
+    }
+  },
+  computed: {
+    uploadUrl() {
+      return 'file-service/upload/upload-attach?token=' + getToken() + '&noteId=' + this.uuId + '&type=1&ownSys=monitor&extend1=monitor&moduleName=' + encodeURI('上报可疑报文')
+    },
+    fileSum() {
+      return 1 - this.fileNames.length
+    }
+  },
+  methods: {
+    gerFileList() {
+      getFile(this.$route.query.data.noteId).then(res => {
+        if (res.code === 200) {
+          this.fileNames = res.data
+        }
+      })
+    },
+    handleSubmit() {
+      this.$refs.submitForm.validate(valid => {
+        if (valid) {
+          var fileType = (this.submitForm.zipName.substring(this.submitForm.zipName.lastIndexOf('.') + 1))
+          this.submitForm.zipName = this.submitForm.zipName.replace(fileType, 'zip')
+          if (this.submitForm.xmlName.replace('.XML', '') !== this.submitForm.zipName.replace('.zip', '')) {
+            this.$message({
+              message: '报文名和文件名不一致',
+              duration: 6000,
+              type: 'error'
+            })
+          } else {
+            if (this.fileNames.length === 0) {
+              this.$refs.upload.submit()
+            } else {
+              this.saveData()
+            }
+          }
+        }
+      })
+    },
+    saveData() {
+      this.loading = this.$loading({
+        lock: true,
+        text: 'loading...',
+        spinner: 'el-icon-loading'
+      })
+      if (this.type === 'new') {
+        const list = [
+          {
+            xmlName: this.submitForm.xmlName,
+            zipName: this.submitForm.zipName,
+            noteId: this.uuId
+          }
+        ]
+        const fd = new FormData()
+        fd.append('listJSON', JSON.stringify(list))
+        submit(fd).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '提交成功',
+              type: 'success',
+              duration: 6000
+            })
+            this.loading.close()
+            this.goBack()
+          } else {
+            this.loading.close()
+          }
+        }).catch(() => {
+          this.loading.close()
+        })
+      }
+      if (this.type === 'detail') {
+        const obj = this.oldData
+        if (this.fileNames.length === 0) {
+          obj.noteId = this.uuId
+        }
+        insertFile(obj).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '编辑成功',
+              type: 'success',
+              duration: 6000
+            })
+            this.loading.close()
+            this.goBack()
+          } else {
+            this.loading.close()
+          }
+        }).catch(() => {
+          this.loading.close()
+        })
+      }
+    },
+    fileChange(file, fileList) {
+      this.uuId = getUUIDTo()
+      var testmsg = (file.name.substring(file.name.lastIndexOf('.') + 1)).toLowerCase()
+      const extension = testmsg === 'zip'
+      if (!extension) {
+        this.$refs.upload.uploadFiles.splice(fileList.length - 1, 1)
+        this.$message({
+          message: '只能上传.zip格式文件!',
+          duration: 6000,
+          type: 'error'
+        })
+        return false
+      } else {
+        this.submitForm.zipName = file.name
+      }
+    },
+    beforeAvatarUpload(file) {
+      this.loading = this.$loading({
+        lock: true,
+        text: 'loading...',
+        spinner: 'el-icon-loading'
+      })
+    },
+    // isFileNameSame(arr) {
+    //   const hash = {}
+    //   for (const i in arr) {
+    //     if (hash[arr[i].name]) {
+    //       return true
+    //     }
+    //     hash[arr[i].name] = true
+    //   }
+    //   return false
+    // },
+    handleRemove(file, fileList) {
+      this.fileNum--
+      console.log(file, fileList)
+    },
+    handlePreview(file) {
+      console.log(file)
+    },
+    fileSucees(res) {
+      console.log(res)
+      this.saveData()
+    },
+    handleError() {
+      this.loading.close()
+    },
+    // 返回
+    goBack() {
+      this.$router.go(-1)
+    },
+    fileDownload(attachId) {
+      getFile(this.oldData.noteId).then(res => {
+        if (res.code === 200) {
+          const fileList = res.data
+          if (fileList.length !== 0) {
+            location.href = `file-service/upload/download/${fileList[0].attachId}`
+          }
+        }
+      })
+    },
+    deleteFile(id, index) {
+      this.fileNames.splice(index, 1)
+    },
+    validateData(value) {
+      const str1 = value.substring(0, 1)
+      const str2 = value.substring(1, 3)
+      if ((str1 === 'N' || str1 === 'C' || str1 === 'R' || str1 === 'A' || str1 === 'I') && (str2 === 'BS' || str2 === 'SS' || str2 === 'IS' || str2 === 'US' || str2 === 'PS' || str2 === 'UC' || str2 === 'PC' || str2 === 'ZS' || str2 === 'ZC' || str2 === 'CS')) {
+        return true
+      } else {
+        return false
+      }
+    },
+    validateName(rule, value, callback) {
+      // var testmsg = (value.substring(value.lastIndexOf('.') + 1)).toLowerCase()
+      var testmsg = (value.substring(value.lastIndexOf('.') + 1))
+      if (testmsg !== 'XML') {
+        callback(new Error('报文名必须以.XML结尾'))
+      } else if (!this.validateData(value)) {
+        callback(new Error('报文名格式错误,第一位为：N或C或R或A或I，第二三位为：BS或SS或IS或US或PS或UC或PC或ZS或ZC或CS'))
+      } else if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    }
+  },
+  mounted() {
+    this.type = this.$route.query.type
+    if (this.$route.query.data) {
+      this.isDisable = true
+      this.$route.query.data = JSON.parse(this.$route.query.data)
+      this.oldData = this.$route.query.data
+      this.submitForm.xmlName = this.$route.query.data.xmlName
+      this.submitForm.zipName = this.$route.query.data.zipName
+      this.gerFileList()
+    }
+  }
+}
+</script>
+
+<style  lang="scss">
+</style>

@@ -1,0 +1,719 @@
+<template>
+  <div class="modelWarning_query">
+    <el-card>
+      <div slot="header">
+        <span>模型预警任务查询</span>
+      </div>
+      <el-form label-width="130px" :model="modelForm" ref="form">
+        <template v-if="toggleSearch">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="主体名称："
+                prop="subjectName"
+                :rules="[{validator:ValidQueryInput, trigger: 'blur'}]"
+              >
+                <el-input
+                  placeholder="请输入主体名称,最长50字符"
+                  maxlength="50"
+                  v-model="modelForm.subjectName"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item
+                label=" 证件号码："
+                prop="identificationNumber"
+                :rules="[{validator: onlyNumberValidate1, trigger: 'blur'}]"
+              >
+                <el-input placeholder="请输入证件号码,最长50字符"  maxlength="50" v-model="modelForm.identificationNumber"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-button type="primary" @click="onSubmit">查 询</el-button>
+              <el-button @click="cleanUp" type="primary" plain>清 空</el-button>
+              <el-button type="text" icon="el-icon-arrow-down" @click="toggleSearch=false;onsubmitBloorer(false)">展开</el-button>
+            </el-col>
+          </el-row>
+        </template>
+        <template v-else>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label="主体名称："
+                prop="subjectName"
+                :rules="[{validator:ValidQueryInput, trigger: 'blur'}]"
+              >
+                <el-input
+                  placeholder="请输入主体名称,最长50字符"
+                  maxlength="50"
+                  v-model="modelForm.subjectName"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item
+                label=" 证件号码："
+                prop="identificationNumber"
+                :rules="[{validator: onlyNumberValidate1, trigger: 'blur'}]"
+              >
+                <el-input placeholder="请输入证件号码,最长50字符"  maxlength="50" v-model="modelForm.identificationNumber"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item
+                label=" 预警编号 ："
+                prop="warningNumber"
+                :rules="[{validator: ValidQueryInput, trigger: 'blur'}]"
+              >
+                <el-input placeholder="请输入预警编号,最长50字符"  maxlength="50" v-model="modelForm.warningNumber"></el-input>
+              </el-form-item>
+            </el-col>
+
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="预警日期：" prop="mresultTime">
+                <el-date-picker
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  v-model="modelForm.mresultTime"
+                  :default-time="['00:00:00', '23:59:59']"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="疑似涉罪类型：" prop="crime">
+               <el-select placeholder="请选择" v-model="modelForm.crime" clearable>
+                  <el-option
+                            v-for="(item,index) in options"
+                            :key="index"
+                            :label="item"
+                            :value="item">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="更新时间：" prop="updateTime">
+                <el-date-picker
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  :default-time="['00:00:00', '23:59:59']"
+                  v-model="modelForm.updateTime"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item
+                label=" 操作员："
+                prop="operator"
+                :rules="[{validator: ValidQueryInput, trigger: 'blur'}]"
+              >
+                <el-input
+                  placeholder="请输入操作员,最长50字符"
+                  maxlength="50"
+                  v-model="modelForm.operator"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label=" 状态：" prop="status">
+                <el-select placeholder="请选择" v-model="modelForm.status" clearable>
+                  <el-option label="未分配" value="未分配"></el-option>
+                  <el-option label="待处理" value="待处理"></el-option>
+                  <el-option label="处理中" value="处理中"></el-option>
+                  <el-option label="已处理" value="已处理"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+             <el-col :span="8">
+              <el-form-item label=" 是否管理员分配：" prop="administratorAssignment">
+                <el-select placeholder="请选择" v-model="modelForm.administratorAssignment" clearable>
+                  <el-option label="是" value="1"></el-option>
+                  <el-option label="否" value="0"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <div style="text-align:right; margin-bottom:10px">
+            <el-button type="primary" @click="onSubmit">查 询</el-button>
+            <el-button @click="cleanUp" type="primary" plain>清 空</el-button>
+            <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch=true;onsubmitBloorer(true)">收起</el-button>
+          </div>
+        </template>
+      </el-form>
+      <el-table :data="tableData"
+       tooltip-effect="dark"
+       @selection-change="handleChange"
+       v-loading="loading"
+       element-loading-text="拼命加载中"
+       element-loading-spinner="el-icon-loading"
+       element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column label="序号" type="index" fixed="left"></el-table-column>
+        <el-table-column prop="subjectName" label="主体名称 " min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="identificationNumber" label="证件号码" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="warningNumber" label="预警编号 " min-width="230" show-overflow-tooltip>
+             <!-- <template slot-scope="scope">
+                <el-popover trigger="hover" placement="top">
+                  <p>{{scope.row.warningNumber}}</p>
+                  <div slot="reference" class="name-wrapper">
+                      <el-tag size="medium" style="width: 100%;overflow: hidden;">
+                          <el-button type="text" style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" @click="Initiate(scope)">{{scope.row.warningNumber}}</el-button>
+                      </el-tag>
+                  </div>
+              </el-popover>
+             </template> -->
+        </el-table-column>
+        <el-table-column prop="wadecrimeTypes" label="疑似涉罪类型 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="mresultTime" label="预警日期 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="administratorAssignment" label="是否管理员分配 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="status" label="状态 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="operator" label="操作员 " min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="updateTime" label="更新时间 " min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" min-width="125" fixed="right">
+          <template slot-scope="scope">
+            <el-button type="text" :disabled="scope.row.status  !== '未分配'"  @click="btnDistribution(scope)">分配</el-button>
+            <!-- <el-button type="text" @click="btnRecovery(scope)">收回</el-button> -->
+            <el-button type="text" @click="Initiate(scope)">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-row style="margin-top:10px;">
+        <el-pagination v-if="this.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background>
+      </el-pagination>
+      </el-row>
+    </el-card>
+        <!-- 弹层 -->
+    <el-dialog title="预警范围"  :visible.sync="warningDialogVisible" width="80%">
+      <el-card shadow="never">
+        <el-row :gutter="20">
+          <el-col :span="10">
+            <el-tree :data="treeDataList" ref="tree"  @check="handleNodeClick"  show-checkbox node-key="id" :props="defaultProps">
+            </el-tree>
+          </el-col>
+          <el-col :span="14">
+            <!-- :titles="['全选 +', '全选 -']" -->
+            <el-transfer  v-model="transferDataRange" :data="transferOptions" :props="{key: 'userId',label: 'name'}"></el-transfer>
+          </el-col>
+        </el-row>
+        <div style="text-align:center;margin-top:10px">
+          <el-button type="primary" :loading="distributionCheck" @click="distriButionSure">确定</el-button>
+          <el-button @click="distriButionConsole">取消</el-button>
+        </div>
+      </el-card>
+    </el-dialog>
+    <!-- 收回 -->
+    <el-dialog title="提示" :visible.sync="takeBackDialogVisible" width="30%" :before-close="handleClose">
+      <span>请确认是否收回当前任务？</span>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="sureTakeBack">确 定</el-button>
+        <el-button @click="takeBackDialogVisible = false">取 消</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { commonPattern } from '@/utils/formValidate'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import {
+  earlyWarning,
+  doubletainCentratSets
+} from '@/api/sys-monitoringAnalysis/taskManagement/modelWarning/modelWarning.js'
+import {
+  getSerchList,
+  giveObjInfo
+  // fpPeopleSuccessReaspt
+} from '@/api/sys-monitoringAnalysis/taskManagement/modelWarning/model.js'
+import {
+  selectInfo
+} from '@/api/sys-monitoringAnalysis/modelInfoData/submitExperiments'
+export default {
+  data() {
+    return {
+      tableData: [],
+      delArr: [],
+      options: [],
+      sourceDireArr: [],
+      dialogJudgmentData: [],
+      toggleSearch: true,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      supplementOne: '',
+      supplementTwo: '',
+      loading: false,
+      modelForm: {
+        administratorAssignment: '', // 是否管理员分配
+        subjectName: '', // 主体名称
+        operator: '', // 操作员
+        warningNumber: '', // 预警编号
+        status: '', // 状态
+        crime: '', // 疑似犯罪类型
+        identificationNumber: '', // 证件号码
+        updateTime: '',
+        mresultTime: ''
+      },
+      pageNum: 1,
+      pageSize: 10,
+      total: 10,
+      // 分配
+      distrDataInfo: {
+        mewpcId: '',
+        ids: ''
+      },
+      scopeDataInfo: {
+        modelName: '',
+        warningNumber: ''
+      },
+      warningDialogVisible: false,
+      treeDataList: [],
+      defaultProps: {
+        children: 'children',
+        label: 'text'
+      },
+      distributionCheck: false,
+      transferOptions: [],
+      transferDataRange: [],
+      // 收回
+      takeBackDialogVisible: false
+    }
+  },
+  computed: {
+    searchParams() {
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.psclueId
+      if (this.form.psclueId.indexOf('1401') !== -1) {
+        const i = this.form.psclueId.indexOf('1401')
+        this.form.psclueId[i] = '1401-' + this.supplementOne
+      }
+      if (this.form.psclueId.indexOf('1402') !== -1) {
+        const n = this.form.psclueId.indexOf('1402')
+        this.form.psclueId[n] = '1402-' + this.supplementTwo
+      }
+      if (this.form.psclueId) {
+        obj.psclueId = this.form.psclueId.join(',')
+      }
+      return obj
+    },
+    paramsObj: function() {
+      return {
+        warningNumber: this.modelForm.warningNumber ? this.modelForm.warningNumber : '',
+        subjectName: this.modelForm.subjectName ? this.modelForm.subjectName : '',
+        identificationNumber: this.modelForm.identificationNumber ? this.modelForm.identificationNumber : '',
+        administratorAssignment: this.modelForm.administratorAssignment ? this.modelForm.administratorAssignment : '',
+        status: this.modelForm.status ? this.modelForm.status : '',
+        operator: this.modelForm.operator ? this.modelForm.operator : '',
+        wadecrimeTypes: this.modelForm.crime ? this.modelForm.crime : '',
+        mresultStartTime: this.modelForm.mresultTime ? this.modelForm.mresultTime[0] : null,
+        mresultEndTime: this.modelForm.mresultTime ? this.modelForm.mresultTime[1] : null,
+        updateStartTime: this.modelForm.updateTime ? this.modelForm.updateTime[0] : null,
+        updateEndTime: this.modelForm.updateTime ? this.modelForm.updateTime[1] : null
+      }
+    }
+  },
+  created() {
+    // this.initList(this.pageInfo)
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchDataModelSxp')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchDataModelSxp'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewModeSxp) {
+        this.toggleSearch = searchData.seachInfo
+        this.pageSize = searchData.pageInfo.pageSize
+        this.pageNum = searchData.pageInfo.pageNum
+        this.modelForm = searchData.searchForm
+      }
+      sessionStorage.removeItem('searchDataModelSxp')
+    }
+    // this.getDictionary('TOSC')
+    // this.getDictionary('SCDT')
+    this.requestWaringData()
+    this.loading = true
+    this.getList(this.pageNum, this.pageSize, this.paramsObj)
+    this.getSelectInfo()
+  },
+  methods: {
+    // 获取列表数据方法
+    getList(num, size, params) {
+      getSerchList(num, size, params).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.tableData = res.data.list
+          this.total = res.data.total
+        } else {
+          this.loading = false
+          this.$message({
+            type: 'error',
+            message: '获取列表失败！',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    // 获取下拉框值
+    getSelectInfo() {
+      selectInfo().then(res => {
+        this.options = res.data
+      })
+    },
+    // 查询
+    onSubmit() {
+      this.loading = true
+      this.getList(1, 10, this.paramsObj)
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.form.psclueId.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.form.psclueId.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 获取字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'SCDT':
+              this.sourceDireArr = res.data
+              break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 涉罪校验
+    szisValidInput1(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementOne)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementOne) ||
+        commonPattern.specialEng.test(this.supplementOne)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementOne === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    szisValidInput2(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(this.supplementTwo)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (
+        commonPattern.specialChar.test(this.supplementTwo) ||
+        commonPattern.specialEng.test(this.supplementTwo)
+      ) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (this.supplementTwo === '') {
+        callback(new Error('请输入内容'))
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (value.length <= 5 || value.length >= 129) {
+          callback(new Error('内容应在6-128位之间'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 清空
+    cleanUp() {
+      this.$refs.form.resetFields()
+      this.supplementOne = ''
+      this.supplementTwo = ''
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+      this.modelForm = {
+        administratorAssignment: '', // 是否管理员分配
+        subjectName: '', // 主体名称
+        operator: '', // 操作员
+        warningNumber: '', // 预警编号
+        status: '', // 状态
+        crime: '', // 疑似犯罪类型
+        identificationNumber: '', // 证件号码
+        updateTime: '',
+        mresultTime: ''
+      }
+    },
+    // 选择的数据
+    handleChange(val) {
+      this.delArr = val
+    },
+    // 查看
+    Initiate(scope) {
+      const pageInfo = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum
+      }
+      const searchDataModelSxp = {
+        pageName: this.$route.name,
+        seachInfo: this.toggleSearch,
+        pageInfo: pageInfo,
+        searchForm: this.modelForm
+      }
+      sessionStorage.setItem('searchDataModelSxp', JSON.stringify(searchDataModelSxp))
+      this.$router.push({
+        name: 'modelWarning_seeModel',
+        query: {
+          id: scope.row.mewpcId,
+          isView: '0'
+        }
+      }
+      )
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEngMY.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    ValidQueryInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialCharInQuery.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // 数字检查
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== '') {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        // } else if (!commonPattern.number.test(value) && value !== '') {
+        //   console.log(value)
+        //   callback(new Error('必须输入数值'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageSize = size
+      this.loading = true
+      this.getList(this.pageNum, this.pageSize, this.paramsObj)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageNum = pageNum
+      this.loading = true
+      this.getList(this.pageNum, this.pageSize, this.paramsObj)
+    },
+    // ----分配 勾选----
+    handleNodeClick(data, checked, indeterminate) {
+      console.log(data, checked, indeterminate)
+      this.transferOptions = []
+      this.transferData = []
+      this.transferDataRange = []
+      if (this.$refs.tree.getCheckedKeys().length) {
+        var arrString = this.$refs.tree.getCheckedKeys().join()
+        doubletainCentratSets(arrString).then(res => {
+          if (res.code === 200) {
+            this.selectedRange = res.data
+            const data = res.data
+            const arr = []
+            for (var item in data) {
+              for (let i = 0; i < data[item].length; i++) {
+                arr.push(data[item][i])
+              }
+            }
+            this.transferOptions = arr
+          } else {
+            this.$message({
+              message: res.message,
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+      } else {
+        this.transferOptions = []
+        this.transferData = []
+      }
+    },
+    btnDistribution(scope) {
+      this.scopeDataInfo.modelName = scope.row.modelName
+      this.scopeDataInfo.warningNumber = scope.row.warningNumber
+      this.distrDataInfo.mewpcId = scope.row.mewpcId
+      this.warningDialogVisible = true
+      this.transferOptions = []
+      this.transferData = []
+      this.transferDataRange = []
+      this.$refs.tree.setCheckedKeys([])
+    },
+    // 请求 分配范围数据
+    requestWaringData() {
+      this.treeDataList = []
+      earlyWarning().then(res => {
+        if (res.code === 200) {
+          this.treeDataList = []
+          const totalDataList = res.data.data
+          totalDataList[0].disabled = true
+          this.treeDataList.push(totalDataList[0])
+        } else {
+          this.$message({
+            type: 'error',
+            message: '获取预警范围出错！',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    // 分配范围 - 确定
+    distriButionSure() {
+      this.distributionCheck = true
+      if (this.transferDataRange.length > 0) {
+        const paramsObject = {}
+        paramsObject.ids = this.transferDataRange.join(',')
+        paramsObject.mewpcId = this.distrDataInfo.mewpcId
+        paramsObject.warningNumber = this.scopeDataInfo.warningNumber
+        giveObjInfo(paramsObject).then(res => {
+          if (res.code === 200) {
+            this.distributionCheck = false
+            this.getList(this.pageNum, this.pageSize, this.paramsObj)
+            this.warningDialogVisible = false
+            this.$message({
+              type: 'success',
+              message: '分配成功！',
+              duration: 6000,
+              showClose: true
+            })
+            console.log(this.scopeDataInfo)
+            // fpPeopleSuccessReaspt(this.scopeDataInfo).then(res => {
+            //   if (res.code === 200) {
+            //     console.log(res.data)
+            //     this.loading = true
+
+            //     this.getList(this.pageNum, this.pageSize, this.paramsObj)
+            //   }
+            // })
+          } else {
+            this.distributionCheck = false
+            this.$message({
+              type: 'error',
+              message: res.message,
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+          .catch(() => {
+            this.distributionCheck = false
+          })
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请选择分配人员！',
+          duration: 6000,
+          showClose: true
+        })
+      }
+    },
+    // 分配范围 - 取消
+    distriButionConsole() {
+      this.warningDialogVisible = false
+      this.transferOptions = []
+      this.transferData = []
+      this.$refs.tree.setCheckedKeys([])
+    },
+    // ---收回---
+    btnRecovery(scope) {
+      this.takeBackDialogVisible = true
+    },
+    handleClose() {
+      this.takeBackDialogVisible = false
+    },
+    sureTakeBack() {
+      this.takeBackDialogVisible = false
+    },
+    onsubmitBloorer(blr) {
+      if (blr) {
+        this.modelForm = {
+          administratorAssignment: '', // 是否管理员分配
+          subjectName: this.modelForm.subjectName, // 主体名称
+          operator: '', // 操作员
+          warningNumber: '', // 预警编号
+          status: '', // 状态
+          crime: '', // 疑似犯罪类型
+          identificationNumber: this.modelForm.identificationNumber, // 证件号码
+          updateTime: '',
+          mresultTime: ''
+        }
+      }
+    }
+  }
+
+}
+</script>
+<style lang="scss">
+.modelWarning_query {
+  .el-date-editor--daterange {
+    min-width: 100%;
+    max-width: 100%;
+  }
+  .el-date-editor--daterange {
+    width: 100%;
+  }
+  .el-transfer-panel__body {
+    .el-checkbox-group {
+      .el-checkbox {
+        margin-right: 56px;
+      }
+    }
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>

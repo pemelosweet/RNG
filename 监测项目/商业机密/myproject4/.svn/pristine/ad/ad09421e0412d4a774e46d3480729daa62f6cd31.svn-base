@@ -1,0 +1,422 @@
+<template>
+  <div class="achistory">
+    <el-card>
+      <div slot="header">
+        <span>补正历史记录</span> 
+      </div>
+      <el-row>
+        <el-form ref="searchForm" :model="searchForm" :rules="rules" label-width="140px">
+          <el-row>
+            <el-col :span="8">
+              <el-form-item label="报告机构：" prop="reportBody">
+                <!-- <el-select v-model="searchForm.reportBody" filterable clearable>
+                  <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.rinm"></el-option>
+                </el-select> -->
+                <el-autocomplete v-model="searchForm.reportBody" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;"></el-autocomplete>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="发起补正来源：" prop="problemSource">
+                <el-select v-model="searchForm.problemSource" style="width:100%" clearable>
+                  <el-option label="全部" value=""></el-option>
+                  <el-option label="规则扫描" value="0"></el-option>
+                  <el-option label="数据抽样" value="1"></el-option>
+                  <el-option label="跨机构比对" value="2"></el-option>
+                  <el-option label="定点监测" value="3"></el-option>
+                  <el-option label="特定数据查询" value="4"></el-option>
+                  <el-option label="分析员自主发起" value="5"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="补正类型：" prop="correctType">
+                <el-select v-model="searchForm.correctType" style="width:100%" clearable>
+                  <el-option label="全部" value=""></el-option>
+                  <el-option label="大额信息更正" value="0"></el-option>
+                  <el-option label="可疑信息更正" value="1"></el-option>
+                  <el-option label="信息补充" value="2"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-col :span="8">
+              <el-form-item label="补正发起人：" prop="proposer">
+                <el-input v-model="searchForm.proposer" placeholder="补正发起人"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="补正状态：" prop="correctState">
+                <el-select v-model="searchForm.correctState" style="width:100%" clearable>
+                  <el-option label="全部" value=""></el-option>
+                  <!-- <el-option label="待补正" value="0"></el-option> -->
+                  <el-option label="补正中" value="1"></el-option>
+                  <el-option label="已补正" value="2"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="补正任务发起时间：" prop="startAppTime">
+                <el-date-picker v-model="searchForm.startAppTime" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+            </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row class="btnalign">
+            <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+            <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+          </el-row>
+        </el-form>
+      </el-row>
+      <div style="margin: 10px 0;">补正历史列表：
+        <el-button type="primary" plain @click="handleExport">批量导出</el-button>
+      </div>
+      <el-table :data="list" style="width: 100%;" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" fixed></el-table-column>
+        <el-table-column type="index" label="序号" fixed></el-table-column>
+        <el-table-column prop="reportBody" label="报告机构" min-width="140">
+          <template slot-scope="scope">
+            <el-tooltip class="tooltipWrap" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.reportBody }}</div>
+              <div >{{ scope.row.reportBody}}</div>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="problemSource" label="发起补正来源" min-width="110">
+           <template slot-scope="scope">
+            <el-tooltip class="tooltipWrap" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.problemSource }}</div>
+              <div >{{ scope.row.problemSource}}</div>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="correctType" label="补正类型" min-width="120"></el-table-column>
+        <el-table-column prop="dataState" label="审批状态"></el-table-column>
+        <el-table-column prop="isSend" label="是否发送补正通知" min-width="140">
+          <template slot-scope="scope">
+            {{ scope.row.isSend === '0'? '未发送' : '已发送'}}
+          </template>
+        </el-table-column> 
+        <el-table-column label="补正通知名" min-width="140" prop="xmlName">
+          <template slot-scope="scope">
+            <el-tooltip class="tooltipWrap" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.xmlName }}</div>
+              <div >{{ scope.row.xmlName}}</div>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="correctState" label="补正状态"></el-table-column>
+        <el-table-column prop="responseName" label="应答报文">
+          <template slot-scope="scope">
+            <el-tooltip class="tooltipWrap" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.responseName }}</div>
+              <div >{{ scope.row.responseName}}</div>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkResult" label="补正核对结果" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="feedback" label="反馈评价"></el-table-column>
+        <el-table-column prop="startAppTime" label="补正发起时间" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="examineTime" label="审批时间" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="noticeTime" label="发送补正通知时间" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="correctTime" label="反馈补正报文时间" min-width="150" show-overflow-tooltip ></el-table-column>
+        <el-table-column prop="feedbackTime" label="反馈评价时间" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="proposer" label="补正发起人" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="examiner" label="补正审批人" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="noticer" label="发送补正通知人" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template slot-scope="scope">
+            <router-link :to="{name:'dataGovernance_artificialCorrection_history_tradeList', query: {correctId: scope.row.correctId, correctType: scope.row.correctType , ornm: scope.row.ornm}}">
+              <el-button type="text" @click="handleView(scope)">查看</el-button>
+            </router-link> 
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { getList } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/history'
+export default {
+  data() {
+    return {
+      loading: false,
+      searchForm: {
+        reportBody: '',
+        problemSource: '',
+        tradeId: '',
+        correctType: '',
+        proposer: '',
+        correctState: '',
+        startAppTime: ''
+      },
+      rules: {
+        proposer: [{ validator: ValidQueryInput, trigger: 'blur' }, { max: 50, message: '最大长度为50位', trigger: 'blur' }],
+        reportBody: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      rinmOptions: [], // 报告机构列表
+      multipleSelection: [],
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      token: getToken()
+    }
+  },
+  created() {
+    const obj = JSON.parse(sessionStorage.getItem('searchCorrectionData'))
+    if (obj) {
+      if (obj.ifCorrectionFlag) {
+        this.pageInfo = obj.pageInfo
+        this.searchForm = obj.searchForm
+      }
+    }
+    sessionStorage.removeItem('searchCorrectionData')
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    getData() {
+      const paramsObj = {
+        reportBody: this.searchForm.reportBody,
+        problemSource: this.searchForm.problemSource,
+        tradeId: this.searchForm.tradeId,
+        correctType: this.searchForm.correctType,
+        proposer: this.searchForm.proposer,
+        correctState: this.searchForm.correctState,
+        startDate: this.searchForm.startAppTime ? this.searchForm.startAppTime[0] : '',
+        endDate: this.searchForm.startAppTime ? this.searchForm.startAppTime[1] : '',
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.list = res.data.list
+            this.total = res.data.total
+            res.data.list.forEach(e => {
+              if (e.correctType !== null) {
+                switch (e.correctType) {
+                  case '0':
+                    e.correctType = '大额信息更正'
+                    break
+                  case '1':
+                    e.correctType = '可疑信息更正'
+                    break
+                  case '2':
+                    e.correctType = '信息补充'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.problemSource !== null) {
+              // 问题来源
+                switch (e.problemSource) {
+                  case '0':
+                    e.problemSource = '规则扫描'
+                    break
+                  case '1':
+                    e.problemSource = '数据抽样'
+                    break
+                  case '2':
+                    e.problemSource = '跨机构比对'
+                    break
+                  case '3':
+                    e.problemSource = '定点监测'
+                    break
+                  case '4':
+                    e.problemSource = '特定数据查询'
+                    break
+                  case '5':
+                    e.problemSource = '分析员自主发起'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.correctState !== null) {
+                switch (e.correctState) {
+                  case '0':
+                    e.correctState = '待补正'
+                    break
+                  case '1':
+                    e.correctState = '补正中'
+                    break
+                  case '2':
+                    e.correctState = '已补正'
+                    break
+                  default:
+                    e.correctState = '--'
+                    break
+                }
+              }
+              if (e.dataState !== null) {
+              // 数据状态
+                switch (e.dataState) {
+                  case '0':
+                    e.dataState = '未审批'
+                    break
+                  case '1':
+                    e.dataState = '审批中'
+                    break
+                  case '2':
+                    e.dataState = '审批通过'
+                    break
+                  case '3':
+                    e.dataState = '审批不通过'
+                    break
+                  case '4':
+                    e.dataState = '退回'
+                    break
+                  default:
+                    e.dataState = '--'
+                    break
+                }
+              }
+              if (e.feedback !== null) { // 反馈评价
+                switch (e.feedback) {
+                  case '0':
+                    e.feedback = '良好'
+                    break
+                  case '1':
+                    e.feedback = '合格'
+                    break
+                  case '2':
+                    e.feedback = '不合格'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.checkResult !== null) {
+                switch (e.checkResult) {
+                  case '0':
+                    e.checkResult = '正常'
+                    break
+                  case '1':
+                    e.checkResult = '异常'
+                    break
+                  default:
+                    break
+                }
+              }
+            })
+          } else {
+            this.loading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    handleQuery() {
+      // 查询操作
+      this.$refs.searchForm.validate((valid) => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.loading = true
+          this.getData()
+        } else {
+          return false
+        }
+      })
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    handleExport() {
+      // 导出操作
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const ids = this.multipleSelection
+          .map(function(item) {
+            return item.correctId
+          })
+          .join(',')
+        console.log('ids', ids)
+        if (ids) {
+          location.href = '/monitor/governance/correction/history/' +
+            ids +
+            '?token=' +
+            this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    handleView(scope) {
+      const searchData = {
+        pageInfo: this.pageInfo,
+        searchForm: this.searchForm
+      }
+      sessionStorage.setItem('searchCorrectionData', JSON.stringify(searchData))
+      this.$router.push({ name: 'dataGovernance_artificialCorrection_history_tradeList', query: { correctId: scope.row.correctId, correctType: scope.row.correctType, ornm: scope.row.ornm }})
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.achistory {
+  .btnalign {
+    text-align: right;
+  }
+  .tradetime {
+    .el-date-editor--datetimerange.el-input__inner {
+      width: 200px;
+    }
+  }
+  .tooltipWrap {
+    width: 140px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space: nowrap;
+  }
+}
+</style>

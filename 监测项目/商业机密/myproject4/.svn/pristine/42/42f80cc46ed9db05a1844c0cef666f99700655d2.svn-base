@@ -1,0 +1,760 @@
+<template>
+  <div class="sampCreataskWrap">
+    <el-card>
+      <div slot="header">建立抽样任务</div>
+      <a @click="routerBack" class="back" :style="backImg"></a>
+      <div>
+        <el-form :model="dialogForm" label-width="180px" ref="dialogForm" :rules="dialogRules">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="任务名称：" prop="stName">
+                <el-input style="width: 80%;" placeholder="最大长度为20位" v-model="dialogForm.stName" :disabled="disabled" maxlength="20"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="交易日期：" prop="tradeDate">
+                <el-date-picker v-model="dialogForm.tradeDate" type="daterange" range-separator="至" start-placeholder="开始日期" style="width:100%" end-placeholder="结束日期" :disabled="disabled" value-format="yyyy-MM-dd">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="抽样算法：" prop="stMath">
+                <el-select v-model="dialogForm.stMath" placeholder="请选择抽样算法" disabled clearable style="width: 80%;">
+                  <el-option v-for="(item,index) in stMathOptions" :key="index" :label="item.label" :value="item.value"></el-option>
+                </el-select>
+              </el-form-item> 
+            </el-col>
+            <el-col :span="12">       
+              <el-form-item label="落地日期：" prop="dateValue">
+                <el-date-picker v-model="dialogForm.dateValue" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :disabled="disabled" :picker-options="pickerOptions"></el-date-picker>
+              </el-form-item>
+            </el-col> 
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="行业类型：" prop="stIndustry">
+                <el-select v-model="dialogForm.stIndustry" :disabled="disabled" @focus="hanldeIndustry" filterable clearable style="width: 80%;" placeholder="请选择行业类型">
+                  <el-option v-for="(item,index) in industryTypeOptions" :label="item.text" :value="item.value" :key="index"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">  
+              <el-form-item label="报告机构：" prop="sampleRicd">
+                <el-select v-model="dialogForm.sampleRicd" :disabled="disabled" placeholder="报告机构" style="width:100%" :remote-method="querySearchRinm" @focus="querySearchRinm" filterable remote clearable>
+                  <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd">
+                  </el-option>
+                </el-select> 
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="交易类型：" prop="stTradeType">
+                <el-select v-model="dialogForm.stTradeType" :disabled="disabled" clearable style="width: 80%;" placeholder="请选择交易类型">
+                  <el-option value="2" label="全部"></el-option>
+                  <el-option value="0" label="大额"></el-option>
+                  <el-option value="1" label="可疑"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col> 
+            <el-col :span="12">
+              <el-form-item label="交易发生地：" prop="city">
+                <el-select v-model="dialogForm.country" @change="handleInterRegionChange" style="width: 40%;" clearable :disabled="disabled" placeholder="请选择地区">
+                  <el-option label="中国" value="CHN"></el-option>
+                  <el-option label="大陆地区保税区" value="Z01"></el-option>
+                  <el-option label="大陆地区加工区" value="Z02"></el-option>
+                  <el-option label="大陆地区加工区钻石交易所" value="Z03"></el-option>
+                  <el-option label="国际" value="NAT"></el-option>
+                </el-select>
+                <el-cascader v-if="dialogForm.country !== 'NAT'" style="width: 58%;" expand-trigger="hover" :options="cityListOptions" v-model="dialogForm.city" :props="props" :disabled="disabled" clearable placeholder="请选择">
+                </el-cascader>
+
+                <el-select v-if="dialogForm.country === 'NAT'" style="width: 58%;" v-model="dialogForm.city" :disabled="disabled" clearable placeholder="请选择">
+                  <el-option v-for="(country, cIndex) in countryData" :key="cIndex" :label="country.chSName" :value="country.pkMc"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="账户类型：" prop="stAccountType">
+                <el-select v-model="dialogForm.stAccountType" placeholder="请选择账户类型" :disabled="disabled" filterable remote clearable style="width: 80%;" :remote-method="remoteAccountMethod" @focus="handleAccount">
+                  <el-option v-for="(item,index) in accountOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="银行卡类型：" prop="stCardType">
+                <el-select v-model="dialogForm.stCardType" placeholder="请选择银行卡类型" :disabled="disabled" filterable clearable style="width: 80%;" @focus="handleCardType">
+                  <el-option v-for="(item,index) in cardOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="收付款方匹配号类型：" prop="stRpmt">
+                <el-select v-model="dialogForm.stRpmt" placeholder="请选择收付款方匹配号类型" :disabled="disabled" clearable style="width: 80%;" @focus="handleRpmt">
+                  <el-option v-for="(item,index) in rpmtOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="交易方式：" prop="stTradeWay">
+                <el-select v-model="dialogForm.stTradeWay" placeholder="请选择交易方式" :disabled="disabled" filterable remote clearable style="width: 80%;" :remote-method="remoteTradeWayMethod" @focus="handleTradeWay">
+                  <el-option v-for="(item,index) in tradeWayOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="涉外收支交易分类与代码：" prop="stFtcc">
+                <el-select v-model="dialogForm.stFtcc" :disabled="disabled" filterable remote clearable style="width: 80%;" :remote-method="remoteFtccMethod" @focus="handleFtcc" placeholder="请选择涉外收支交易分类与代码">
+                  <el-option v-for="(item, index) in ftccOptions" :key="index" :label="item.codeName" :value="item.code"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="非柜台交易方式：" prop="stNctm">
+                <el-select v-model="dialogForm.stNctm" placeholder="请选择非柜台交易方式" :disabled="disabled" clearable style="width: 80%;" @focus="handleNctm">
+                  <el-option v-for="(item, index) in nctmOptions" :key="index" :label="item.codeName" :value="item.codeId"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>    
+          <el-row :gutter="20">
+            <el-col style="width: 180px; text-align:right; font-size: 14px; padding: 8px 12px 0 0; color: #606266;"><div>交易金额：</div></el-col>
+            <el-col :span="3">
+              <el-form-item label="" label-width="0" prop="stMinTransaction">
+                <el-input v-model="dialogForm.stMinTransaction" style="width:100%;" :disabled="disabled" placeholder="最大长度为20位" maxlength="20"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="1">
+              <span style="display: inline-block;width: 100%;line-height: 33px;text-align: center;">至</span>   
+            </el-col>
+            <el-col :span="3">
+              <el-form-item label="" prop="stMaxTransaction" label-width="0px">
+                <el-input v-model="dialogForm.stMaxTransaction" style="width:100%;" :disabled="disabled" placeholder="最大长度为20位" maxlength="20"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="币种：" prop="stCurrency">
+                <el-select v-model="dialogForm.stCurrency" placeholder="请选择币种" :disabled="disabled" filterable remote clearable style="width: 80%;" :remote-method="remoteCurrencyMethod" @focus="handleCurrency">
+                  <el-option v-for="(item, index) in currencyOptions" :key="index" :label="item.chName" :value="item.enCode"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="抽取笔数：" prop="stExtractionQuan" label-width="180px" style="width: 80%;">
+                <!-- <el-input v-model="dialogForm.stExtractionQuan" type="number" :disabled="disabled" placeholder="请选择抽取笔数"></el-input> -->
+                <el-input-number style="width: 100%" v-model="dialogForm.stExtractionQuan" controls-position="right" :min="1" :max="100"></el-input-number>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="交易ID：" prop="stTradeId">
+                <el-input v-model="dialogForm.stTradeId" :disabled="disabled" style="width: 80%;" placeholder="最大长度为64位" maxlength="64"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row >
+            <el-form-item label="收付款方匹配号：" prop="stRpmn">
+              <el-input type="textarea" v-model="dialogForm.stRpmn" :disabled="disabled" style="width: 100%;" placeholder="最大长度为500位" maxlength="500" rows="4" show-word-limit></el-input>
+            </el-form-item>
+          </el-row>
+          <el-row class="dialog-footer">
+            <el-button type="primary" v-if="this.disabled !== true" @click="addSubmit('dialogForm', $event)" :loading="loading">{{this.$route.query.disabled === '1' ? '确定' :'修改'}}</el-button>
+            <el-button type="primary" v-if="this.disabled !== true" @click="reSet('dialogForm')" plain>清空</el-button>
+            <el-button @click="routerBack">返 回</el-button>
+          </el-row>
+        </el-form>
+      </div>
+    </el-card>
+    
+  </div>
+</template> 
+
+<script>
+import { addSamplingList, dataTask, dataDimqueryTask, ftccList, currencyList, viewSamplingList, updateSamplingList } from '@/api/sys-monitoringAnalysis/dataGovernance/dataSampling/index'
+import { getIndustryFristXu, getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { getArea, country } from '@/api/common/citys'
+import { isValidInput, onlyNumberValidate } from '@/utils/formValidate.js'
+export default {
+  data() {
+    const noMinus_validatePass = (rule, value, callback) => {
+      if (value < this.dialogForm.stMinTransaction) {
+        callback(new Error('前面的金额必须小于等于后面的金额'))
+      } else {
+        callback()
+      }
+    }
+    const isValidDate = (rule, value, callback) => {
+      if (Date.parse(value[0]) + 3600 * 1000 * 24 * 7 < Date.parse(value[1])) {
+        callback(new Error('落地日期时间跨度应在7天以内'))
+      } else {
+        callback()
+      }
+    }
+    const isValidMaxNum = (rule, value, callback) => {
+      // const numb = /^\d+(\.{0,1}\d+){0,1}$/
+      const numb = /^[0-9]*$/
+      if (value > 100) {
+        callback(new Error('最大数值为100'))
+      } else if (!numb.test(value) && value) {
+        callback(new Error('必须为整数且不能为负数'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      props: { checkStrictly: true },
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      pickerOptions: {
+        disabledDate(time) { // 今天及以后的不能选
+          return time.getTime() > Date.now() - 1 * 24 * 60 * 60 * 1000
+        }
+      },
+      creDate: '',
+      creUser: '',
+      creUserName: '',
+      industryName: '',
+      loading: false,
+      rinmOptions: [],
+      rinmReadyOptions: [],
+      industryTypeOptions: [],
+      accountOptions: [], // 账户类型
+      accountReadyOptions: [],
+      cardOptions: [], // 银行类型
+      rpmtOptions: [], // 收付款方匹配号类型
+      tradeWayOptions: [], // 交易方式
+      tradeWayReadyOptions: [],
+      nctmOptions: [], // 非柜台交易方式
+      ftccOptions: [], // 涉外收支交易分类与代码
+      ftccReadyOptions: [],
+      currencyOptions: [], // 币种
+      currencyReadyOptions: [],
+      countryData: [], // 交易发生地
+      cityListOptions: [], // 交易发生地
+      dialogForm: {
+        sampleRicd: '',
+        stName: '',
+        tradeDate: '', // 交易日期
+        stMath: '0', //
+        stIndustry: '', //
+        stDateType: '0', //
+        dateValue: '',
+        stDateStartTime: '',
+        stDateEndTime: '',
+        stTradeType: '',
+        stAccountType: '', //
+        stCardType: '', //
+        country: '', // 交易发生地
+        city: [],
+        stTradeWay: '', //
+        stFtcc: '', //
+        stNctm: '', //
+        stRpmt: '',
+        stMinTransaction: '',
+        stMaxTransaction: '',
+        stCurrency: '', //
+        stExtractionQuan: '100',
+        stTradeId: '',
+        stRpmn: ''
+      },
+      stMathOptions: [
+        {
+          label: '随机抽样',
+          value: '0'
+        },
+        {
+          label: '等距抽样',
+          value: '1'
+        },
+        {
+          label: '顺序抽样',
+          value: '2'
+        },
+        {
+          label: '分类抽样',
+          value: '3'
+        },
+        {
+          label: '分层抽样',
+          value: '4'
+        }
+      ],
+      temp: {},
+      dialogRules: {
+        stName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 20, message: '最大长度为20位', trigger: 'blur' }
+        ],
+        stMath: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        stDateType: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        number: [{ required: true, message: '内容不能为空' }],
+        stMinTransaction: [{ validator: onlyNumberValidate, trigger: 'blur' },
+          { max: 20, message: '最大长度为20位', trigger: 'blur' }],
+        stMaxTransaction: [
+          { validator: noMinus_validatePass, trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' },
+          { max: 20, message: '最大长度为20位', trigger: 'blur' }
+        ],
+        stExtractionQuan: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidMaxNum, trigger: 'blur' }
+        ],
+        dateValue: [{ required: true, validator: isValidDate, trigger: 'change' }],
+        stTradeId: [{ max: 64, message: '最大长度为64位', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }],
+        stRpmn: [{ max: 500, message: '最大长度为500位', trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }]
+      },
+      pointCount: 0, // 记录修改报告机构次数
+      initRicd: ''
+    }
+  },
+  created() {
+    if (!this.id) {
+      this.querySearchRinm()
+    }
+  },
+  mounted() {
+    this.getChildData()
+  },
+  computed: {
+    id() {
+      return this.$route.query.stId
+    },
+    disabled() {
+      if (this.$route.query.disabled === '1') {
+        return false
+      } else if (this.$route.query.disabled === '2') {
+        if (this.stTaskStatus === '未完成') {
+          return false
+        } else {
+          return true
+        }
+      } else {
+        return false
+      }
+    },
+    stTaskStatus() {
+      return this.$route.query.stTaskStatus
+    }
+  },
+  watch: {
+    id(val) {
+      if (val) this.getChildData()
+    }
+  },
+  methods: {
+    resetForm() {
+      this.$refs.dialogForm.resetFields()
+      this.dialogForm.stMath = '0'
+      this.dialogForm.stExtractionQuan = 100
+    },
+    getChildData() {
+      this.industryName = ''
+      this.dialogForm.dateValue = ''
+      this.resetForm()
+      if (this.id) {
+        viewSamplingList(this.id).then(res => {
+          if (res.code === 200) {
+            const obj = Object.assign({}, res.data)
+            if (obj.country) {
+              if (obj.country !== 'NAT') { // 中国
+                obj.city = obj.city.split(',')
+                this.getArea()
+              } else { // 国际
+                obj.city = obj.city.slice(0, 3)
+                this.getCountry()
+              }
+            }
+            if (obj.stAccountType) {
+              this.handleAccount()
+            }
+            if (obj.stCardType) {
+              this.handleCardType()
+            }
+            if (obj.stRpmt) {
+              this.handleRpmt()
+            }
+            if (obj.stTradeWay) {
+              this.handleTradeWay()
+            }
+            if (obj.stFtcc) {
+              this.handleFtcc()
+            }
+            if (obj.stNctm) {
+              this.handleNctm()
+            }
+            if (obj.stCurrency) {
+              this.handleCurrency()
+            }
+            if (obj.stIndustry) {
+              this.hanldeIndustry()
+            }
+            this.creDate = obj.creDate
+            this.creUser = obj.creUser
+            this.creUserName = obj.creUserName
+            if (obj.sampleRicds.length > 0) {
+              obj.sampleRicds.forEach(item => {
+                this.initRicd = item.srRicn
+              })
+            } else {
+              this.initRicd = ''
+            }
+            this.dialogForm = obj
+            this.dialogForm.dateValue = [obj.stDateStartTime, obj.stDateEndTime]
+            this.dialogForm.tradeDate = [obj.stTstmStartTime, obj.stTstmEndTime]
+          }
+        }).catch()
+      }
+    },
+    querySearchRinm(query) {
+      if (query !== '') {
+        this.pointCount = this.pointCount + 1
+        const paramsObj = {
+          industry: this.dialogForm.stIndustry,
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            this.rinmOptions = res.data
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    remoteAccountMethod(query) {
+      if (query !== '') {
+        const paramsObj = {
+          codeName: query,
+          typeId: 'ZHLX'
+        }
+        dataDimqueryTask(paramsObj).then(res => {
+          if (res.code === 200) {
+            this.accountOptions = res.data.list
+          }
+        })
+        return this.accountOptions
+      } else {
+        this.accountOptions = []
+      }
+    },
+    remoteTradeWayMethod(query) {
+      if (query !== '') {
+        const paramsObj = {
+          typeId: 'TSTP_H',
+          codeName: query
+        }
+        dataDimqueryTask(paramsObj).then(res => {
+          if (res.code === 200) {
+            this.tradeWayOptions = res.data.list
+          }
+        })
+        return this.tradeWayOptions
+      } else {
+        this.tradeWayOptions = []
+      }
+    },
+    remoteCurrencyMethod(query) {
+      if (query !== '') {
+        const paramsObj = {
+          chName: query
+        }
+        this.handleCurrency(paramsObj)
+        this.currencyOptions = this.currencyReadyOptions
+        return this.currencyOptions
+      } else {
+        this.currencyOptions = []
+      }
+    },
+    remoteFtccMethod(query) {
+      if (query !== '') {
+        const paramsObj = {
+          codeName: query
+        }
+        this.handleFtcc(paramsObj)
+        this.ftccOptions = this.ftccReadyOptions
+        return this.ftccOptions
+      } else {
+        this.ftccOptions = []
+      }
+    },
+    addSubmit(formName, el) {
+      // 确定提交操作
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.loading = true
+          const obj = Object.assign({}, this.dialogForm)
+
+          if (obj.country !== 'NAT') { // 中国
+            obj.city = obj.city.toString()
+          } else { // 国际
+            obj.city = obj.city + '000000'
+          }
+
+          // obj.sampleRicd = obj.sampleRicd.toString()
+          const target = el.srcElement ? el.srcElement : el.target
+          if (target.innerText === '确定') {
+            const paramsObj = {
+              sampleRicd: obj.sampleRicd,
+              stName: obj.stName,
+              stMath: obj.stMath,
+              stIndustry: obj.stIndustry,
+              stDateType: obj.stDateType,
+              stDateStartTime: obj.dateValue ? obj.dateValue[0] : '',
+              stDateEndTime: obj.dateValue ? obj.dateValue[1] : '',
+              stTstmStartTime: obj.tradeDate ? obj.tradeDate[0] : '',
+              stTstmEndTime: obj.tradeDate ? obj.tradeDate[1] : '',
+              stTradeType: obj.stTradeType,
+              stAccountType: obj.stAccountType,
+              stCardType: obj.stCardType,
+              country: obj.country, // 交易发生地  国家
+              city: obj.city, // 交易发生地 城市
+              stTradeWay: obj.stTradeWay,
+              stFtcc: obj.stFtcc,
+              stNctm: obj.stNctm,
+              stRpmt: obj.stRpmt,
+              stMinTransaction: obj.stMinTransaction,
+              stMaxTransaction: obj.stMaxTransaction,
+              stCurrency: obj.stCurrency,
+              stExtractionQuan: obj.stExtractionQuan,
+              stTradeId: obj.stTradeId,
+              stRpmn: obj.stRpmn
+            }
+            addSamplingList(paramsObj).then(res => {
+              if (res.code === 200) {
+                this.loading = false
+                this.$message({
+                  message: res.message,
+                  type: 'success'
+                })
+                setTimeout(() => {
+                  this.$router.push({ name: 'dataGovernance_dataSampling' })
+                }, 100)
+              } else {
+                this.loading = false
+              }
+            }).catch(() => {
+              this.loading = false
+            })
+          } else {
+            let srRicn = ''
+            if (this.pointCount === 0) {
+              srRicn = this.initRicd
+            } else {
+              srRicn = this.dialogForm.sampleRicd
+            }
+            const paramsObj = {
+              creDate: this.creDate,
+              creUser: this.creUser,
+              creUserName: this.creUserName,
+              stId: this.id,
+              sampleRicd: srRicn,
+              stName: obj.stName,
+              stMath: obj.stMath,
+              stIndustry: obj.stIndustry,
+              stDateType: obj.stDateType,
+              stDateStartTime: obj.dateValue ? obj.dateValue[0] : '',
+              stDateEndTime: obj.dateValue ? obj.dateValue[1] : '',
+              stTstmStartTime: obj.tradeDate ? obj.tradeDate[0] : '',
+              stTstmEndTime: obj.tradeDate ? obj.tradeDate[1] : '',
+              stTradeType: obj.stTradeType,
+              stAccountType: obj.stAccountType,
+              stCardType: obj.stCardType,
+              country: obj.country, // 交易发生地  国家
+              city: obj.city, // 交易发生地 城市
+              stTradeWay: obj.stTradeWay,
+              stFtcc: obj.stFtcc,
+              stNctm: obj.stNctm,
+              stRpmt: obj.stRpmt,
+              stMinTransaction: obj.stMinTransaction,
+              stMaxTransaction: obj.stMaxTransaction,
+              stCurrency: obj.stCurrency,
+              stExtractionQuan: obj.stExtractionQuan,
+              stTradeId: obj.stTradeId,
+              stRpmn: obj.stRpmn
+            }
+            updateSamplingList(paramsObj).then(res => {
+              if (res.code === 200) {
+                this.loading = false
+                this.$message({
+                  message: res.message,
+                  type: 'success'
+                })
+                setTimeout(() => {
+                  this.$router.push({ name: 'dataGovernance_dataSampling' })
+                }, 100)
+              } else {
+                this.loading = false
+              }
+            }).catch(() => {
+              this.loading = false
+            })
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    reSet(dialogForm) {
+      this.$refs[dialogForm].resetFields()
+      this.dialogForm.country = ''
+    },
+    routerBack() {
+      this.$router.go(-1)
+    },
+    getArea() {
+      getArea() // 获取交易地址
+        .then(res => {
+          if (res.code === 200) {
+            this.cityListOptions = []
+            if (this.dialogForm.country === 'CHN') {
+              this.cityListOptions = res.data
+            } else {
+              res.data.forEach(item => {
+                if (item.value !== '710000' && item.value !== '810000' && item.value !== '820000') {
+                  this.cityListOptions.push(item)
+                }
+              })
+            }
+          } else {
+            this.$confirm(res.message, '提示', {
+              showCancelButton: false,
+              type: 'error'
+            }).then()
+              .catch()
+          }
+        })
+        .catch()
+    },
+    // 获取省份
+    getCountry() {
+      country().then(res => {
+        if (res.code === 200) {
+          this.countryData = []
+          res.data.list.forEach(res => {
+            if (res.numCode !== '156' && res.numCode !== '344' && res.numCode !== '446' && res.numCode !== '158') {
+              this.countryData.push(res)
+            }
+          })
+        }
+      })
+    },
+    // 国家或者省市
+    handleInterRegionChange(val) {
+    // 交易发生地
+      if (val !== 'NAT') {
+        this.getArea()
+      } else if (val === 'NAT') {
+        this.getCountry()
+      }
+
+      this.dialogForm.city = []
+    },
+    hanldeIndustry() {
+      getIndustryFristXu().then(res => {
+        // 所属行业
+        this.industryTypeOptions = res.data
+      })
+        .catch()
+    },
+    handleAccount() {
+      const typeId = 'ZHLX'
+      dataTask(typeId)
+        .then(res => {
+          // 账户类别
+          if (res.code === 200) {
+            this.accountOptions = res.data
+          }
+        })
+        .catch()
+    },
+    handleCardType() {
+      const typeId2 = 'CBCT'
+      dataTask(typeId2)
+        .then(res => {
+          // 银行卡类型
+          if (res.code === 200) {
+            this.cardOptions = res.data
+          }
+        })
+        .catch()
+    },
+    handleRpmt() {
+      const typeId3 = 'RPMT'
+      dataTask(typeId3)
+        .then(res => {
+          // 收付款方匹配号类型
+          if (res.code === 200) {
+            this.rpmtOptions = res.data
+          }
+        })
+        .catch()
+    },
+    handleTradeWay(codeName) {
+      const typeId4 = 'TSTP_H'
+      dataTask(typeId4)
+        .then(res => {
+          // 交易方式
+          if (res.code === 200) {
+            this.tradeWayOptions = res.data
+          }
+        })
+        .catch()
+    },
+    handleFtcc(paramsObj) {
+      ftccList(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.ftccOptions = res.data.list
+          }
+        })
+        .catch()
+    },
+    handleNctm() {
+      const typeId5 = 'OCTT'
+      dataTask(typeId5)
+        .then(res => {
+          // 非柜台交易方式
+          if (res.code === 200) {
+            this.nctmOptions = res.data
+          }
+        })
+        .catch()
+    },
+    handleCurrency(paramsObj) {
+      currencyList(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.currencyOptions = res.data.list
+          }
+        })
+        .catch()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.sampCreataskWrap {
+  position: relative;
+  .dialog-footer {
+    text-align: right;
+  }
+}
+</style>

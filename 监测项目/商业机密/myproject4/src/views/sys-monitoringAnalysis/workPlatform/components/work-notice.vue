@@ -1,0 +1,650 @@
+<template>
+  <div class="wait-notice">
+    <h4>未阅读事项列表：</h4>
+    <el-row>
+      <el-col :span="24" style="text-align: right;">
+        <el-form :model="form" ref="searchForm1" :rules="searchRules1" :inline="true">
+          <el-form-item label="标题：" label-width="60px" prop="title">
+            <el-input v-model="form.title"></el-input>
+          </el-form-item>
+          <el-form-item label="接收日期：" label-width="100px" prop="date">
+            <el-date-picker value-format="yyyy-MM-dd" v-model="form.date" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="searchData">查 询</el-button>
+            <el-button type="primary" plain @click="clearSearchDataOne">清 空</el-button>
+          </el-form-item>
+        </el-form>
+      </el-col>
+    </el-row>
+
+    <el-table style="width: 100%;margin-top:10px" :data="tableData">
+      <el-table-column type="index" label="序号" width="80"></el-table-column>
+      <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip>
+        <template slot-scope="scope">
+          <!-- <router-link :to="{ name: 'conjointAnalysis_detail', query: { id: scope.row.studioId}}"> -->
+            <el-button type="text" @click="handleDeal(scope)">{{scope.row.title}}</el-button>
+          <!-- </router-link> -->
+        </template>
+      </el-table-column>
+      <el-table-column prop="sendDate" label="接收日期"></el-table-column>
+      <el-table-column prop="type" label="类型"></el-table-column>
+      <el-table-column prop="status" label="状态"></el-table-column>
+    </el-table>
+    <el-pagination v-if="pageInfo.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-size="pageInfo.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.total" background style="margin-bottom: 100px;">
+    </el-pagination>
+    <h4>已阅读事项列表：</h4>
+    <el-row>
+      <el-col :span="24" style="text-align: right;">
+        <el-form :model="form2" ref="searchForm2" :rules="searchRules2" :inline="true">
+          <el-form-item label="标题：" label-width="60px" prop="title">
+            <el-input v-model="form2.title"></el-input>
+          </el-form-item>
+          <el-form-item label="接收日期：" label-width="100px" prop="date">
+            <el-date-picker value-format="yyyy-MM-dd" v-model="form2.date" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="searchData2">查 询</el-button>
+            <el-button type="primary" plain @click="clearSearchDataTwo">清 空</el-button>
+          </el-form-item>
+        </el-form>
+      </el-col>
+    </el-row>
+
+    <el-table style="width: 100%;margin-top:10px" :data="tableData2">
+      <el-table-column type="index" label="序号" width="80"></el-table-column>
+      <el-table-column prop="title" label="标题" min-width="200">
+        <template slot-scope="scope">
+          <el-button type="text" @click="handleDeal(scope)">{{scope.row.title}}</el-button>
+        </template>
+      </el-table-column>
+      <el-table-column prop="sendDate" label="日期"></el-table-column>
+      <el-table-column prop="type" label="类型"></el-table-column>
+      <el-table-column prop="status" label="状态"></el-table-column>
+    </el-table>
+    <el-pagination v-if="pageInfo2.total" @size-change="handleSizeChange2" @current-change="handleCurrentChange2" :current-page="pageInfo2.pageNum" :page-size="pageInfo2.pagesize" layout="total, sizes, prev, pager, next, jumper" :total="pageInfo2.total" background>
+    </el-pagination>
+  </div>
+
+</template>
+<script>
+import { matterTooltip, matterTooltip2, dealStatus, isDelData } from '@/api/sys-monitoringAnalysis/workPlatform/index.js'
+import { formatTime } from '@/utils'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  component() {
+    formatTime
+  },
+  data() {
+    return {
+      form: {
+        title: '',
+        date: '',
+        readType: 'doneAndFinished'
+      },
+      form2: {
+        title: '',
+        date: '',
+        readType: 'doneAndFinished'
+      },
+      tableData: [],
+      tableData2: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: null
+      },
+      pageInfo2: {
+        pageNum: 1,
+        pageSize: 10,
+        total: null
+      },
+      objInfo1: {},
+      objInfo2: {},
+      rowStatus: null,
+      searchRules1: {
+        title: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      },
+      searchRules2: {
+        title: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+
+    }
+  },
+  filters: {
+    formatTime(date, option) {
+      return formatTime(date, option)
+    }
+  },
+  computed: {
+    paramsObj1() {
+      const obj = Object.assign({}, this.form)
+      delete obj.date
+      delete obj.total
+      if (this.form.date) {
+        obj.startDate = this.form.date[0]
+        obj.endDate = this.form.date[1]
+      } else {
+        obj.startDate = ''
+        obj.endDate = ''
+      }
+      return obj
+    },
+    paramsObj2() {
+      const obj = Object.assign({}, this.form2)
+      delete obj.date
+      delete obj.total
+      if (this.form2.date) {
+        obj.startDate = this.form2.date[0]
+        obj.endDate = this.form2.date[1]
+      } else {
+        obj.startDate = ''
+        obj.endDate = ''
+      }
+      return obj
+    }
+  },
+  mounted() {
+    if (sessionStorage.getItem('xtfNotice') !== null) {
+      this.getSeeion()
+    } else {
+      this.fetchData()
+      this.fetchData2()
+    }
+  },
+  methods: {
+    getSeeion() {
+      const xtfSessionChuLi = JSON.parse(sessionStorage.getItem('xtfNotice'))
+      this.objInfo1.title = xtfSessionChuLi[0].title
+      this.form.title = xtfSessionChuLi[0].title
+      this.form.date = xtfSessionChuLi[0].date
+      this.objInfo1.startDate = xtfSessionChuLi[0].startDate
+      this.objInfo1.endDate = xtfSessionChuLi[0].endDate
+      this.pageInfo.pageNum = xtfSessionChuLi[0].pageNum
+      this.pageInfo.pagesize = xtfSessionChuLi[0].pagesize
+
+      this.objInfo2.title = xtfSessionChuLi[0].title2
+      this.form2.title = xtfSessionChuLi[0].title2
+      this.form2.date = xtfSessionChuLi[0].date2
+      this.objInfo2.startDate = xtfSessionChuLi[0].startDate2
+      this.objInfo2.endDate = xtfSessionChuLi[0].endDate2
+      this.pageInfo2.pageNum = xtfSessionChuLi[0].pageNum2
+      this.pageInfo2.pagesize = xtfSessionChuLi[0].pagesize2
+      this.fetchData()
+      this.fetchData2()
+      this.sessionStorageClear()
+      // this.$$nextTick(() => {
+      //   this.sessionStorageClear()
+      // })
+    },
+    setSeeion() {
+      const sess = [{
+        title: this.objInfo1.title ? this.objInfo1.title : '',
+        date: this.form.date ? this.form.date : '',
+        startDate: this.objInfo1.startDate ? this.objInfo1.startDate : '',
+        endDate: this.objInfo1.endDate ? this.objInfo1.endDate : '',
+        pageNum: this.pageInfo.pageNum,
+        pagesize: this.pageInfo.pagesize,
+        title2: this.objInfo2.title ? this.objInfo2.title : '',
+        date2: this.form2.date ? this.form2.date : '',
+        startDate2: this.objInfo2.startDate ? this.objInfo2.startDate : '',
+        endDate2: this.objInfo2.endDate ? this.objInfo2.endDate : '',
+        pageNum2: this.pageInfo2.pageNum,
+        pagesize2: this.pageInfo2.pagesize
+      }]
+      console.log(sess)
+      sessionStorage.setItem('xtfNotice', JSON.stringify(sess))
+    },
+    sessionStorageClear() {
+      sessionStorage.removeItem('xtfNotice')
+    },
+    searchData() {
+      this.$refs.searchForm1.validate(valid => {
+        if (valid) {
+          this.pageInfo.pageNum = 1
+          this.pageInfo.total = 0
+          this.objInfo1 = Object.assign({}, this.paramsObj1, this.pageInfo)
+          this.fetchData()
+        }
+      })
+    },
+    searchData2() {
+      this.$refs.searchForm2.validate(valid => {
+        if (valid) {
+          this.pageInfo2.pageNum = 1
+          this.pageInfo2.total = 0
+          this.objInfo2 = Object.assign({}, this.paramsObj2, this.pageInfo2)
+          this.fetchData2()
+        }
+      })
+    },
+    // 请求数据
+    fetchData() {
+      this.objInfo1 = Object.assign({}, this.objInfo1, this.pageInfo)
+      // this.objInfo1.readType = 'doneAndFinished'
+      matterTooltip(this.objInfo1).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.page
+          // this.$emit('lenFn', res.data.total)
+          this.pageInfo.total = res.data.total
+          this.tableData.forEach(e => {
+            if (e.type !== null) {
+              switch (e.type) {
+                case 0:
+                  e.type = '待处理事项'
+                  break
+                case 1:
+                  e.type = '待阅'
+                  break
+                case 2:
+                  e.type = '系统通知'
+                  break
+                case 3:
+                  e.type = '联合分析'
+                  break
+                case 4:
+                  e.type = '跨区域数据申请'
+                  break
+                case 5:
+                  e.type = '预警结果'
+                  break
+                case 6:
+                  e.type = '宏观分析'
+                  break
+                case 7:
+                  e.type = '行政调查管理'
+                  break
+                case 8:
+                  e.type = '模型预警'
+                  break
+                case 9:
+                  e.type = '排名规则预警'
+                  break
+                case 10:
+                  e.type = '批量查询'
+                  break
+                case 11:
+                  e.type = '出入境查询'
+                  break
+                case 12:
+                  e.type = '身份证查询'
+                  break
+                case 13:
+                  e.type = '高级名单预警查询'
+                  break
+                case 14:
+                  e.type = '境内协查'
+                  break
+                case 15:
+                  e.type = '自主分析'
+                  break
+                case 16:
+                  e.type = '境内情报'
+                  break
+                case 17:
+                  e.type = '国际协查'
+                  break
+                case 18:
+                  e.type = '数据录入'
+                  break
+                case 19:
+                  e.type = '数据权限管理'
+                  break
+                case 20:
+                  e.type = '模型审核'
+                  break
+                case 21:
+                  e.type = '数据质量评价'
+                  break
+                case 22:
+                  e.type = '查询模板'
+                  break
+                case 23:
+                  e.type = '举报处理'
+                  break
+                case 24:
+                  e.type = '重点可疑交易核对报告管理'
+                  break
+                case 25:
+                  e.type = '上报线索库审批'
+                  break
+                case 26:
+                  e.type = '可疑交易报告预警'
+                  break
+                case 27:
+                  e.type = '分析任务'
+                  break
+                case 28:
+                  e.type = '跨境协查申请'
+                  break
+                default:
+                  break
+              }
+            }
+
+            if (e.status !== null) {
+              const status = e.status
+              switch (status) {
+                case 0:
+                  e.status = '已阅读'
+                  break
+                case 1:
+                  e.status = '未阅读'
+                  break
+                case 2:
+                  e.status = '待办'
+                  break
+                case 3:
+                  e.status = '已办'
+                  break
+                default:
+                  break
+              }
+            }
+          })
+        }
+      })
+    },
+    fetchData2() {
+      this.objInfo2 = Object.assign({}, this.objInfo2, this.pageInfo2)
+      this.objInfo2.readType = 'doneAndFinished'
+      matterTooltip2(this.objInfo2).then(res => {
+        if (res.code === 200) {
+          this.tableData2 = res.data.page
+          this.pageInfo2.total = res.data.total
+          this.tableData2.forEach(e => {
+            if (e.type !== null) {
+              switch (e.type) {
+                case 0:
+                  e.type = '待处理事项'
+                  break
+                case 1:
+                  e.type = '待阅'
+                  break
+                case 2:
+                  e.type = '系统通知'
+                  break
+                case 3:
+                  e.type = '联合分析'
+                  break
+                case 4:
+                  e.type = '跨区域数据申请'
+                  break
+                case 5:
+                  e.type = '预警结果'
+                  break
+                case 6:
+                  e.type = '宏观分析'
+                  break
+                case 7:
+                  e.type = '行政调查管理'
+                  break
+                case 8:
+                  e.type = '模型预警'
+                  break
+                case 9:
+                  e.type = '排名规则预警'
+                  break
+                case 10:
+                  e.type = '批量查询'
+                  break
+                case 11:
+                  e.type = '出入境查询'
+                  break
+                case 12:
+                  e.type = '身份证查询'
+                  break
+                case 13:
+                  e.type = '高级名单预警查询'
+                  break
+                case 14:
+                  e.type = '境内协查'
+                  break
+                case 15:
+                  e.type = '自主分析'
+                  break
+                case 16:
+                  e.type = '境内情报'
+                  break
+                case 17:
+                  e.type = '国际协查'
+                  break
+                case 18:
+                  e.type = '数据录入'
+                  break
+                case 19:
+                  e.type = '数据权限管理'
+                  break
+                case 20:
+                  e.type = '模型审核'
+                  break
+                case 21:
+                  e.type = '数据质量评价'
+                  break
+                case 22:
+                  e.type = '查询模板'
+                  break
+                case 23:
+                  e.type = '举报处理'
+                  break
+                case 24:
+                  e.type = '重点可疑交易核对报告管理'
+                  break
+                case 25:
+                  e.type = '上报线索库审批'
+                  break
+                case 26:
+                  e.type = '可疑交易报告预警'
+                  break
+                case 27:
+                  e.type = '分析任务'
+                  break
+                case 28:
+                  e.type = '跨境协查申请'
+                  break
+                default:
+                  break
+              }
+            }
+
+            if (e.status !== null) {
+              const status = e.status
+              switch (status) {
+                case 0:
+                  e.status = '已阅读'
+                  break
+                case 1:
+                  e.status = '未阅读'
+                  break
+                case 2:
+                  e.status = '待办'
+                  break
+                case 3:
+                  e.status = '已办'
+                  break
+                default:
+                  break
+              }
+            }
+          })
+        }
+      })
+    },
+    // 重置
+    clearSearchDataOne() {
+      this.form = {
+        title: null,
+        date: null,
+        readType: 'doneAndFinished'
+      }
+      this.objInfo1 = {}
+    },
+    // 重置
+    clearSearchDataTwo() {
+      this.form2 = {
+        title: null,
+        date: null,
+        readType: 'doneAndFinished'
+      }
+      this.objInfo2 = {}
+    },
+    handleDeal(scope) {
+      this.setSeeion()
+      console.log(scope)
+      if (scope.row.type !== null) {
+        this.rowStatus = scope.row.type
+        switch (scope.row.type) {
+          case '待处理事项':
+            this.rowStatus = 0
+            break
+          case '待阅':
+            this.rowStatus = 1
+            break
+          case '系统通知':
+            this.rowStatus = 2
+            break
+          case '联合分析':
+            this.rowStatus = 3
+            break
+          case '跨区域数据申请':
+            this.rowStatus = 4
+            break
+          case '预警结果':
+            this.rowStatus = 5
+            break
+          case '宏观分析':
+            this.rowStatus = 6
+            break
+          case '行政调查管理':
+            this.rowStatus = 7
+            break
+          case '排名规则预警':
+            this.rowStatus = 9
+            break
+          case '模型预警':
+            this.rowStatus = 8
+            break
+          case '批量查询':
+            this.rowStatus = 10
+            break
+          case '出入境查询':
+            this.rowStatus = 11
+            break
+          case '身份证查询':
+            this.rowStatus = 12
+            break
+          case '高级名单预警查询':
+            this.rowStatus = 13
+            break
+          case '境内协查':
+            this.rowStatus = 14
+            break
+          case '自主分析':
+            this.rowStatus = 15
+            break
+          case '境内情报':
+            this.rowStatus = 16
+            break
+          case '国际协查':
+            this.rowStatus = 17
+            break
+          case '数据录入':
+            this.rowStatus = 18
+            break
+          case '数据权限管理':
+            this.rowStatus = 19
+            break
+          case '模型审核':
+            this.rowStatus = 20
+            break
+          case '数据质量评价':
+            this.rowStatus = 21
+            break
+          case '查询模板':
+            this.rowStatus = 22
+            break
+          case '举报处理':
+            this.rowStatus = 23
+            break
+          case '重点可疑交易核对报告管理':
+            this.rowStatus = 24
+            break
+          case '上报线索库审批':
+            this.rowStatus = 25
+            break
+          case '可疑交易报告预警':
+            this.rowStatus = 26
+            break
+          case '分析任务':
+            this.rowStatus = 27
+            break
+          case '跨境协查申请':
+            this.rowStatus = 28
+            break
+          default:
+            break
+        }
+      }
+      if (this.rowStatus !== 22) {
+        this.getDealStatus(scope)
+      } else { // 查询模板
+        isDelData(scope.row.link).then(res => { // 判断模板是否删除
+          if (res.code === 200) {
+            console.log(typeof res.data)
+            if (res.data === Number(0)) {
+              this.$message({
+                type: 'error',
+                message: '此模板已删除，不能进行查看！',
+                duration: 3000,
+                showClose: true
+              })
+            } else {
+              this.getDealStatus(scope)
+            }
+          }
+        }).catch()
+      }
+    },
+    getDealStatus(scope) {
+      const paramsObj = {
+        studioId: scope.row.studioId,
+        type: this.rowStatus
+      }
+      dealStatus(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.fetchData()
+          this.$router.push({ name: scope.row.rootPath, query: { id: scope.row.link, isView: '1' }})
+        }
+      }).catch()
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData()
+    },
+    handleSizeChange2(size) {
+      this.pageInfo2.pageSize = size
+      this.fetchData2()
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData()
+    },
+    handleCurrentChange2(pageNum) {
+      this.pageInfo2.pageNum = pageNum
+      this.fetchData2()
+    }
+  }
+}
+</script>
+<style rel="stylesheet/scss" lang="scss">
+.wait-notice {
+  .el-form--inline .el-form-item {
+    margin-bottom: 8px;
+    margin-right: 0px;
+  }
+}
+</style>

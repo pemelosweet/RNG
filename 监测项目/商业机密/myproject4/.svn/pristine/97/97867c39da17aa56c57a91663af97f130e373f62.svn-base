@@ -1,0 +1,310 @@
+<template>
+  <div class="rankingMainstayAdmin">
+    <el-card>
+      <div slot="header">
+        <span>主体账户库参数管理</span>
+        <el-button type="text" style="float:right" @click="handleAdd">新建+</el-button>
+      </div>
+      <el-form :model="rankingModelForm" :rules="rulesForm" ref="refForm" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="参数名称：" prop="key">
+              <el-input  v-model="rankingModelForm.key" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="参数描述：" prop="desc">
+              <el-input  v-model="rankingModelForm.desc" placeholder="内容长度不能超过50" maxlength="50"></el-input>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="8">
+            <el-form-item label="创建时间：" prop="creationTime">
+              <el-date-picker unlink-panels clearable v-model="rankingModelForm.creationTime" type="daterange" range-separator="至" start-placeholder="开始日期" value-format="yyyy-MM-dd" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20"> -->
+          <el-col :span="8">
+            <el-form-item label="更新日期：" prop="insertDate">
+              <el-date-picker unlink-panels clearable v-model="rankingModelForm.insertDate" :default-time="['00:00:00', '23:59:59']" type="daterange" range-separator="至" start-placeholder="开始日期" value-format="yyyy-MM-dd HH:mm:ss" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          </el-row>
+          <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="适用范围：" prop="scope">
+              <!-- <el-input  v-model="rankingModelForm.scope" placeholder="内容长度不能超过50" maxlength="50"></el-input> -->
+              <el-select v-model="rankingModelForm.scope" clearable multiple placeholder="请选择">
+                <el-option label="主体属性" value="CLIENT">主体属性</el-option>
+                <el-option label="账户属性" value="ACCOUNT">账户属性</el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div style="text-align:right;margin-bottom:6px;">
+          <el-button type="primary" @click="handleSearch">查 询</el-button>
+          <el-button @click="handleClearForm" type="primary" plain>清 空</el-button>
+        </div>
+      </el-form>
+
+      <el-table :data="tableData"
+       tooltip-effect="dark"
+       v-loading="loadingMainstayAdmin"
+        element-loading-text="首次加载较慢，请稍侯!"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column label="序号" type="index" width="50" fixed="left"></el-table-column>
+        <el-table-column label="参数名称" prop="key" min-width="220">
+           <template slot-scope="scope">
+              <el-popover trigger="hover" placement="top">
+                  <p>{{scope.row.key}}</p>
+                  <div slot="reference" class="name-wrapper">
+                      <el-tag size="medium" style="width: 100%;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">
+                          <el-button type="text" style="width:98%;color:#606266;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;" @click="handleLook(scope)">{{scope.row.key}}</el-button>
+                      </el-tag>
+                  </div>
+              </el-popover>
+          </template>
+        </el-table-column>
+        <el-table-column label="参数描述" prop="desc" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="参数值" prop="value" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="适用范围" prop="scope" min-width="80" show-overflow-tooltip>
+          <template slot-scope="scope">
+             {{scope.row.scope | Transform}}
+           </template>
+        </el-table-column>
+        <el-table-column label="生效时间" prop="availDate" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="更新日期" prop="insertDate" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" fixed="right" width="125">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleLook(scope)">查看</el-button>
+            <el-button type="text" @click="handleEdit(scope)">修改</el-button>
+            <!-- <el-button type="text" @click="handleDel(scope)">删除</el-button> -->
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination v-if="this.total" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background>
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+<script>
+import { noSpaceAndTs } from '@/utils/formValidate.js'
+import {
+  rankingListData
+} from '@/api/sys-monitoringAnalysis/rankingRules/rankingMainstayAdmin.js'
+export default {
+  name: 'modelWarningConfiguration',
+  data() {
+    return {
+      rankingModelForm: {
+        key: null,
+        desc: null,
+        insertDate: [],
+        scope: null
+      },
+      preventClicks: false,
+      timer: null, // 定时任务
+      userId: '',
+      tableData: [],
+      loadingMainstayAdmin: false,
+      total: null,
+      pageSize: 10,
+      pageNum: 1,
+      rulesForm: {
+        key: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }],
+        desc: [
+          { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }]
+        // insertDate: [],
+        // scope: [
+        //   { validator: noSpaceAndTs, trigger: 'blur' },
+        //   { max: 50, message: '最大长度不能超过50位', trigger: 'blur' }]
+      }
+    }
+  },
+  filters: {
+    Transform(val) {
+      const pattern = val.split(',')
+      var arrInfo = []
+      for (let i = 0; i < pattern.length; i++) {
+        if (pattern[i] === 'ACCOUNT') {
+          arrInfo.push('账户属性')
+        }
+        if (pattern[i] === 'CLIENT') {
+          arrInfo.push('主体属性')
+        }
+      }
+      var formatedDate = arrInfo.join(',')
+      return formatedDate
+    }
+  },
+  computed: {
+    // paramsObj: function() {
+    //   return {
+    //   }
+    // }
+  },
+  mounted() {
+    if (sessionStorage.getItem('searchDataZTZHCS')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchDataZTZHCS'))
+      if (searchData.pageName === this.$route.name && searchData.ifReviewZTZHCS) {
+        this.pageSize = searchData.pageInfo.pageSize
+        this.pageNum = searchData.pageInfo.pageNum
+        this.rankingModelForm = searchData.searchForm
+      }
+      sessionStorage.removeItem('searchDataZTZHCS')
+    }
+    this.loadingMainstayAdmin = true
+    this.getDataList()
+    if (this.timer) { // 定时刷新页面
+      clearInterval(this.timer)
+    } else {
+      this.timer = setInterval(() => {
+        this.getDataList()
+      }, 100000)
+    }
+  },
+  methods: {
+    // 获取列表信息
+    getDataList() {
+      const obj = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum,
+        key: this.rankingModelForm.key ? this.rankingModelForm.key : null,
+        desc: this.rankingModelForm.desc ? this.rankingModelForm.desc : null
+      }
+      if (this.rankingModelForm.insertDate.length > 1) {
+        obj.insertDate = this.rankingModelForm.insertDate.join(',')
+      } else {
+        obj.insertDate = null
+      }
+      if (this.rankingModelForm.scope.length > 0) {
+        obj.scope = this.rankingModelForm.scope.join(',')
+      } else {
+        obj.scope = null
+      }
+      rankingListData(obj).then(res => {
+        if (res.code === 200) {
+          clearInterval(this.timer)
+          this.tableData = res.data.list
+          this.total = res.data.total
+          this.loadingMainstayAdmin = false
+        } else {
+          this.loadingMainstayAdmin = false
+          this.$message({
+            type: 'error',
+            message: '获取列表失败！',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+        .catch(() => {
+          this.loadingMainstayAdmin = false
+        })
+    },
+    // 查询
+    handleSearch() {
+      this.$refs.refForm.validate((valid) => {
+        if (valid) {
+          this.loadingMainstayAdmin = true
+          this.pageSize = 10
+          this.pageNum = 1
+          this.getDataList()
+        }
+      })
+    },
+    // 清空
+    handleClearForm() {
+      this.$refs.refForm.resetFields()
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.loadingMainstayAdmin = true
+      this.getDataList()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.loadingMainstayAdmin = true
+      this.getDataList()
+    },
+
+    //   新建
+    handleAdd() {
+      this.$router.push({
+        name: 'new_RankingMainstayAdmin',
+        query: {
+          type: '新建'
+        }
+      })
+    },
+
+    // 查看
+    handleLook(scope) {
+      var typeData = '查看'
+      const pageInfo = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum
+      }
+      const rankingModelForm = {
+        pageName: this.$route.name,
+        pageInfo: pageInfo,
+        searchForm: this.rankingModelForm
+      }
+      sessionStorage.setItem('searchDataZTZHCS', JSON.stringify(rankingModelForm))
+      this.$router.push({
+        name: 'new_RankingMainstayAdmin',
+        query: {
+          type: typeData,
+          mainKey: scope.row.mainKey
+        }
+      })
+    },
+
+    // 修改
+    handleEdit(scope) {
+      var typeData = '修改'
+      const pageInfo = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum
+      }
+      const rankingModelForm = {
+        pageName: this.$route.name,
+        pageInfo: pageInfo,
+        searchForm: this.rankingModelForm
+      }
+      sessionStorage.setItem('searchDataZTZHCS', JSON.stringify(rankingModelForm))
+      this.$router.push({
+        name: 'new_RankingMainstayAdmin',
+        query: {
+          type: typeData,
+          mainKey: scope.row.mainKey
+        }
+      })
+    }
+  },
+  destoryed() {
+    clearInterval(this.timer)
+  }
+}
+</script>
+<style lang="scss">
+.rankingMainstayAdmin {
+  .w100 {
+    width: 100%;
+  }
+  .el-date-editor--daterange {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+}
+</style>
+

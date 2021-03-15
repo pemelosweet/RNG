@@ -31,7 +31,7 @@ caleY)
 四、不定宽高的DIV居中	
 	1.使用flex  在父盒子设置display: flex; justify-content: center;align-items: center
 	2.使用css的transform  	父盒子设置:display:relative
-				Div 设置: transform: translate(-50%，-50%);position: absolute;top: 50%;left: 50%;
+				Div 设置: transform: translate(-50%,-50%);position: absolute;top: 50%;left: 50%;
 	3.display：table-cell   父盒子设置:display:table-cell; text-align:center;vertical-align:middle;
 				Div 设置: display:inline-block;vertical-align:middle;
 		

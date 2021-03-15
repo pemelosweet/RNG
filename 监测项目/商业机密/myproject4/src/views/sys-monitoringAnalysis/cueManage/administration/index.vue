@@ -1,0 +1,334 @@
+<template>
+  <div>
+    <el-card>
+      <div slot="header">
+       <span>行政调查管理</span>
+       <router-link v-if="operationalAnalystType" :to="{name: 'cueManage_administration_form', query: {applyId: this.newApplyId, table: 'N'}}">
+          <el-button type="text" style="float:right;" class="el-icon-plus">发起行政调查申请</el-button>
+        </router-link>
+      </div>
+       <!-- 查询 -->
+      <div class="searchBlock">
+        <el-form :model="form" ref="ruleForm" :rules="rules" label-width="140px">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="拟调查义务机构：" prop="inp1" :rules="[{ required: false, validator: characterSpaceChecking, trigger: 'blur' }]">
+                  <el-select v-model="form.inp1" filterable remote clearable reserve-keyword placeholder="请输入关键词" :remote-method="remoteMethodInp1" :loading="inp1Loading" style="width:100%;">
+                  <el-option v-for="(item, index) in inpOptions" :key="index" :label="item.rinm" :value="item.rinm">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <!-- <el-form-item label="拟调查义务机构：" prop="inp1" :rules="[{ required: false, validator: characterSpaceChecking, trigger: 'blur' }]">
+                <el-input v-model="form.inp1" placeholder="最多可输入255位" maxlength="255"></el-input>
+              </el-form-item> -->
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="申请人：" prop="inp2" :rules="[{ required: false, message: '最多可输入32个字符', trigger: 'blur' }, { validator: characterSpaceChecking, trigger: 'blur' }]">
+                <el-input v-model="form.inp2" placeholder="最多可输入32位" maxlength="32"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="反馈机构：" prop="inp3" :rules="[{ required: false, trigger: 'change' }]">
+                  <el-select v-model="form.inp3" filterable remote clearable reserve-keyword placeholder="请输入关键词" :remote-method="remoteMethod" :loading="loading" style="width:100%;">
+                  <el-option v-for="item in reportingBodyName" :key="item.value" :label="item.label" :value="item.label">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="拟调查可疑交易活动主体/账号：" label-width="217px" prop="inp4" :rules="[{ required: false, validator: characterSpaceChecking, trigger: 'blur' }]">
+                <el-input v-model="form.inp4" placeholder="最多可输入255位" maxlength="255"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="状态：" prop="confirm" :rules="[{ required: false, trigger: 'change' }]">
+                <el-select v-model="form.confirm" clearable style="width:100%;">
+                  <el-option label="保存" value="0"></el-option>
+                  <el-option label="待处长审批" value="1"></el-option>
+                  <el-option label="待中心领导审批" value="2"></el-option>
+                  <el-option label="待局领导审批" value="3"></el-option>
+                  <el-option label="待分支机构反馈" value="4"></el-option>
+                  <el-option label="待局领导审批反馈" value="5"></el-option>
+                  <el-option label="待中心领导审批反馈" value="6"></el-option>
+                  <el-option label="审批通过" value="7"></el-option>
+                  <el-option label="审批不通过" value="8"></el-option>
+                  <el-option label="退回" value="9"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8" style="textAlign:right">
+              <el-button type="primary" @click="queryBtn" :loading="queryLoading">查询</el-button>
+              <el-button type="primary" @click="clearBtn">清空</el-button>
+              <!-- <el-button @click="exportExcel" type="primary">导出</el-button> -->
+            </el-col>
+          </el-row>
+        </el-form>
+      </div>
+      
+      <div class="list">
+        <el-table :data="list" @selection-change="handleSelectionChange" style="width: 100%" v-loading="listLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+          <el-table-column
+            type="selection"
+            width="55">
+          </el-table-column>
+          <el-table-column type="index" label="序号" width="80"></el-table-column>
+          <el-table-column prop="orgName" label="拟调查义务机构" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="subjectAccount" label="拟调查可疑交易活动主体/账号" min-width="210" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="areaNames" label="涉及区域" width="180" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{ scope.row.areaNames !== null && scope.row.areaNames !== undefined && scope.row.areaNames !== '' ? scope.row.areaNames.join('、') : '' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="proposer" label="申请人" width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="applyTime" label="申请时间" width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="feedback.reportName" label="反馈机构" width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="feedback.feedbackTime" label="反馈时间" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="status" label="状态" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <span v-if="scope.row.status === '0'">保存</span>
+              <span v-if="scope.row.status === '1'">待处长审批</span>
+              <span v-if="scope.row.status === '2'">待中心领导审批</span>
+              <span v-if="scope.row.status === '3'">待局领导审批</span>
+              <span v-if="scope.row.status === '4'">待分支机构反馈</span>
+              <span v-if="scope.row.status === '5'">待局领导审批反馈</span>
+              <span v-if="scope.row.status === '6'">待中心领导审批反馈</span>
+              <span v-if="scope.row.status === '7'">审批通过</span>
+              <span v-if="scope.row.status === '8'">审批不通过</span>
+              <span v-if="scope.row.status === '9'">退回</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="130" fixed="right">
+            <template slot-scope="scope">
+              <el-button :disabled="name !== scope.row.proposer" v-if="scope.row.status === '0'" type="text" @click="lookRouter(scope)">编辑</el-button>
+              <el-button v-else type="text" @click="lookRouter(scope)">查看</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPage" :page-sizes="[10, 20, 30, 40]"
+          :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="tabTotal" background></el-pagination>
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+  import { getList, getRoleList } from '@/api/administration'
+  import { getToken } from '@/utils/auth'
+  import { mapGetters } from 'vuex'
+  import { commonPattern } from '@/utils/formValidate'
+  import { administrativeDivision, getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large'
+  export default {
+    data() {
+      return {
+        inpOptions: [],
+        inp1Loading: false,
+        operationalAnalystType: false,
+        queryLoading: false,
+        branchOptions: [],
+        loading: false,
+        reportingBodyName: [],
+        form: {
+          inp1: '',
+          inp2: '',
+          inp3: '',
+          inp4: '',
+          confirm: '',
+          select: '2',
+          select2: ''
+        },
+        list: [],
+        listLoading: false,
+        // 默认开始页码
+        currentPage: 1,
+        // 每页显示条数
+        pageSize: 10,
+        tabTotal: 0,
+        initScope: false,
+        multipleSelection: [],
+        rules: {},
+        token: getToken(),
+        newApplyId: '',
+        specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+        sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+        blankSpace: /[ ]/im // 校验空格
+      }
+    },
+    computed: {
+      ...mapGetters(['name'])
+    },
+    mounted() {
+      // var listQuery = { currentPage: this.currentPage, pageSize: this.pageSize }
+      this.fetchData()
+      this.initBranchData()
+      // this.newApplyId = this.list[0].applyId
+    },
+    methods: {
+      remoteMethodInp1(query) {
+        if (query === '' || query.indexOf('[') !== -1 || query.indexOf(']') !== -1) {
+          this.inpOptions = []
+        } else {
+          this.inp1Loading = true
+          setTimeout(() => {
+            getRinmList({ rinm: query }).then(res => {
+              if (res.code === 200) {
+                this.inp1Loading = false
+                this.inpOptions = res.data
+              }
+            })
+          }, 200)
+        }
+      },
+      clearBtn() {
+        this.form = {
+          inp1: '',
+          inp2: '',
+          inp3: '',
+          inp4: '',
+          confirm: '',
+          select: '2',
+          select2: ''
+        }
+        this.currentPage = 1
+        this.fetchData()
+      },
+      remoteMethod(query) {
+        if (query !== '') {
+          this.loading = true
+          setTimeout(() => {
+            this.loading = false
+            this.reportingBodyName = this.branchOptions.filter(item => {
+              return item.label.toLowerCase()
+                .indexOf(query.toLowerCase()) > -1
+            })
+          }, 200)
+        } else {
+          this.reportingBodyName = []
+        }
+      },
+      initBranchData() {
+        administrativeDivision({ type: 'DEJYTJFX' })
+          .then(res => {
+            if (res.code === 200) {
+              this.branchOptions = res.data[0].children
+              // this.branchOptions.forEach((el, index) => {
+              //   if (el.value.indexOf('Fxqzx') !== -1) {
+              //     delete this.branchOptions[index]
+              //   }
+              // })
+            }
+          })
+          .catch()
+        getRoleList().then(res => {
+          if (res.code === 200) {
+            res.data.map(item => {
+              if (item === 'operationalAnalyst') {
+                this.operationalAnalystType = true
+              }
+            })
+          }
+        })
+      },
+      lookRouter(scope) {
+        this.$router.push({
+          name: 'cueManage_administration_form',
+          query: { apply: scope.row.applyId, noteId: scope.row.noteId, feedbackId: scope.row.feedback.feedbackId, proposer: scope.row.proposer, type: scope.row.status === '0' ? 'edit' : 'read-only', activeName: scope.row.status === '0' ? 'applicationForm' : 'handlingInformation' }
+        })
+      },
+      // 校验空格特殊字符
+      characterSpaceChecking(rule, value, callback) {
+        if (this.blankSpace.test(value)) {
+          callback(new Error('禁止输入空格'))
+        } else if (commonPattern.specialCharInQuery.test(value)) {
+          callback(new Error('禁止输入特殊字符'))
+        } else {
+          callback()
+        }
+      },
+      queryBtn() {
+        this.$refs.ruleForm.validate((valid) => {
+          if (valid) {
+            this.queryLoading = true
+            // listCurrentActivities({ proInstId: '4368eb13d5214d9083f521fb6b04c0ab' }).then(res => {
+            //   if (res.code === 200) {
+            //     console.log('哈哈哈')
+            //   }
+            // })
+            this.fetchData()
+          } else {
+            return false
+          }
+        })
+      },
+      exportExcel() {
+        if (this.multipleSelection.length === 0) {
+          this.$message({
+            message: '请至少选择一条数据',
+            type: 'info'
+          })
+        } else {
+          const ids = []
+          this.multipleSelection.forEach(el => {
+            ids.push(el.applyId)
+          })
+          location.href = '/monitor/thread/adm/export/' +
+          ids.join(',') +
+          '?token=' +
+          this.token
+        }
+      },
+      fetchData() {
+        this.listLoading = true
+        const manage = {
+          orgName: this.form.inp1,
+          subjectAccount: this.form.inp4,
+          proposer: this.form.inp2,
+          reportName: this.form.inp3,
+          status: this.form.confirm,
+          pageNum: this.currentPage,
+          pageSize: this.pageSize
+        }
+        getList(manage).then(response => {
+          this.listLoading = false
+          if (response) {
+            this.queryLoading = false
+            if (response.code === 200) {
+              if (response.data === null) {
+                this.tabTotal = 0
+                this.list = []
+              } else {
+                this.tabTotal = response.data.total
+                this.list = response.data.list
+              }
+            }
+          } else {
+            this.queryLoading = false
+          }
+        }).catch(() => {
+          this.listLoading = false
+        })
+      },
+      // 分页
+      handleSizeChange(val) {
+        console.log(val)
+        this.pageSize = val
+        this.fetchData()
+        console.log(`每页 ${val} 条`)
+      },
+      handleCurrentChange(val) {
+        console.log(val)
+        this.currentPage = val
+        this.fetchData()
+        console.log(`当前页: ${val}`)
+      },
+      handleSelectionChange(val) {
+        this.multipleSelection = val
+      }
+    }
+  }
+</script>
+
+<style scoped>
+
+</style>

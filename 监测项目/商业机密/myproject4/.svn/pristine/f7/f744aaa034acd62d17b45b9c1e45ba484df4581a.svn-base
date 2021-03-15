@@ -1,0 +1,286 @@
+<template>
+  <div class="fpquery">
+    <el-card>
+      <div slot="header">
+        <span>监测任务历史查询</span>
+      </div>
+      <el-row>
+        <el-form ref="searchForm" :model="searchForm" :rules="rules" label-width="120px" class="clearfix">
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="数据抽取来源：" label-width="120px" prop="source">
+                <el-select v-model="searchForm.source" clearable style="width:100% !important;">
+                  <el-option label="中心端" value="0"></el-option>
+                  <el-option label="报送端" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="数据抽取时间：" prop="createDate">
+                <el-date-picker v-model="searchForm.createDate" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width:100% !important;">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 第二行 -->
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="核对结果：" prop="checkResult">
+                <el-select v-model="searchForm.checkResult" clearable style="width:100% !important;">
+                  <el-option label="一致" value="一致"></el-option>
+                  <el-option label="不一致" value="不一致"></el-option>
+                  <el-option label="数据缺失" value="数据缺失"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <!-- <el-col :span="12">
+              <el-form-item label="落地时间：" prop="dateValue">
+                <el-date-picker v-model="searchForm.dateValue" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width:100% !important;">
+              </el-date-picker>
+              </el-form-item>
+            </el-col> -->
+            <el-col :span="12">
+              <el-form-item label="报告机构：" prop="receiver">
+                <el-autocomplete v-model="searchForm.receiver" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;" @select="handleRinmChange" clearable ></el-autocomplete>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="状态：" prop="status">
+                <el-select v-model="searchForm.status" clearable style="width:100% !important;">
+                  <el-option label="保存" value="0"></el-option>
+                  <el-option label="待审批" value="1"></el-option>
+                  <el-option label="审批通过" value="2"></el-option>
+                  <el-option label="审批不通过" value="3"></el-option>
+                  <el-option label="待反馈" value="4"></el-option>
+                  <el-option label="已反馈" value="5"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-col :span="24" class="btnalign">
+              <el-button type="primary" @click="handleQuery">查 询</el-button>
+              <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+            </el-col>
+          </el-row>
+        </el-form>
+      </el-row>
+      <div style="margin: 10px 0;">监测历史数据列表：
+        <el-button type="primary" plain @click="handleAllExport" :loading="handleAllExportLoading">批量导出</el-button>
+      </div>
+      <el-table :data="list" style="width: 100%;" @selection-change="handleSelectionChange">
+        <el-table-column type="selection"></el-table-column>
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="moduleFlag" label="数据抽取来源">
+          <template slot-scope="scope">
+            {{scope.row.moduleFlag === '0' ? '中心端' : '报送端'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="dataFrom" label="报告机构"></el-table-column>
+        <el-table-column prop="tradeNo" label="交易笔数"></el-table-column>
+        <el-table-column prop="redt" label="落地时间"></el-table-column>
+        <el-table-column prop="tstm" label="交易日期" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="createDate" label="数据抽取时间"></el-table-column>
+        <el-table-column prop="createDate" label="状态">
+          <template slot-scope="scope">
+            {{scope.row.status === '0' ? '保存' : scope.row.status === '1' ? '待审批' : scope.row.status === '2' ? '审批通过' : scope.row.status === '3' ? '审批不通过' : scope.row.status === '4' ? '待反馈' : '已反馈'}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkResult" label="核对结果"></el-table-column>
+        <el-table-column label="操作" width="100">
+          <template slot-scope="scope">
+            <router-link :to="{ name: 'dataGovernance_fixedPoint_extract_result', query:{ id: scope.row.id, isShow: true, moduleFlag: scope.row.moduleFlag}}">
+              <el-button type="text">查看</el-button>
+            </router-link>
+            <!-- <router-link :to="{ name: 'fixedPoint_receive_result'}" v-if="scope.row.state == '待反馈'"><el-button type="text">反馈</el-button></router-link> -->
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+
+<script>
+// import { rinmList } from '@/api/common/industry'
+import { getList } from '@/api/sys-monitoringAnalysis/dataGovernance/fixedPoint/history'
+import { getRinmList } from '@/api/common/industry'
+import { ValidQueryInput } from '@/utils/formValidate'
+export default {
+  data() {
+    return {
+      handleAllExportLoading: false,
+      ricdName: '',
+      dataFormType: '',
+      rinmOptions: [], // 报告机构列表
+      multipleSelection: [],
+      searchForm: {
+        source: '',
+        createDate: '',
+        dateValue: '',
+        checkResult: '',
+        status: '',
+        receiver: ''
+      },
+      rules: {
+        // scanDate: [{ required: false, validator: isValidDate, trigger: 'change' }]
+        receiver: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      }
+    }
+  },
+  mounted() {
+    this.getData()
+    // this.getRinmList()
+  },
+  methods: {
+    blurFn() {
+      if (this.dataFormType === '') {
+        this.searchForm.receiver = ''
+      }
+    },
+    handleRinmChange(item) {
+      if (item) {
+        this.dataFormType = 'yes'
+        this.ricdName = item.ricd
+      }
+    },
+    querySearchRinm(query, cb) {
+      this.$refs['searchForm'].validateField('receiver', (valid) => {
+        if (!valid) {
+          if (query !== '') {
+            this.dataFormType = ''
+            const paramsObj = {
+              region: 'all',
+              rinm: query
+            }
+            getRinmList(paramsObj).then(res => {
+              if (res.code === 200) {
+                cb(res.data)
+              }
+            })
+          } else {
+            // this.rinmData = []
+          }
+        }
+      })
+    },
+    getData() {
+      this.$refs['searchForm'].validate(valid => {
+        if (valid) {
+          const paramsObj = {
+            source: this.searchForm.source,
+            creDateStart: this.searchForm.createDate ? this.searchForm.createDate[0] : '',
+            creDateEnd: this.searchForm.createDate ? this.searchForm.createDate[1] : '',
+            redtDateStart: this.searchForm.dateValue ? this.searchForm.dateValue[0] : '',
+            redtDateEnd: this.searchForm.dateValue ? this.searchForm.dateValue[1] : '',
+            checkResult: this.searchForm.checkResult,
+            dataFrom: this.searchForm.receiver,
+            status: this.searchForm.status,
+            pageNum: this.pageInfo.pageNum,
+            pageSize: this.pageInfo.pageSize
+          }
+          getList(paramsObj)
+            .then(res => {
+              if (res.code === 200) {
+                this.list = res.data.list
+                this.total = res.data.total
+              }
+            })
+            .catch()
+        }
+      })
+    },
+    // getRinmList() {
+    //   rinmList()
+    //     .then(res => {
+    //       if (res.code === 200) {
+    //         this.rinmOptions = res.data
+    //       } else {
+    //         res.message
+    //       }
+    //     })
+    //     .catch()
+    // },
+    handleQuery() {
+      this.pageInfo.pageNum = 1
+      this.getData()
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    handleAllExport() {
+      // 批量导出
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {})
+          .catch(() => {})
+      } else {
+        let type = true
+        for (var i = 0; i < this.multipleSelection.length; i++) {
+          for (var k = 0; k < this.multipleSelection.length; k++) {
+            if (this.multipleSelection[k].moduleFlag !== this.multipleSelection[i].moduleFlag) {
+              type = false
+            }
+          }
+        }
+        if (type) {
+          const tradeIds = this.multipleSelection
+            .map(function(item) {
+              return item.id
+            })
+            .toString()
+          location.href = '/monitor/governance/monitor/task-history/export/sync8a?ids=' + tradeIds
+        } else {
+          this.handleAllExportLoading = true
+          this.$message({
+            type: 'warning',
+            message: '数据抽取来源必须一致才可导出',
+            duration: 6000,
+            showClose: true,
+            onClose: function() {
+              this.handleAllExportLoading = false
+            }.bind(this)
+          })
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.fpquery {
+  .btnalign {
+    text-align: right;
+  }
+  .tradetime {
+    .el-date-editor--datetimerange.el-input__inner {
+      width: 200px;
+    }
+  }
+}
+</style>

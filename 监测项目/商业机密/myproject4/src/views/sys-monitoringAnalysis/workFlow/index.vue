@@ -1,0 +1,195 @@
+<template>
+  <div class="m-work-flow" :style="bgStyle" v-loading="subLoading" element-loading-text="提交中，请稍侯..."
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.8)">
+    <el-row style="padding-top:48px;" >
+      <el-col :span="18" :offset="3">
+        <operatie-button :viewProcess="viewProcess" :workflowsxp="workflowsxp"></operatie-button>
+      </el-col>
+      <el-col :span="18" :offset="3">
+        <el-card class="content" body-style="padding-bottom:60px">
+          <a @click="routerBack" class="back" :style="backImg"></a>
+          <h3 style="text-align:center">反洗钱工作流</h3>
+          <component @subLoadingFn="subLoadingFn" :is="componentId" ref="workFow_form" :formData="formData"></component>
+          <attach-list v-if="isHasAttach"></attach-list>
+          <opinion-list v-if="isArgee" :workflowsxp="workflowsxp"></opinion-list>
+        </el-card>
+      </el-col>
+    </el-row>
+  <monitor-workflow></monitor-workflow>
+  </div>
+
+</template>
+<script>
+import { mapGetters } from 'vuex'
+import { getForm } from '@/api/sys-monitoringAnalysis/workFlow/index.js'
+// 背景图片
+import bgImg from '@/assets/workFlow/workFlow-bg.jpg'
+// 功能组件
+import opinionList from '@/views/sys-monitoringAnalysis/workFlow/opinion-list.vue'
+import operatieButton from '@/views/sys-monitoringAnalysis/workFlow/operatie-button.vue'
+import attachList from '@/views/sys-monitoringAnalysis/workFlow/attach-list.vue'
+import backTop from '@/components/BackToTop/index.vue'
+
+// form表单
+import inputafter from '@/views/sys-monitoringAnalysis/workFlow/components/inputafter.vue'
+import interHangQingbao from '@/views/sys-monitoringAnalysis/workFlow/components/interHangQingbao.vue'
+
+import gjzhongxin from '@/views/sys-monitoringAnalysis/workFlow/components/gjzhongxin.vue'
+import correctApproval from '@/views/sys-monitoringAnalysis/workFlow/components/correct-approval.vue'
+import suspectCorrect from '@/views/sys-monitoringAnalysis/workFlow/components/suspect-correct.vue'
+import supplyCorrect from '@/views/sys-monitoringAnalysis/workFlow/components/supply-correct.vue'
+import point from '@/views/sys-monitoringAnalysis/workFlow/components/point.vue'
+import receiver from '@/views/sys-monitoringAnalysis/workFlow/components/receiver.vue'
+import sensitivePersons from '@/views/sys-monitoringAnalysis/workFlow/components/sensitive-persons.vue'
+import ruleAdd from '@/views/sys-monitoringAnalysis/workFlow/components/rule-add.vue'
+import ruleDeletion from '@/views/sys-monitoringAnalysis/workFlow/components/rule-deletion.vue'
+import ruleStart from '@/views/sys-monitoringAnalysis/workFlow/components/rule-start.vue'
+import ruleDisable from '@/views/sys-monitoringAnalysis/workFlow/components/rule-disable.vue'
+import planApproval from '@/views/sys-monitoringAnalysis/workFlow/components/plan-approval.vue'
+import jointAnalysis from '@/views/sys-monitoringAnalysis/workFlow/components/jointAnalysis.vue'
+import mpReportManagement from '@/views/sys-monitoringAnalysis/workFlow/components/mpReportManagement.vue'
+import specialApply from '@/views/sys-monitoringAnalysis/workFlow/components/specialApply.vue'
+import crossbrApply from '@/views/sys-monitoringAnalysis/workFlow/components/crossbrApply.vue'
+import adm from '@/views/sys-monitoringAnalysis/workFlow/components/adm.vue'
+import reportLeads from '@/views/sys-monitoringAnalysis/workFlow/components/reportLeads.vue'
+import listWarnJob from '@/views/sys-monitoringAnalysis/workFlow/components/listWarnJob.vue'
+import AnalysisFile from '@/views/sys-monitoringAnalysis/workFlow/components/AnalysisFile.vue'
+import InAnalysis from '@/views/sys-monitoringAnalysis/workFlow/components/InAnalysis.vue'
+import IntelliFile from '@/views/sys-monitoringAnalysis/workFlow/components/IntelliFile.vue'
+import seniorListWarnJob from '@/views/sys-monitoringAnalysis/workFlow/components/seniorListWarnJob.vue'
+import modelQuery from '@/views/sys-monitoringAnalysis/workFlow/components/modelQuery.vue'
+import dataLifeCycleManage from '@/views/sys-monitoringAnalysis/workFlow/components/dataLifeCycleManage.vue'
+import findByReportDispose from '@/views/sys-monitoringAnalysis/workFlow/components/findByReportDispose.vue'
+import rankingRules from '@/views/sys-monitoringAnalysis/workFlow/components/rankingRules.vue'
+import seniorListWarnQuery from '@/views/sys-monitoringAnalysis/workFlow/components/seniorListWarnQuery.vue'
+import fillReport from '@/views/sys-monitoringAnalysis/workFlow/components/fillReport.vue'
+import gjxcfqqb from '@/views/sys-monitoringAnalysis/workFlow/components/gjxcfqqb.vue'
+
+export default {
+  components: {
+    // 功能组件
+    opinionList,
+    operatieButton,
+    attachList,
+    backTop,
+
+    // from表单
+    inputafter,
+    interHangQingbao,
+    gjzhongxin,
+    correctApproval,
+    suspectCorrect,
+    supplyCorrect,
+    point,
+    receiver,
+    sensitivePersons,
+    ruleAdd,
+    ruleDeletion,
+    ruleStart,
+    ruleDisable,
+    planApproval,
+    jointAnalysis,
+    mpReportManagement,
+    specialApply,
+    crossbrApply,
+    reportLeads,
+    adm,
+    listWarnJob,
+    seniorListWarnJob,
+    AnalysisFile,
+    InAnalysis,
+    IntelliFile,
+    modelQuery,
+    seniorListWarnQuery,
+    rankingRules,
+    dataLifeCycleManage,
+    findByReportDispose,
+    gjxcfqqb,
+    fillReport
+  },
+  data() {
+    return {
+      subLoading: false,
+      workflowsxp: {},
+      // 样式
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      bgStyle: {
+        'background-image': `url(${bgImg}) `,
+        'background-size': '100% 100%',
+        'padding-bottom': '120px'
+        // 'background-repeat': 'repeat-y',
+      },
+      isArgee: false,
+      // 表单内容
+      formData: {},
+      // 是否有附件
+      isHasAttach: false,
+      viewProcess: ''
+    }
+  },
+  computed: {
+    ...mapGetters(['businessFlag', 'workFlow2business']),
+    // 获取回显表单ID
+    componentId() {
+      return this.$route.query.pkgId
+    },
+    // 获取表单参数
+    paramsObj() {
+      const obj = Object.assign({}, this.$route.query)
+      delete obj.pkgId
+      delete obj.roleType
+      return obj
+    }
+  },
+  mounted() {
+    this.$store.commit('SET_BUTTONDATA', [])
+    this.getFormContent()
+    const roleTypeStr = this.$route.query.roleType
+    sessionStorage.setItem('roleType', roleTypeStr)
+  },
+
+  methods: {
+    // 遮罩层
+    subLoadingFn(val) {
+      this.subLoading = val
+    },
+    // 获取表单内容
+    getFormContent() {
+      getForm(this.paramsObj).then(res => {
+        if (res.code === 200) {
+          const myParams = Object.assign({}, res.data.workflow)
+          console.log(res.data, 'jdksjd222')
+          myParams.ricd = res.data.reportBody
+          this.$store.dispatch('workFlow', myParams)
+          this.workflowsxp = res.data.workflow
+          this.$store.dispatch('workFlowInfoMesg', res.data.workflow)
+          this.viewProcess = res.data.workflow.viewProcess
+          this.$store.dispatch('operationButton', res.data.workflow)
+          this.$store.dispatch('setFormContent', res.data)
+          this.formData = res.data
+          this.isArgee = true
+          if (res.data.fileList && res.data.fileList.length > 0) {
+            this.$store.dispatch('setAttachList', res.data.fileList)
+            this.isHasAttach = true
+          }
+        }
+      })
+    },
+    routerBack() {
+      this.$router.push({ name: 'home' })
+    }
+  }
+}
+</script>
+<style scoped lang="scss">
+.m-work-flow {
+  .content {
+    position: relative;
+    color: #333;
+  }
+}
+</style>

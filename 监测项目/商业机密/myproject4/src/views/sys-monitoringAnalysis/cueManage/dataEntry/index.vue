@@ -1,0 +1,392 @@
+<template>
+  <div class="dataEntry"
+    v-loading="loading"
+   element-loading-text="拼命加载中"
+  element-loading-spinner="el-icon-loading"
+  element-loading-background="rgba(0, 0, 0, 0.1)">
+    <el-card>
+      <div slot="header">
+        <span>数据录入管理</span>
+        <el-button  v-if="!typenames.split(',').includes('5')" @click="handleAdd" style="float: right;"  type="text"  >新增数据录入申请</el-button>
+      </div>
+
+      <!-- 数据录入条件模块 -->
+      <div class="entryBlock">
+        <div class="searchBlock">
+          <el-form :model="form" ref="refForm" :rules="rulesForm" label-width="90px">
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="录入类型：" prop="appInputtype">
+                  <el-select v-model="form.appInputtype" placeholder="请选择" clearable>
+                     <el-option v-if="this.typenames.split(',').includes('2')"  label="国际协查文件管理" value="1"></el-option>
+                        <el-option  v-if="this.typenames.split(',').includes('1')" label="反馈信息" value="2"></el-option>
+                        <el-option v-if="this.typenames.split(',').includes('2')"  label="境内协查类文件管理" value="3"></el-option>
+                        <el-option v-if="this.typenames.split(',').includes('4')" label="公文函件" value="4"></el-option>
+                        <el-option  v-if="(this.typenames.split(',').includes('3')||this.typenames.split(',').includes('4'))" label="其他" value="5"></el-option>
+                    <!-- <el-option v-for="(item, index) in options" :key="index" :label="item.label" :value="item.value">
+                    </el-option> -->
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="录入人：" prop="proposer">
+                  <el-input v-model="form.proposer"  maxlength="20" placeholder="请输入录入人，最长为20字符"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="录入时间：" prop="inputTime">
+                  <el-date-picker value-format="yyyy-MM-dd" v-model="form.inputTime" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" unlink-panels>
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="录入状态：" prop="inputStuts" >
+                  <el-select v-model="form.inputStuts" placeholder="请选择" clearable>
+                    <el-option v-for="(item, index) in options2" :key="index" :label="item.label" :value="item.value">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="16" style="textAlign:right">
+                <el-button type="primary" @click="onSubmit">查 询</el-button>
+                <el-button @click="resetForm" plain type="primary">清 空</el-button>
+              </el-col>
+            </el-row>
+          </el-form>
+        </div>
+      </div>
+
+      <div class="tableBlock">
+        <el-table :data="tableData">
+          <el-table-column type="index" label="序号" width="60" fixed="left"></el-table-column>
+          <el-table-column prop="appInputtype" label="录入类型" min-width="130">
+            <template slot-scope="scope">
+              {{scope.row.appInputtype | filtersAppType}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="filetype" label="文件类型" show-overflow-tooltip min-width="100"></el-table-column>
+          <el-table-column show-overflow-tooltip prop="inforsource" label="信息来源" min-width="100"></el-table-column>
+          <el-table-column prop="appInputmode" label="录入方式" min-width="100">
+            <template slot-scope="scope">
+              {{scope.row.appInputmode | filtersAppinput}}
+            </template>
+          </el-table-column>
+          <el-table-column prop="proposer" label="录入人" min-width="60"></el-table-column>
+          <el-table-column prop="inputTime" label="录入时间" min-width="120"></el-table-column>
+          <el-table-column prop="inputStuts" label="录入状态" min-width="100"></el-table-column>
+          <el-table-column label="操作" width="140">
+            <template slot-scope="scope">
+              <el-button  :disabled="name !== scope.row.proposer" v-if="scope.row.inputStuts === '录入审核单' || scope.row.inputStuts === '退回'" type="text" @click="handlEdit(scope)">编辑审批单</el-button>
+              <el-button :disabled="name !== scope.row.proposer" v-else-if="scope.row.inputStuts === '流程结束，同意录入'" type="text" @click="handInput(scope)">录入</el-button>
+              <el-button v-else-if="scope.row.inputStuts === '已入库'" type="text" @click="handViewInput(scope)">查看</el-button>
+              <el-button v-else type="text" @click="handLook(scope)">查看</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-pagination v-if="total" @size-change="handleSizeChange" @current-change="handleCurrentChange" background :current-page="pageNum" :page-size="pagesize" :page-sizes="[10, 20, 30, 40,50]" layout="total, sizes, prev, pager, next, jumper" :total="total">
+        </el-pagination>
+
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import { ValidQueryInput } from '@/utils/formValidate.js'
+import { getListapi } from '@/api/sys-monitoringAnalysis/cueManage/dataEntry/index'
+import {
+  ChooseType
+} from '@/api/sys-monitoringAnalysis/cueManage/dataEntry/add.js'
+export default {
+  filters: {
+    filtersAppType: function(val) {
+      switch (val) {
+        case '1':
+          return '国际协查文件管理'
+        case '2':
+          return '反馈信息'
+        case '3':
+          return '境内协查类文件管理'
+        case '4':
+          return '公文函件'
+        case '5':
+          return '其他'
+        default:
+          break
+      }
+    },
+    filtersAppinput: function(val) {
+      switch (val) {
+        case '1':
+          return '手工录入'
+        case '2':
+          return '介质传输'
+        default:
+          break
+      }
+    }
+  },
+  data() {
+    return {
+      loading: false,
+      typenames: '',
+      form: {
+        appInputtype: '',
+        proposer: '',
+        inputTime: [],
+        inputStuts: ''
+      },
+      tableData: [],
+      total: null,
+      pageNum: 1,
+      pagesize: 10,
+      rulesForm: {
+        proposer: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { max: '50', message: '最大长度不能超过50位', trigger: 'blur' }
+        ]
+      },
+      options: [
+        {
+          value: '1',
+          label: '国际协查文件管理'
+        },
+        {
+          value: '2',
+          label: '反馈信息'
+        },
+        {
+          value: '3',
+          label: '境内协查类文件管理'
+        },
+        {
+          value: '4',
+          label: '公文函件'
+        },
+        {
+          value: '5',
+          label: '其他'
+        }
+      ],
+      options2: [
+        {
+          value: '录入审核单',
+          label: '录入审核单'
+        },
+        {
+          value: '处长审核',
+          label: '处长审核'
+        },
+        {
+          value: '中心领导审核',
+          label: '中心领导审核'
+        },
+        {
+          value: '流程结束，同意录入',
+          label: '流程结束，同意录入'
+        },
+        {
+          value: '流程结束，拒绝',
+          label: '流程结束，拒绝'
+        },
+        {
+          value: '退回',
+          label: '退回'
+        },
+        {
+          value: '已入库',
+          label: '已入库'
+        }
+
+      ]
+    }
+  },
+  computed: {
+    ...mapGetters(['name'])
+  },
+  mounted() {
+    this.getData()
+    ChooseType().then(res => {
+      if (res.code === 200) {
+        this.typenames = res.data
+        if (!this.typenames) {
+          this.$message({
+            message: '您没有录入该文件类型的权限！',
+            type: 'error',
+            duration: 6000
+          })
+        }
+      }
+    })
+  },
+  methods: {
+    // 查看 全部信息
+    handViewInput(scope) {
+      this.$router.push({
+        name: 'cueManage_dataEntry_approvalOrder',
+        query: {
+          pageFlag: 'look',
+          aId: scope.row.aid
+        }
+      })
+    },
+
+    // 录入 -- 录入信息
+    handInput(scope) {
+      this.$router.push({
+        name: 'cueManage_dataEntry_approvalOrder',
+        query: {
+          pageFlag: 'new',
+          aId: scope.row.aid
+        }
+      })
+    },
+
+    // 编辑 -- 审批单
+    handlEdit(scope) {
+      this.$router.push({
+        name: 'cueManage_dataEntry_add',
+        query: {
+          pageFlag: 'edit',
+          aId: scope.row.aid
+        }
+      })
+    },
+
+    // 查看流程
+    handLook(scope) {
+      this.$router.push({
+        name: 'cueManage_dataEntry_add',
+        query: {
+          pageFlag: 'look',
+          aId: scope.row.aid
+        }
+      })
+    },
+
+    // 获取数据
+    getData() {
+      if (sessionStorage.getItem('searchData')) {
+        const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+        if (searchData.pageName === this.$route.name && searchData.sjifReview) {
+          // this.pageInfo = searchData.pageInfo
+          this.pageNum = searchData.pageNum
+          this.pageSize = searchData.pagesize
+          this.form = searchData.searchFrom
+          this.searchFlag = true
+        }
+      }
+      const objPage = {
+        pageNum: this.pageNum,
+        pageSize: this.pagesize
+        // proposer: this.name
+      }
+      const paramObj = Object.assign({}, objPage, this.form)
+      paramObj.proposer = paramObj.proposer
+      paramObj.startAfterTime = paramObj.inputTime ? paramObj.inputTime[0] : ''
+      paramObj.endAfterTime = paramObj.inputTime ? paramObj.inputTime[1] : ''
+      delete paramObj.inputTime
+
+      const obj = this.searchFlag ? paramObj : objPage
+      this.loading = true
+      getListapi(obj).then(res => {
+        this.loading = false
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          const searchData = {
+            pageName: this.$route.name,
+            pageNum: this.pageNum,
+            pageSize: this.pagesize,
+            searchFrom: this.form
+          }
+          sessionStorage.setItem('searchData', JSON.stringify(searchData))
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+
+    // 查询
+    onSubmit() {
+      this.$refs.refForm.validate(valid => {
+        if (valid) {
+          this.searchFlag = true
+          this.getData()
+        }
+      })
+    },
+
+    // 清空
+    resetForm() {
+      this.searchFlag = false
+      this.$refs.refForm.resetFields()
+      this.pageNum = 1
+      // this.getData()
+    },
+
+    //   新增
+    handleAdd() {
+      this.$router.push({
+        name: 'cueManage_dataEntry_add',
+        query: {
+          pageFlag: 'new'
+        }
+      })
+    },
+    // 分页
+    handleSizeChange(size) {
+      this.pagesize = size
+      this.getData()
+    },
+    handleCurrentChange(pageNum) {
+      this.pageNum = pageNum
+      this.getData()
+    }
+  }
+}
+</script>
+
+<style  lang="scss" scoped>
+$margin: 20px;
+$c: #fff;
+$border: 1px solid #ccc;
+
+@mixin marginBottom($margin) {
+  margin-bottom: $margin;
+}
+@mixin color($color) {
+  color: $color;
+}
+@mixin padding($t, $l) {
+  padding: $t $l;
+}
+.dataEntry {
+  .el-select {
+    width: 100%;
+  }
+   .el-date-editor--daterange {
+    min-width: 100%;
+    max-width: 100%;
+  }
+  //   .el-card__header {
+  //     padding: 13px 20px;
+  //   }
+  //   .entryBlock {
+  //     .label {
+  //       @include marginBottom(10px);
+  //     }
+  //     .searchBlock {
+  //       .toggleBtn {
+  //         bottom: -16px;
+  //         left: 50%;
+  //       }
+  //     }
+  //   }
+}
+</style>

@@ -1,0 +1,803 @@
+<template>
+  <div class="newSuspWarningConfigur">
+    <el-card>
+      <div slot="header">
+        <span>{{this.$route.query.type}}可疑交易报告预警配置</span>
+        <a @click="goBack" class="back" :style="backImg"></a>
+      </div>
+      <el-form :model="modelForm" :rules="rulesForm" :disabled="this.$route.query.pageFlag === 'view'" label-width="120px" ref="refForm">
+        <el-row :gutter="20">
+          <el-col :span="18" :offset="1">
+            <el-form-item label="预警配置描述" prop="configDescribe">
+              <el-input  maxlength="100" v-model="modelForm.configDescribe" :rows="2" type="textarea" placeholder="请输入"></el-input>
+            </el-form-item>
+
+             <!-- <span style="color: red;height: 5px; position: absolute; margin-left: 15px; margin-top: 10px;">*</span> -->
+            <!-- <el-form-item label="报告机构类别" prop="InsCategories"> -->
+                <!-- <el-radio-group v-model="modelForm.InsCategories" @change="InsChangeEvent()">
+                  <el-radio label="B" >银行业</el-radio>
+                  <el-radio label="S" >证劵期贷业</el-radio>
+                  <el-radio label="I" >保险业</el-radio>
+                  <el-radio label="UZ" >银联</el-radio>
+                  <el-radio label="P" >支付机构</el-radio>
+                  <el-radio label="USA" >通用可疑</el-radio>
+                </el-radio-group> -->
+              <el-row>
+                  <el-col :span="16">
+                  <el-form-item label="报告机构类别" prop="levelType">
+                        <!-- <treeselect :multiple="true" :options="options"  v-if="options.length>0" placeholder="请选择义务机构类型(必填)" v-model="form.cust" /> -->
+                    <el-select clearable v-model="modelForm.levelType" placeholder="请选择" style="width:98%;margin-right:10px" @clear='clearOptions' @change="changeTypeDate">
+                      <el-option v-for="(item,index) in options" :key="index" :label="item.text" :value="item.value">
+                      </el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="" label-width="0" prop="cust">
+                      <el-select class='custOptions' v-model="modelForm.cust" placeholder="请选择" @change="changeOptions" style="width:100%;">
+                        <el-option v-for="(ite,index) in typeDate" :value="ite.value" :key="index" :label="ite.text" ></el-option>
+                      </el-select>
+                    </el-form-item>
+                </el-col>
+              </el-row>
+
+             <!-- <span style="color: red;height: 5px; position: absolute; margin-left: 40px; margin-top: 10px;">*</span> -->
+            <el-form-item label="涉罪类型"  v-if="this.modelForm.levelType === 'B' || this.modelForm.levelType === 'S' || this.modelForm.levelType === 'I' || this.modelForm.levelType === ''">
+              <el-input  v-model="modelForm.preliminaryJudgmeValue" v-if="this.szlxbloor" :disabled="true" placeholder="请选择" style="width:89%"></el-input>
+              <el-button type="primary" style="width:65px" @click="handleModelname">请选择</el-button>
+            </el-form-item>
+
+            <el-form-item label="紧急程度"  v-if="this.modelForm.levelType !== 'UZ' && this.modelForm.levelType !== 'P'">
+              <el-radio v-model="modelForm.emergencyLevel" @click.native.prevent="clickitem('01', 1)" label="01">特别紧急</el-radio>
+              <el-radio v-model="modelForm.emergencyLevel" @click.native.prevent="clickitem('02', 1)" label="02">非特别紧急</el-radio>
+            </el-form-item>
+
+             <!-- <span style="color: red;height: 5px; position: absolute; margin-left: 40px; margin-top: 10px;">*</span> -->
+            <el-form-item label="报送方向" v-if="this.modelForm.levelType !== 'UZ' && this.modelForm.levelType !== 'P'">
+              <el-select clearable v-model="modelForm.reportDirection" placeholder="请选择">
+                <el-option v-for="(item,idx) in direOptions" :label="item.codeName" :value="item.codeId" :key="idx"></el-option>
+              </el-select>
+            </el-form-item>
+
+             <span style="color: #F56C6C;font-size: 8px; height: 5px; position: absolute; margin-left: 40px; margin-top: 10px;"  v-if="this.modelForm.levelType !== ''">*</span>
+            <el-form-item label="报告机构" prop="reportOrg" v-if="this.modelForm.levelType !== ''">
+              <!-- <el-select clearable v-model="modelForm.reportOrg" value-key="rinm" filterable placeholder="请选择" style="width:89%">
+                <el-option v-for="(item,idx) in reportList" :label="item.rinm" :value="item" :key="idx"></el-option>
+              </el-select> -->
+
+              <el-select clearable v-model="modelForm.reportOrg"  style="width:92%"  filterable remote reserve-keyword placeholder="请输入关键词" value-key="rinm"  @change="handleSelect" :remote-method="remoteMethod" :loading="loading">
+                  <el-option
+                    v-for="(item,index) in reportList"
+                    :key="index"
+                    :label="item.rinm"
+                    :value="item">
+                  </el-option>
+                </el-select>
+
+              <el-button type="primary" icon="el-icon-plus" @click="addReport"></el-button>
+            </el-form-item>
+
+            <el-form-item v-if="this.modelForm.levelType !== ''">
+              <el-table :data="suspiciousReportBodyDoList">
+                <el-table-column type="index" label="序号" width="60"></el-table-column>
+                <el-table-column label="报告机构名称" prop="reportingBody"></el-table-column>
+                <el-table-column label="操作" width="90">
+                  <template slot-scope="scope">
+                    <el-button type="text" @click="deleteReport(scope)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-form-item>
+
+             <span style="color: red;height: 5px; position: absolute; margin-left: 40px; margin-top: 10px;">*</span>
+            <el-form-item label="预警范围" prop="tagName">
+              <!-- <el-input clearable v-model="modelForm.in00" placeholder="请选择" style="width:89%"></el-input> -->
+              <el-button type="primary" @click="handleWarningRange">请选择</el-button>
+            </el-form-item>
+            <el-form-item label="">
+              <el-tag :key="idx" v-for="(tag,idx) in dynamicTags" closable :disable-transitions="false" @close="handleClose(tag)">
+                {{tag.name}}
+              </el-tag>
+            </el-form-item>
+
+            <el-form-item label="生效时间" prop="eifTime">
+              <el-date-picker clearable value-format="yyyy-MM-dd" v-model="modelForm.eifTime" type="date" placeholder="选择日期" :picker-options="pickerOptions"></el-date-picker>
+            </el-form-item>
+
+            <el-form-item label="推送数量" class="pushNum" prop="">
+              <el-radio v-model="modelForm.mpushNumber" label="1" @click.native.prevent="clickitem('1', 2)" :disabled="this.$route.query.type === '查看'">
+              推送
+              <el-input-number style="width:130px" v-model="modelForm.mpushNum.num" :disabled="this.$route.query.type === '查看'" controls-position="right" @change="handleChange" :min="1" :max="99999999"></el-input-number>
+              条结果记录
+              </el-radio>
+              <el-radio v-model="modelForm.mpushNumber" @click.native.prevent="clickitem('2', 2)" label="2" :disabled="this.$route.query.type === '查看'">
+              推送
+              <el-input-number style="width:130px" v-model="modelForm.mpushNum.num1" :disabled="this.$route.query.type === '查看'" controls-position="right" @change="handleChange" :min="1" :max="99999999"></el-input-number>
+              条至
+              <el-input-number style="width:130px" v-model="modelForm.mpushNum.num2" :disabled="this.$route.query.type === '查看'" controls-position="right" @change="handleChange" :min="1" :max="99999999"></el-input-number>
+              条结果记录
+              </el-radio>
+            </el-form-item>
+            <el-form-item label="推送方式" prop="pushMode">
+              <el-radio v-model="modelForm.pushMode" @click.native.prevent="clickitem('1', 3)" label="1">处理事项</el-radio>
+              <el-radio v-model="modelForm.pushMode" @click.native.prevent="clickitem('2', 3)"  label="2">消息提醒</el-radio>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div v-if="this.$route.query.pageFlag !== 'view'" style="text-align:center;margin-bottom:6px;">
+          <el-button type="primary" @click="typeWriteInfo">保 存</el-button>
+        </div>
+      </el-form>
+    </el-card>
+    <el-dialog title="预警范围" :visible.sync="warningRangeDialogVisible" width="70%" @close="closeRangdialog">
+      <el-card shadow="never">
+        <el-row :gutter="20">
+          <el-col :span="10">
+            <el-tree :data="tableData" show-checkbox node-key="id" :props="defaultProps" ref="reftree" @check="changeTree">
+            </el-tree>
+          </el-col>
+          <el-col :span="14">
+            <el-transfer class="eltransfer" :titles="['全选 +', '全选 -']" ref="refTransfer"  v-model="rightTransfer" @change="changeTransfer" :data="dataTransfer" :props="{key: 'userId',label: 'name'}"></el-transfer>
+          </el-col>
+        </el-row>
+        <div style="text-align:center;margin-top:10px">
+          <el-button type="primary" @click="handlesubmitWaring">确定</el-button>
+        </div>
+
+      </el-card>
+    </el-dialog>
+
+    <el-dialog title="选择涉罪类型" :visible.sync="modelNameDialogVisible" width="65%">
+      <el-table :data="modelNameTableData"  tooltip-effect="dark">
+        <!-- <el-table-column type="selection" width="55">
+        </el-table-column> -->
+        <el-table-column  width="30" fixed="left">
+            <template slot-scope="scope">
+             <el-radio :label="scope.row.codeId" v-model="radioData"  @click.native.prevent="clickitem(scope, 4)"></el-radio>
+          </template>
+        </el-table-column>
+        <el-table-column label="涉罪类型" prop="codeDesc" min-width="120"></el-table-column>
+        <el-table-column label="涉罪可疑交易行为" prop="codeName" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="涉罪可疑交易行为代码" prop="codeId" min-width="120"></el-table-column>
+      </el-table>
+      <div style="text-align:center;margin-top:10px">
+        <el-button type="primary" @click="handlesubmitModel">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+<script>
+// import { noSpaceAndTs } from '@/utils/formValidate.js'
+// import { getToken } from '@/utils/auth'
+import {
+  sendListapi,
+  getCrimapi,
+  getWarnrangapi,
+  editListapi,
+  lookListapi,
+  getrangNameapi,
+  // getReportapi,
+  getDirectionapi
+  // getlevelType
+} from '@/api/sys-monitoringAnalysis/taskManagement/suspiciousWarning/newSuspWarningConfigur.js'
+import {
+  getRinmList,
+  getIndustryFrist,
+  getIndustrySecond
+} from '@/api/sys-monitoringAnalysis/statisticForm/large'
+export default {
+  name: 'newSuspWarningConfigur',
+
+  data() {
+    return {
+
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      pickerOptions: {
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7
+        }
+      },
+      radioData: '',
+      countFlag: 0,
+      loading: false,
+      hardReset: true,
+      modelForm: {
+        preliminaryJudgme: '',
+        InsCategories: '',
+        levelType: '', // 一级类型选择
+        cust: '', // 二级类型选择
+        custArry: '',
+        preliminaryJudgmeValue: '',
+        configDescribe: '',
+        emergencyLevel: '',
+        reportDirection: '',
+        reportOrg: {},
+        eifTime: '',
+        // mpushNumber: '',
+        // mpushNum: {
+        //   num: '',
+        //   num1: '',
+        //   num2: ''
+        // },
+        // pushMode: ''
+        mpushNumber: '1',
+        mpushNum: {
+          num: '1',
+          num1: '1',
+          num2: '10'
+        },
+        pushMode: ''
+      },
+      szlxbloor: true,
+      allValues: [],
+      suspiciousReportBodyDoList: [],
+      direOptions: [],
+      rulesForm: {
+        levelType: [{ required: true, message: '请选择报告机构主行业！', trigger: 'change' }],
+        cust: [{ required: true, message: '请选择报告机构子行业！', trigger: 'change' }],
+        reportDirection: [{ required: true, message: '请选择报送方向！', trigger: 'change' }],
+        configDescribe: [
+        //   { required: true, message: '内容不能为空', trigger: 'blur' },
+          // { validator: noSpaceAndTs, trigger: 'blur' },
+          { max: 100, message: '最大长度不能超过100位', trigger: 'blur' }
+        ],
+        preliminaryJudgme: [{ required: true, message: '请选择涉罪类型！', trigger: 'change' }],
+        eifTime: [{ required: true, message: '请选择生效日期！', trigger: 'blur' }]
+      },
+      reportList: [], // 报告机构数据
+      modelNameDialogVisible: false,
+      modelNameTableData: [],
+      warningRangeDialogVisible: false,
+      defaultProps: {
+        children: 'children',
+        label: 'text'
+      },
+      rightTransfer: [], // 右侧穿梭框
+      dynamicTags: [],
+      dataTransfer: [],
+      transferOrginData: [], // 原始穿梭框数据
+      treeChecked: [], // 树选中的数据
+      tableData: [
+      ],
+      multipleSelection: [],
+      typeDate: [],
+      options: []
+
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    //   查看信息
+    getData() {
+      // 报送方向
+      getDirectionapi().then(res => {
+        if (res.code === 200) {
+          this.direOptions = res.data
+        }
+      })
+      getCrimapi().then(res => {
+        if (res.code === 200) {
+          this.modelNameTableData = res.data
+        }
+      })
+      getIndustryFrist().then(res => {
+        if (res.code === 200) {
+          this.options = res.data
+          // this.modelForm.levelType = this.options[0].value
+        }
+      })
+      if (this.$route.query.pageFlag !== 'new') {
+        this.newDataSuspWaring()
+      }
+    },
+    // 编辑和查看 接口进入
+    newDataSuspWaring() {
+      lookListapi(this.$route.query.suspiciousId).then(res => {
+        if (res.code === 200) {
+          this.modelForm.preliminaryJudgme = res.data.preliminaryJudgme
+          this.modelForm.levelType = res.data.industry
+          this.changeTypeDate()
+          this.$nextTick(() => {
+            this.modelForm.cust = res.data.industryCategory
+          })
+          this.modelForm.preliminaryJudgmeValue = res.data.preliminaryJudgme
+          this.modelForm.configDescribe = res.data.configDescribe
+          this.modelForm.emergencyLevel = res.data.emergencyLevel
+          this.modelForm.reportDirection = res.data.reportDirection
+          this.modelForm.eifTime = res.data.eifTime
+          this.modelForm.mpushNumber = res.data.mpushNumber
+          if (res.data.mpushNumber === '1') {
+            this.modelForm.mpushNum.num = res.data.num
+          } else if (res.data.mpushNumber === '2') {
+            this.modelForm.mpushNum.num1 = res.data.num1
+            this.modelForm.mpushNum.num2 = res.data.num2
+          }
+          this.modelForm.pushMode = res.data.pushMode
+          this.suspiciousReportBodyDoList = res.data.suspiciousReportBodyDoList
+          this.dynamicTags = res.data.suspiciousReportWarningRangeDoList
+          for (let i = 0; i < this.modelNameTableData.length; i++) {
+            if (this.modelNameTableData[i].codeId === res.data.preliminaryJudgme) {
+              this.multipleSelection.push(this.modelNameTableData[i])
+              this.handlesubmitModel()
+            }
+          }
+        }
+      })
+    },
+    changeTypeDate() {
+      this.reportList = []
+      this.$refs['refForm'].clearValidate()
+      if (this.modelForm.levelType) {
+        this.modelForm.cust = ''
+        this.typeDate = []
+        getIndustrySecond({ type: this.modelForm.levelType })
+          .then(res => {
+            if (res.code === 200) {
+              this.typeDate = res.data
+            }
+          })
+      }
+    },
+    clickitem(e, type) {
+      switch (type) {
+        case 1:
+          e === this.modelForm.emergencyLevel ? this.modelForm.emergencyLevel = '' : this.modelForm.emergencyLevel = e
+          break
+        case 2:
+          e === this.modelForm.mpushNumber ? this.modelForm.mpushNumber = '' : this.modelForm.mpushNumber = e
+          break
+        case 3:
+          e === this.modelForm.pushMode ? this.modelForm.pushMode = '' : this.modelForm.pushMode = e
+          break
+        case 4:
+          // e === this.radioData ? this.radioData = '' : this.radioData = e
+          this.szlxbloor = false
+          if (e.row.codeId !== this.radioData) {
+            this.radioData = e.row.codeId
+            this.szlxbloor = true
+            this.multipleSelection = []
+            this.multipleSelection.push(e.row)
+          } else {
+            this.radioData = ''
+            this.multipleSelection = []
+            this.modelForm.preliminaryJudgmeValue = ''
+            this.szlxbloor = true
+          }
+          break
+      }
+    },
+    clearOptions() {
+      this.typeDate = []
+      this.modelForm.cust = []
+    },
+    // 子行业失去焦点事件
+    getIndustry() {
+      if (this.modelForm.levelType !== '') {
+        console.log(this.modelForm.levelType)
+      } else {
+        this.typeDate = []
+        this.$message({
+          type: 'warning',
+          duration: 6000,
+          showClose: true,
+          message: '请先选择义务机构类型'
+        })
+      }
+    },
+    changeOptions(val) {
+      this.reportList = []
+    },
+
+    // 联想搜索报告机构名称
+    remoteMethod(query) {
+      this.reportList = []
+      if (this.modelForm.levelType !== '' && this.modelForm.cust !== '') {
+        if (query !== '') {
+          this.loading = true
+          const params = {}
+          if (this.modelForm.cust !== '') {
+            params.industry = this.modelForm.cust
+          } else {
+            params.industry = this.modelForm.levelType
+          }
+
+          setTimeout(() => {
+            getRinmList(params)
+              .then(res => {
+                if (res.code === 200) {
+                  this.loading = false
+                  this.reportList = res.data.filter(item => {
+                    return item.rinm.toLowerCase()
+                      .indexOf(query.toLowerCase()) > -1
+                  })
+                }
+              })
+              .catch(() => {
+                this.loading = false
+              })
+          }, 200)
+        } else {
+          this.reportList = []
+        }
+      }
+    },
+    // 报告机构类别
+    InsChangeEvent() {
+      this.modelForm.reportOrg = {}
+      this.reportList = []
+      // const obj = {}
+      // obj.ficp = this.modelForm.levelType
+      // getInsCategories(obj).then(res => {
+      //   if (res.code === 200) {
+      //     // this.reportList = res.data
+      //   } else {
+      //     this.$message({
+      //       type: 'error',
+      //       message: res.message,
+      //       showClose: true
+      //     })
+      //   }
+      // })
+    },
+
+    // 添加 报告机构
+    addReport() {
+      if (JSON.stringify(this.modelForm.reportOrg) !== '{}') {
+        const obj = JSON.parse(JSON.stringify(this.modelForm.reportOrg))
+        obj.pbcCode = this.modelForm.reportOrg.ricd
+        obj.reportingBody = this.modelForm.reportOrg.rinm
+
+        let flag = false
+
+        this.suspiciousReportBodyDoList.forEach(item => {
+          if (item.reportingBody === this.modelForm.reportOrg.rinm) {
+            flag = true
+          }
+        })
+
+        if (!flag) {
+          this.suspiciousReportBodyDoList.push(obj)
+          this.modelForm.reportOrg = {}
+        } else {
+          this.$message({
+            message: '报告机构名称不能重复添加',
+            type: 'warning',
+            duration: 6000,
+            showClose: true
+          })
+          flag = false
+        }
+        this.modelForm.reportOrg = {}
+      }
+    },
+
+    handleSelect(val) {
+    },
+
+    // 删除 报告机构
+    deleteReport(scope) {
+      this.suspiciousReportBodyDoList.splice(scope.$index, 1)
+    },
+
+    // 涉罪类型 - 选择
+    handleModelname() {
+      this.modelNameDialogVisible = true
+    },
+
+    // 涉罪类型 - 确定
+    handlesubmitModel() {
+      // if (this.multipleSelection.length === 1) {
+      this.modelNameDialogVisible = false
+      const item = this.multipleSelection[0]
+      this.modelForm.preliminaryJudgme = item.codeId
+      this.modelForm.preliminaryJudgmeValue = item.codeId + '-' + item.codeDesc + '-' + item.codeName
+      // } else {
+      //   this.$message({
+      //     message: '只能选择一项',
+      //     type: 'warning',
+      //     duration: 6000
+      //   })
+      // }
+    },
+
+    // 涉罪类型 -  table selection
+    handleSelectionChangeModel(index, row) {
+      this.multipleSelection = []
+      this.multipleSelection.push(row)
+    },
+
+    // 预警范围  关闭 dialog
+    closeRangdialog() {
+      this.dataTransfer = []
+      this.rightTransfer = []
+    },
+
+    // 预警范围  关闭 tag
+    handleClose(tag) {
+      if (this.$route.query.pageFlag === 'view') {
+        return false
+      }
+      this.dynamicTags.splice(this.dynamicTags.indexOf(tag), 1)
+    },
+
+    //  预警范围 左 穿梭框
+    changeTree() {
+    //   const obj = {
+    //     token: getToken(),
+    //     deptId: this.$refs.reftree.getCheckedKeys().join()
+    //   }
+      const idsArr = this.$refs.reftree.getCheckedKeys().join()
+      if (idsArr !== '') {
+        getrangNameapi(idsArr).then(res => {
+          if (res.code === 200) {
+            this.dataTransfer = []
+            this.transferOrginData = res.data
+            const objTree = res.data
+            this.dataTransfer = Object.values(objTree).reduce((a, b) => [...a, ...b], [])
+          }
+        })
+      } else {
+        this.dataTransfer = []
+        this.rightTransfer = []
+      }
+    },
+
+    // 预警范围 - 确定
+    handlesubmitWaring() {
+      this.warningRangeDialogVisible = false
+      this.peekId()
+    },
+    // 获取 父子 id
+    peekId() {
+      const rightData = this.$refs.refTransfer.targetData // 右穿梭
+      const objOrgin = this.transferOrginData // 原始数据对象
+      this.treeChecked = this.$refs.reftree.getCheckedNodes() // 树选中的数据
+      rightData.forEach((item, idx) => {
+        for (var org in objOrgin) {
+          for (let index = 0; index < objOrgin[org].length; index++) {
+            const element = objOrgin[org][index]
+            var flag = true
+            if (item.userId === element.userId) {
+              flag = false
+            }
+            if (!flag) {
+              this.treeChecked.forEach(tree => {
+                if (tree.id === org) {
+                  item.departmentId = tree.id
+                  item.departmentName = tree.text
+                  this.dynamicTags.push(item)
+                  return
+                }
+              })
+            }
+          }
+        }
+      })
+    },
+
+    //   预警范围 - 树
+    handleWarningRange() {
+      this.tableData = []
+      this.warningRangeDialogVisible = true
+      getWarnrangapi().then(res => {
+        if (res.code === 200) {
+          this.tableData.push(res.data)
+          this.tableData[0].disabled = true
+        }
+      })
+    },
+
+    // 预警范围 右侧穿梭狂
+    changeTransfer(value, direction, movedKeys) {
+      //   console.log(value, direction, movedKeys)
+    },
+
+    // 推送方式
+    handleChange() {
+
+    },
+    // 类别判断是否填写
+    typeWriteInfo() {
+      if (this.modelForm.levelType === 'S' || this.modelForm.levelType === 'B' || this.modelForm.levelType === 'I') {
+        if (this.modelForm.preliminaryJudgmeValue !== '' || this.modelForm.emergencyLevel !== '' || this.modelForm.reportDirection !== '') {
+          this.handleSubmi()
+        } else {
+          this.$message({
+            message: '请在涉罪类型、紧急程度、报送方向中至少选择一项填写！',
+            type: 'warning',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      } else if (this.modelForm.levelType !== 'UZ' && this.modelForm.levelType !== 'P') {
+        if (this.modelForm.emergencyLevel !== '' || this.modelForm.reportDirection !== '') {
+          this.handleSubmi()
+        } else {
+          this.$message({
+            message: '请在紧急程度、报送方向中至少选择一项填写！',
+            type: 'warning',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      } else {
+        this.handleSubmi()
+      }
+    },
+    // 保存
+    handleSubmi() {
+      this.$refs.refForm.validate(valid => {
+        if (valid) {
+          if (this.modelForm.levelType !== '') {
+            if (this.dynamicTags.length !== 0) {
+              if (this.countFlag === 0) {
+                this.countFlag++
+              }
+            } else {
+              this.$message({
+                message: '预警范围不能为空',
+                type: 'warning',
+                duration: 6000,
+                showClose: true
+              })
+            }
+          } else {
+            this.$message({
+              message: '报告机构类别不能为空',
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+          }
+        }
+      })
+
+      if (this.countFlag === 1) {
+        if (this.suspiciousReportBodyDoList.length > 0) {
+          const obj = JSON.parse(JSON.stringify(this.modelForm))
+          delete obj.mpushNum
+          delete obj.mpushNumber
+          delete obj.reportOrg
+          delete obj.levelType
+          delete obj.cust
+          if (this.modelForm.mpushNumber === '1') {
+            obj.num = this.modelForm.mpushNum.num
+            obj.mpushNumber = this.modelForm.mpushNumber
+          } else if (this.modelForm.mpushNumber === '2') {
+            obj.num1 = this.modelForm.mpushNum.num1
+            obj.num2 = this.modelForm.mpushNum.num2
+            obj.mpushNumber = this.modelForm.mpushNumber
+          }
+          if (this.modelForm.levelType === 'I' && this.modelForm.cust === '保险资产管理公司') {
+            obj.yzbstatus = 'USA'
+          } else {
+            switch (this.modelForm.levelType) {
+              case 'B':
+                obj.yzbstatus = this.modelForm.levelType
+                break
+              case 'S':
+                obj.yzbstatus = this.modelForm.levelType
+                break
+              case 'I':
+                obj.yzbstatus = this.modelForm.levelType
+                break
+              case 'UZ':
+                obj.yzbstatus = this.modelForm.levelType
+                break
+              case 'P':
+                obj.yzbstatus = this.modelForm.levelType
+                break
+              default:
+                obj.yzbstatus = 'USA'
+                break
+            }
+          }
+
+          obj.industry = this.modelForm.levelType
+          obj.industryCategory = this.modelForm.cust
+          obj.suspiciousReportWarningRangeDoList = this.dynamicTags
+          obj.suspiciousReportBodyDoList = this.suspiciousReportBodyDoList
+          if (this.$route.query.pageFlag === 'new') {
+            sendListapi(obj).then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  message: '保存成功',
+                  type: 'success',
+                  duration: 6000,
+                  showClose: true
+                })
+                this.$router.go(-1)
+              } else {
+                this.$message({
+                  message: res.message,
+                  type: 'error',
+                  duration: 6000,
+                  showClose: true
+                })
+              }
+            })
+          } else {
+            obj.suspiciousId = this.$route.query.suspiciousId
+            editListapi(obj).then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  message: '保存成功',
+                  type: 'success',
+                  duration: 6000,
+                  showClose: true
+                })
+                this.$router.go(-1)
+              }
+            })
+          }
+        } else {
+          this.$message({
+            message: '请添加报告机构！',
+            type: 'warning',
+            duration: 6000,
+            showClose: true
+          })
+        }
+      }
+    },
+
+    // 返回
+    goBack() {
+      if (JSON.parse(sessionStorage.getItem('searchSuspJySxpForm'))) {
+        const obj = JSON.parse(sessionStorage.getItem('searchSuspJySxpForm'))
+        obj.ifReviewSxpSuspJy = true
+        sessionStorage.setItem('searchSuspJySxpForm', JSON.stringify(obj))
+      }
+      this.$router.go(-1)
+    }
+  }
+}
+</script>
+<style lang="scss">
+.newSuspWarningConfigur {
+  position: relative;
+  .back {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+  }
+  .el-date-editor--daterange {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+  .el-transfer-panel{
+    .el-transfer-panel__body {
+      .el-checkbox-group {
+        .el-checkbox {
+          margin-right: 56px;
+        }
+      }
+    }
+
+  }
+
+  .el-dialog__wrapper {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 54px;
+    overflow: auto;
+    margin: 0;
+  }
+
+   .el-tag + .el-tag {
+    margin-left: 10px;
+  }
+}
+</style>

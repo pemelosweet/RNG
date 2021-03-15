@@ -1,0 +1,177 @@
+  <template>
+  <div class="reportingManagement-index">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <el-button type="primary" @click="batchClick">批量入库</el-button>
+        <div style="float:right;">
+          <el-button type="primary" @click="refresh">刷新</el-button>
+        </div>
+
+      </div>
+      <!-- {{tableData}} -->
+      <el-table :data="tableData" style="width: 100%" @selection-change="handelSelects" v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection" width="60" fixed="left">
+        </el-table-column>
+        <el-table-column type="index" label="序号" width="80">
+        </el-table-column>
+        <el-table-column prop="reportedName" label="被举报人名称" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column prop="reportedCredNo" label="被举报人证件号码" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column prop="reportedAccountNo" label="账号" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column prop="reporterReasonName" label="举报事由（涉嫌类型）" show-overflow-tooltip>
+        </el-table-column>
+        <!-- <el-table-column prop="reporterRemark" label="举报事由（涉嫌类型）其他">
+        </el-table-column> -->
+        <el-table-column prop="createDate" label="受理时间" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template slot-scope="scope">
+            <el-button type="text" @click="newLibraryClick(scope.$index)" :loading="reLoadArr.indexOf(scope.$index) !== -1">入库</el-button>
+            <router-link :to="{name:'reportingManagement_query',query: {id: scope.row.reportId}}">
+              <el-button type="text" style="margin-left:0;">查看</el-button>
+            </router-link>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="block">
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="tableLen">
+        </el-pagination>
+      </div>
+    </el-card>
+  </div>
+</template>
+  <script>
+import {
+  warehousingIn,
+  reIncoming,
+  refresh
+} from '@/api/sys-monitoringAnalysis/reportingManagement/preprocessing'
+export default {
+  data() {
+    return {
+      reLoadArr: [],
+      tableDataLoading: false,
+      tableData: [],
+      pageNum: 1,
+      pageSize: 10,
+      multipleSelection: [],
+      tableLen: 1,
+      repoId: '',
+      mgs: '',
+      mgsLenth: 0
+    }
+  },
+  mounted() {
+    this.getTable()
+  },
+  watch: {
+    mgs: function(nl, ol) {
+      if (ol !== nl) {
+        this.mgsLenth = this.mgs.length
+        if (this.mgsLenth > 30) {
+          this.$message({
+            message: '最多输入30字符',
+            type: 'warning'
+          })
+          this.mgs = this.$refs.inpText.value.substring(0, 30)
+        }
+      }
+    }
+  },
+  methods: {
+    getTable() {
+      this.tableDataLoading = true
+      warehousingIn(this.pageNum, this.pageSize).then(res => {
+        if (res.code === 200) {
+          this.tableLen = res.data.total
+          this.tableData = res.data.list
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.tableDataLoading = false
+      })
+    },
+    handelSelects(row) {
+      this.multipleSelection = row
+      console.log(this.multipleSelection)
+    },
+    newLibraryClick(tabIndex) {
+      this.reLoadArr.push(tabIndex)
+      reIncoming(this.tableData[tabIndex].reportId).then(res => {
+        if (res.code === 200) {
+          console.log(res)
+          this.$message({
+            message: '入库成功',
+            type: 'success'
+          })
+          this.getTable()
+        }
+        this.reLoadArr.map((item, i) => {
+          if (item === tabIndex) {
+            this.reLoadArr.splice(i, 1)
+          }
+        })
+      }).catch(() => {
+        this.reLoadArr.map((item, i) => {
+          if (item === tabIndex) {
+            this.reLoadArr.splice(i, 1)
+          }
+        })
+      })
+    },
+    refresh() {
+      refresh().then(res => {
+        if (res.code === 200) {
+          this.$message({
+            message: '手动同步成功',
+            type: 'success'
+          })
+          this.getTable()
+        }
+      })
+    },
+    batchClick() {
+      if (this.multipleSelection.length === 0) {
+        this.$message({
+          message: '请选中',
+          type: 'warning'
+        })
+      } else {
+        const rids = []
+        this.multipleSelection.forEach(el => {
+          rids.push(el.reportId)
+        })
+        this.repoId = rids.join(',')
+        console.log(this.repoId)
+        reIncoming(this.repoId).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: '批量入库成功',
+              type: 'success'
+            })
+            this.getTable()
+          }
+        })
+      }
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.getTable()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.getTable()
+    }
+  }
+}
+</script>
+<style>
+.rep_tag {
+  background: none;
+  border:none;
+  color: #606266;
+}
+</style>
+

@@ -1,0 +1,992 @@
+<template>
+  <div class="conjointAnalysisList"
+  v-loading="loading"
+  element-loading-text="查询中，请稍等......"
+  element-loading-spinner="el-icon-loading"
+  element-loading-background="rgba(0, 0, 0, 0.3)">
+    <el-card class="box-card">
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>查询列表</span>
+        <router-link
+          v-if="isFxqjRole && !powers"
+          style="float:right"
+          :to="{name:'conjointAnalysis_add'}"
+        >
+          <el-button type="text">新建联合分析</el-button>
+        </router-link>
+      </div>
+      <div class="text item">
+
+        <el-form
+          :model="formInline"
+          ref="searchForm"
+          :rules="formRules"
+          class="demo-form-inline"
+          label-width="120px"
+        >
+          <template v-if="toggleSearch">
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="联合分析名称："
+                  prop="jointAnalysisName"
+                  label-width="120px"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.jointAnalysisName"
+                    placeholder="请输入联合分析名称，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="状态："
+                  prop="state"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.state"
+                  >
+                    <el-option
+                      v-if="statusList"
+                      label="已保存"
+                      value="0"
+                    ></el-option>
+                    <el-option
+                      label="审核中"
+                      value="1"
+                    ></el-option>
+                    <el-option
+                      label="已发布"
+                      value="2"
+                    ></el-option>
+                    <el-option
+                      label="行内审批"
+                      value="8"
+                    ></el-option>
+                    <el-option
+                      label="审批不通过"
+                      value="3"
+                    ></el-option>
+                    <el-option
+                      label="退回"
+                      value="4"
+                    ></el-option>
+                    <el-option
+                      label="已结束"
+                      value="5"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-button
+                  type="primary"
+                  @click="onSubmitFrist"
+                  :loading="loading"
+                >查询</el-button>
+                <el-button
+                  type="primary"
+                  plain
+                  @click="cleanUp"
+                >清空</el-button>
+                <el-button
+                  type="text"
+                  icon="el-icon-arrow-down"
+                  @click="toggleSearch=false"
+                > 展开</el-button>
+              </el-col>
+
+            </el-row>
+
+          </template>
+
+          <template v-else>
+            <el-row class="toggle" :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="联合分析名称："
+                  prop="jointAnalysisName"
+                  label-width="120px"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.jointAnalysisName"
+                    placeholder="请输入联合分析名称，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="状态："
+                  prop="state"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.state"
+                  >
+                    <el-option
+                      v-if="statusList"
+                      label="已保存"
+                      value="0"
+                    ></el-option>
+                    <el-option
+                      label="审核中"
+                      value="1"
+                    ></el-option>
+                    <el-option
+                      label="已发布"
+                      value="2"
+                    ></el-option>
+                    <el-option
+                      label="行内审批"
+                      value="8"
+                    ></el-option>
+                    <el-option
+                      label="审批不通过"
+                      value="3"
+                    ></el-option>
+                    <el-option
+                      label="退回"
+                      value="4"
+                    ></el-option>
+                    <el-option
+                      label="已结束"
+                      value="5"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <!-- <el-col :span="8">
+                <el-form-item label="犯罪类型：" prop="preliminaryJudgmeStr">
+                  <el-select v-model="formInline.preliminaryJudgmeStr">
+
+                  </el-select>
+                </el-form-item>
+              </el-col> -->
+
+              <el-col :span="8">
+                <el-form-item
+                  label="主体名称："
+                  prop="name"
+                  label-width="120px"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.name"
+                    placeholder="请输入主体名称，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+
+              <el-col :span="8">
+                <el-form-item
+                  label="账号："
+                  prop="accountNum"
+                >
+                  <el-input
+                    maxlength="30"
+                    v-model="formInline.accountNum"
+                    placeholder="请输入账号，最多输入30字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="证件类型："
+                  prop="certificateType"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.certificateType"
+                    placeholder="请选择"
+                  >
+                    <el-option
+                      v-for="(item,index) in sort"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="8">
+                <el-form-item
+                  label="证件号码："
+                  prop="certificateNum"
+                >
+                  <el-input
+                    maxlength="128"
+                    v-model="formInline.certificateNum"
+                    placeholder="请输入证件号码，最多输入128字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="开户行："
+                  prop="openBank"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.openBank"
+                    placeholder="请输入开户行，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="起止日期："
+                  class="organId"
+                  prop="rangeDate"
+                >
+                  <el-date-picker
+                    value-format="yyyy-MM-dd"
+                    v-model="formInline.rangeDate"
+                    type="daterange"
+                    range-separator="至"
+                   
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="20">
+                <el-form-item
+                  label="涉及分支机构："
+                  prop="organId"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.organId"
+                    multiple
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="请选择涉及分支机构"
+                  >
+                    <el-option
+                      v-for="(item,index) in branchData"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    >
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <!-- <preliminary-judgment :lableWidth="200" :labelName="'涉罪类型：'" ref="judgment"     judgmentOther="judgmentOther"></preliminary-judgment> -->
+            <el-form-item
+              label="涉罪类型："
+              class="itme-block"
+              prop="preJudmentDoList"
+            >
+              <el-select
+                filterable
+                v-model="formInline.preJudmentDoList"
+                multiple
+                placeholder="请选择"
+                @change="replenish"
+              >
+                <el-option
+                  v-for="(item,index) in dialogJudgmentData"
+                  :key="index"
+                  :label="item.codeName"
+                  :value="item.codeId"
+                >
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label=" "
+              class="itme-block"
+              v-if="isReplenishOne"
+              prop="supplementOne"
+            >
+              <el-input
+                maxlength="100"
+                v-model="formInline.supplementOne"
+                placeholder="请填写关于司法机构或行政调查已介入的可疑交易行为的补充"
+              ></el-input>
+            </el-form-item>
+            <el-form-item
+              label=" "
+              class="itme-block"
+              v-if="isReplenishTwo"
+              prop="supplementTwo"
+            >
+              <el-input
+                maxlength="100"
+                v-model="formInline.supplementTwo"
+                placeholder="请填写关于涉嫌其他犯罪的可疑交易行为的补充"
+              ></el-input>
+            </el-form-item>
+            <div style="text-align:right;margin-bottom:10px">
+              <el-button
+                type="primary"
+                @click="onSubmit('searchForm')"
+              >查询</el-button>
+              <el-button
+                type="primary"
+                plain
+                @click="cleanUp"
+              >清空</el-button>
+              <el-button
+                type="text"
+                icon="el-icon-arrow-up"
+                @click="toggleSearch=true"
+              >收起</el-button>
+
+            </div>
+
+          </template>
+
+        </el-form>
+
+        <el-table
+          style="width: 100%"
+          :data="tableData"
+        >
+          <el-table-column
+            type="index"
+            label="序号"
+            min-width="80"
+          ></el-table-column>
+          <el-table-column
+            label="联合分析名称"
+            min-width="110"
+            show-overflow-tooltip
+          >
+            <template slot-scope="scope">
+              <router-link :to="{path:'/conjointAnalysis/detail?id='+scope.row.jointId+'&createUserId='+scope.row.createUser+'&type='+scope.row.state}">
+                <el-button type="text">{{scope.row.jointAnalysisName}}</el-button>
+              </router-link>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="preliminaryJudgme"
+            label="涉罪类型"
+            min-width="110"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="organId"
+            label="涉及分支机构"
+            min-width="140"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="organName"
+            label="发起方"
+            min-width="140"
+            show-overflow-tooltip
+          ></el-table-column>
+          <el-table-column
+            prop="state"
+            label="状态"
+            width="120"
+          >
+            <template slot-scope="scope">
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId,createUserId:scope.row.createUser}}"
+                v-if="scope.row.state==='已保存'"
+              >
+                <el-button type="text">已保存</el-button>
+              </router-link>
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId,createUserId:scope.row.createUser}}"
+                v-else-if="scope.row.state==='审核中'"
+              >
+                <el-button type="text">审核中</el-button>
+              </router-link>
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId,createUserId:scope.row.createUser}}"
+                v-else-if="scope.row.state==='已发布'"
+              >
+                <el-button type="text">已发布</el-button>
+              </router-link>
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId,createUserId:scope.row.createUser}}"
+                v-else-if="scope.row.state==='审批不通过'"
+              >
+                <el-button type="text">审批不通过</el-button>
+              </router-link>
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId,createUserId:scope.row.createUser}}"
+                v-else-if="scope.row.state==='退回'"
+              >
+                <el-button type="text">退回</el-button>
+              </router-link>
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId,createUserId:scope.row.createUser}}"
+                v-else-if="scope.row.state==='行内审批'"
+              >
+                <el-button type="text">行内审批</el-button>
+              </router-link>
+              <router-link
+                :to="{name:'conjointAnalysis_detail',query: { id: scope.row.jointId, type: scope.row.state,createUserId:scope.row.createUser}}"
+                v-else
+              >
+                <el-button type="text">已结束</el-button>
+              </router-link>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-size="pageInfo.pagesize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.total"
+          background
+        >
+        </el-pagination>
+      </div>
+    </el-card>
+  </div>
+</template>
+<script>
+import { mapGetters } from 'vuex'
+import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/preliminaryJudgment.vue'
+import { getList, branch } from '@/api/sys-monitoringAnalysis/conjointAnalysis/list.js'
+import { canEdit4 } from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { getPower } from '@/api/sys-monitoringAnalysis/report-clues/search.js'
+import { commonPattern, ValidQueryInput } from '@/utils/formValidate'
+import {
+  canEdit1
+} from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+export default {
+  name: 'www',
+  components: {
+    preliminaryJudgment
+  },
+  data() {
+    return {
+      loading: false,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      isFxqjRole: true,
+      dialogJudgmentData: [],
+      formInline: {
+        supplementOne: '',
+        supplementTwo: '',
+        preJudmentDoList: [],
+        jointAnalysisName: '',
+        state: '',
+        preliminaryJudgmeStr: '',
+        name: '',
+        accountNum: '',
+        cardType: '',
+        certificateType: '',
+        certificateNum: '',
+        openBank: '',
+        rangeDate: '',
+        organId: [],
+        organIdStr: ''
+      },
+      sort: [],
+      typeId: [],
+      branchData: [
+        {
+          value: '1',
+          label: '涉及分支机构1'
+        },
+        {
+          value: '2',
+          label: '涉及分支机构2'
+        },
+        {
+          value: '3',
+          label: '涉及分支机构3'
+        },
+        {
+          value: '4',
+          label: '涉及分支机构4'
+        }
+      ],
+      powers: false,
+      statusList: true,
+      toggleSearch: true,
+      tableData: [],
+      currentPage: 1,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      formRules: {
+        jointAnalysisName: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        name: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        accountNum: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        certificateNum: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        openBank: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        supplementOne: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ],
+        supplementTwo: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      }
+    }
+  },
+  // 列表查询参数
+  computed: {
+    ...mapGetters([
+      'permissions_routers'
+    ]),
+    // preliminaryJudgmeStr1() {
+    //   return this.$refs.judgment.searchParams.join()
+    // },
+    searchParams() {
+      this.formInline.organIdStr = this.formInline.organId.join()
+      const obj = Object.assign({}, this.formInline, this.pageInfo)
+      delete obj.rangeDate
+      delete obj.organId
+      delete obj.preJudmentDoList
+      delete obj.supplementOne
+      delete obj.supplementTwo
+      delete obj.total
+
+      if (this.formInline.rangeDate) {
+        obj.startTime = this.formInline.rangeDate[0]
+        obj.endTime = this.formInline.rangeDate[1]
+      }
+
+      return obj
+    },
+    ...mapGetters([
+      'businessFlag',
+      'permissions_routers',
+      'workFlow2business',
+      'userInfo',
+      'institution'
+    ]),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    }
+  },
+  created() {
+    if (sessionStorage.getItem('conjointAnalysis')) {
+      const conjointAnalysis = JSON.parse(sessionStorage.getItem('conjointAnalysis'))
+      if (conjointAnalysis.pageName === this.$route.name && conjointAnalysis.ifReview) {
+        this.pageInfo = conjointAnalysis.pageInfo
+        this.formInline = conjointAnalysis.searchForm
+        this.toggleSearch = conjointAnalysis.toggleSearch
+      }
+    }
+  },
+  mounted() {
+    this.getPower()
+    this.isFxqj()
+    this.getSort()
+    this.initList(this.searchParams)
+    this.getBranch()
+    this.getDictionary('TOSC')
+    this.judge()
+  },
+  methods: {
+    async getPower() {
+      const res = await getPower()
+      console.log(res, 111)
+      this.powers = false
+      this.powers = res.message === '是'
+    },
+    // 判断是中心用户还是涉及分支机构用户
+    judge() {
+      canEdit1().then(response => {
+        if (response.code === 200) {
+          this.statusList = !response.data
+        }
+      })
+    },
+    // 反洗钱局没有新建联合分析权限
+    isFxqj() {
+      canEdit4().then(res => {
+        if (res.code === 200) {
+          if (res.data === true) {
+            this.isFxqjRole = false
+          }
+        }
+      })
+    },
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    validateAgentNum(rule, value, callback) {
+      if (value !== '') {
+        if (this.formInline.certificateType === '110001' || this.formInline.certificateType === '110003') {
+          if (value.length !== 15 && value.length !== 18) {
+            callback(new Error('身份证件格式标准为15及18位'))
+          } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+            callback(new Error('禁止输入特殊字符'))
+          } else if (this.blankSpace.test(value)) {
+            callback(new Error('禁止输入空格'))
+          } else if (this.chinaNull.test(value)) {
+            callback(new Error('禁止输入中文'))
+          } else {
+            callback()
+          }
+        } else {
+          if (value.length <= 5 || value.length >= 129) {
+            callback(new Error('内容应在6-128位之间'))
+          } else if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== '' && value !== null) {
+        if (value.length > 30) {
+          callback(new Error('内容应在30字符以内'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    NumberValidate(rule, value, callback) {
+      if (value !== null && value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (value !== '') {
+          if (commonPattern.number.test(value)) {
+            callback(new Error('不能输入数字'))
+          }
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    NumberValidate1(rule, value, callback) {
+      if (value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 获取证件类型
+    getSort() {
+      branch({ typeId: 'SFZJ' }).then(res => {
+        if (res.code === 200) {
+          this.sort = res.data.list
+        }
+      })
+    },
+    // 获取涉罪类型
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 获取涉及分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.branchData = res.data.list
+        }
+      })
+    },
+    // 获取证件类型
+    getTypeId() {
+      branch({ typeId: 'SFZJ' }).then(res => {
+        if (res.code === 200) {
+          this.typeId = res.data.list
+        }
+      })
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.formInline.preJudmentDoList.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.formInline.preJudmentDoList.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 涉罪类型数据类型转换拼接
+    getPreliminaryJudgmeStr() {
+      const arr = []
+      this.formInline.preJudmentDoList.forEach(el => {
+        if (el === '1401') {
+          el = '1401-' + this.formInline.supplementOne
+          arr.push(el)
+        } else if (el === '1402') {
+          el = '1402-' + this.formInline.supplementTwo
+          arr.push(el)
+        } else {
+          arr.push(el)
+        }
+      })
+      this.formInline.preliminaryJudgmeStr = arr.join()
+    },
+    // 获取列表数据方法
+    initList(params) {
+      this.loading = true
+      getList(params).then(res => {
+        if (res.code === 200) {
+          this.pageInfo.total = res.data.total
+          const arry = res.data.list // 获取的数据
+          const arr = []
+          arry.forEach(el => {
+            const obj = {} // 新对象存我想要的四个字段
+            obj.jointAnalysisName = el.jointAnalysisName // 联合分析名称
+            obj.organName = el.organName
+            obj.jointId = el.jointId
+            obj.createUser = el.createUser
+            obj.state = el.state // 状态
+            const type = []
+            el.preJudmentDoList.forEach(item => {
+              var str = item.preliminaryJudgme
+              type.push(str)
+              obj.preliminaryJudgme = type.join()
+            })
+            const type1 = []
+            el.organDoList.forEach(item => {
+              var str = item.organId
+              type1.push(str)
+              obj.organId = type1.join()
+            })
+            arr.push(obj)
+          })
+          this.tableData = arr
+          const conjointAnalysis = {
+            pageName: this.$route.name,
+            pageInfo: this.pageInfo,
+            searchForm: this.formInline,
+            toggleSearch: this.toggleSearch
+          }
+          sessionStorage.setItem('conjointAnalysis', JSON.stringify(conjointAnalysis))
+          this.loading = false
+        } else {
+          this.loading = false
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    // 点击查询
+    onSubmitFrist(searchForm) {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.getPreliminaryJudgmeStr()
+          this.searchParams.pageNum = 1
+          this.pageInfo.pageNum = 1
+          getList(this.searchParams).then(res => {
+            if (res.code === 200) {
+              this.loading = false
+              this.pageInfo.total = res.data.total
+              const arry = res.data.list // 获取的数据
+              const arr = []
+              arry.forEach(el => {
+                const obj = {} // 新对象存我想要的四个字段
+                obj.jointAnalysisName = el.jointAnalysisName // 联合分析名称
+                obj.organName = el.organName
+                obj.jointId = el.jointId
+                obj.state = el.state // 状态
+                const type = []
+                el.preJudmentDoList.forEach(item => {
+                  var str = item.preliminaryJudgme
+                  type.push(str)
+                  obj.preliminaryJudgme = type.join()
+                })
+                const type1 = []
+                el.organDoList.forEach(item => {
+                  var str = item.organId
+                  type1.push(str)
+                  obj.organId = type1.join()
+                })
+                arr.push(obj)
+              })
+              this.tableData = arr
+              const conjointAnalysis = {
+                pageName: this.$route.name,
+                pageInfo: this.pageInfo,
+                searchForm: this.formInline,
+                toggleSearch: this.toggleSearch
+              }
+              sessionStorage.setItem('conjointAnalysis', JSON.stringify(conjointAnalysis))
+            } else {
+              this.loading = false
+            }
+          }).catch(() => {
+            this.loading = false
+          })
+        } else {
+          this.loading = false
+          return false
+        }
+      })
+    },
+    onSubmit(form) {
+      this.$refs[form].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.getPreliminaryJudgmeStr()
+          this.searchParams.pageNum = 1
+          this.pageInfo.pageNum = 1
+          getList(this.searchParams)
+            .then(res => {
+              if (res.code === 200) {
+                this.loading = false
+                this.pageInfo.total = res.data.total
+                const arry = res.data.list // 获取的数据
+                const arr = []
+                arry.forEach(el => {
+                  const obj = {} // 新对象存我想要的四个字段
+                  obj.jointAnalysisName = el.jointAnalysisName // 联合分析名称
+                  obj.organName = el.organName
+                  obj.organName = el.organName
+                  obj.jointId = el.jointId
+                  obj.state = el.state // 状态
+                  const type = []
+                  el.preJudmentDoList.forEach(item => {
+                    var str = item.preliminaryJudgme
+                    type.push(str)
+                    obj.preliminaryJudgme = type.join()
+                  })
+                  const type1 = []
+                  el.organDoList.forEach(item => {
+                    var str = item.organId
+                    type1.push(str)
+                    obj.organId = type1.join()
+                  })
+                  arr.push(obj)
+                })
+                this.tableData = arr
+                const conjointAnalysis = {
+                  pageName: this.$route.name,
+                  pageInfo: this.pageInfo,
+                  searchForm: this.formInline,
+                  toggleSearch: this.toggleSearch
+                }
+                sessionStorage.setItem('conjointAnalysis', JSON.stringify(conjointAnalysis))
+              } else {
+                this.loading = false
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          return false
+        }
+      })
+    },
+    cleanUp() {
+      this.formInline = {
+        supplementOne: '',
+        supplementTwo: '',
+        preJudmentDoList: [],
+        jointAnalysisName: '',
+        state: '',
+        preliminaryJudgmeStr: '',
+        name: '',
+        accountNum: '',
+        cardType: '',
+        certificateType: '',
+        certificateNum: '',
+        openBank: '',
+        rangeDate: '',
+        organId: [],
+        organIdStr: ''
+      }
+      this.$refs.searchForm.resetFields()
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.initList(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initList(this.searchParams)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.conjointAnalysisList {
+  .el-select {
+    width: 100%;
+  }
+  .rangeData {
+    .el-date-editor--daterange {
+      min-width: 100%;
+    }
+  }
+}
+</style>

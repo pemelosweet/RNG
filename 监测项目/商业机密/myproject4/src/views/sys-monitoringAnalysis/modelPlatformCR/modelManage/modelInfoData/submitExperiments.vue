@@ -1,0 +1,1302 @@
+<template>
+  <div class="auditDetail" v-loading.fullscreen.lock="submitToFlag" element-loading-text="文件正在上传，请耐心等待">
+    <el-card class="box-card">
+      <div slot="header" class="clearfix">
+        <span>提交审核</span>
+      </div>
+      <div class="content">
+        <el-form ref="form" :rules="formRules" :model="form" label-width="260px">
+            <el-row>
+                <el-col :span="15">
+                    <el-form-item label="名称：">
+                        <el-input v-model="form.name" disabled placeholder=""></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row>
+                <el-col :span="15">
+                    <el-form-item label="模型类型：" prop="descriptionInfo">
+                        <el-input v-model="form.descriptionInfo" placeholder=""></el-input>
+                        <!-- <el-select v-model="form.descriptionInfo" placeholder="请选择">
+                            <el-option
+                            v-for="(item,index) in options"
+                            :key="index"
+                            :label="item"
+                            :value="item">
+                            </el-option>
+                        </el-select> -->
+                    </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row>
+                <el-col :span="15">
+                    <el-form-item label="">
+                        <el-input v-if="form.descriptionInfo === '13其他类型（非法外汇买卖，涉嫌以积分换取高价值礼品、民间借贷等）'" v-model="form.texatDescrip" type="textarea" :rows="2" placeholder="最多输入50个字符" maxlength="50"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row>
+                <el-col :span="15">
+                  <span style="color: #F56C6C; font-size: 0.8em; height: 5px; position: absolute; margin-left: 168px; margin-top: 10px;">*</span>
+                    <el-form-item label="预警范围：">
+                      <el-button type="primary" @click="checkYjRange">选择</el-button>
+                    </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row v-if="this.warningData">
+                <el-col :span="15" style="margin-left:260px">
+                    <el-tag v-for="(itme,index) in warningData"  :key="index"  style="margin:5px"> {{itme}}</el-tag>
+              </el-col>
+            </el-row>
+          <el-row>
+              <div class="divider divider-dashed"></div>
+              <div style="marginLeft:100px">
+                  <span>模型释义</span>
+              </div>
+            <el-col :span="15">
+              <el-form-item label="业务含义：" prop="businessMeaning">
+                <el-input v-model.trim="form.businessMeaning" type="textarea" :rows="2" placeholder=""></el-input>
+              </el-form-item>
+            </el-col>
+            </el-row>
+            <el-row>
+            <el-col :span="15">
+              <el-form-item label="特征说明：" prop="characteristics">
+                <el-input v-model.trim="form.characteristics" type="textarea" :rows="2" placeholder=""></el-input>
+              </el-form-item>
+            </el-col>
+            </el-row>
+            <el-row>
+            <el-col :span="15">
+              <el-form-item label="预估预警率：" prop="estimatedWarning">
+                <el-input v-model.trim="form.estimatedWarning" type="textarea" :rows="2" placeholder=""></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <el-col :span="15">
+              <el-form-item label="数据来源：">
+                  <div class="btn">
+                      <el-button type="primary" @click="chooseData">选择数据来源</el-button>
+                  </div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row v-if="this.dataArrayInfo">
+              <el-col :span="15" style="margin-left:260px;height:100%">
+                    <el-tag v-for="(itme,index) in dataArrayInfo"  :key="index"  style="margin:0px 0 15px 0"> {{itme}}</el-tag>
+              </el-col>
+          </el-row>
+          <el-row>
+            <el-col :span="15">
+              <el-form-item label="外部文件：">
+                  <el-upload
+                    ref="uploadName"
+                    class="upload-demo"
+                    action="caml-model/model/audit/upload-all-attach"
+                    show-file-list
+                    :auto-upload="false"
+                    :on-change="changeUpload"
+                    :on-success="handleSuccess"
+                    :on-error="handleError"
+                    :on-preview="handlePreview"
+                    :on-remove="handleRemove"
+                    :before-remove="beforeRemove"
+                    multiple
+                    name="files"
+                    :on-exceed="handleExceed"
+                    :before-upload="handleBeforeUpload"
+                    :file-list="fileList">
+                    <el-button size="small" type="primary">点击上传</el-button>
+                    <div slot="tip" class="el-upload__tip" style="color:red">说明：可上传导出的实验、数据文件等。</div>
+                </el-upload>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row>
+            <!-- <div class="divider divider-dashed"></div> -->
+            <!-- <div style="marginLeft:100px">
+                    <span>输出结果集</span>
+            </div> -->
+            <el-col :span="15">
+              <el-form-item label="输出结果集：" prop="">
+                  <!-- <el-button type="primary" style="width: 104px" @click="dialogVisible = true">编辑结果集</el-button> -->
+                  <el-input v-model="form.outputResultSet" type="textarea" :rows="2" placeholder="请输入输出结果集" disabled></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row style="font-size: 12px; color:#F56C6C; margin: 10px 0 0 260px;">提示：此结果集展示了数据写录入到哪张Inceptor表。</el-row>
+            <div class="divider divider-dashed"></div>
+            <div style="marginLeft:100px">
+                    <span>运行周期</span>
+            </div>
+          <el-row>
+            <el-col :span="20">
+             <el-form-item label="">
+              <div class="regular">
+                <el-form :model="form">
+                  <el-form-item style="margin-top: -10px; margin-bottom:0px;">
+                    <cron v-model="cronExpression"></cron>
+                  </el-form-item>
+                  <el-form-item label="" class="exInpBox">
+                    <el-input v-model="cronExpression" placeholder=""></el-input>
+                  </el-form-item>
+                  </el-form>
+              </div>
+             </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- <el-row>
+            <el-col :span="15">
+              <el-form-item label="运行时间：">
+                <el-date-picker
+                  v-model="elapsedTime"
+                  type="date"
+                  placeholder="选择日期"
+                  value-format="yyyy-MM-dd">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row> -->
+          <!-- <div class="divider divider-dashed"></div> -->
+          <!-- <div style="marginLeft:100px;padding:5px 0">
+                  <span>审核设置</span>
+          </div>
+          <el-row>
+              <el-form-item label="选择审核人员：">
+                  <el-transfer v-model="configurationMsg" :data="transferData" :props="{key: 'value',label: 'label'}"></el-transfer>
+              </el-form-item>
+          </el-row> -->
+          <!-- <div class="divider divider-dashed"></div> -->
+
+          <el-form-item style="marginLeft:-260px;textAlign:center">
+            <el-button type="primary" :disabled="this.submitExamine" @click="onSubmit">提交审核</el-button>
+            <el-button type="primary" @click="routerBack">返回</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </el-card>
+     <!--选择数据集-->
+        <el-dialog title="选择数据集" :visible.sync="dialogStorageVisible" width="70%" class="personDialog">
+             <el-table ref="multipleTable" :data="tableData" tooltip-effect="dark" style="width: 100%"  @selection-change="handleSelectionChange">
+                <el-table-column type="selection"  width="55" :select="true"></el-table-column>
+                <el-table-column label="名称" width="120">
+                    <template slot-scope="scope">{{ scope.row.name }}</template>
+                </el-table-column>
+                <el-table-column prop="name" label="连接状态"  width="120"></el-table-column>
+                <el-table-column prop="sourceType" label="导入方式" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="sourceType" label="数据格式" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="modifyTimestamp" label="修改时间" show-overflow-tooltip></el-table-column>
+                 <el-table-column prop="desc" label="描述" show-overflow-tooltip></el-table-column>
+            </el-table>
+            <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+            </el-pagination>
+            <span slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="sendAssemblyData">确 定</el-button>
+                <el-button @click="xzsjjEvent">取 消</el-button>
+            </span>
+        </el-dialog>
+    <!-- 预警范围 -->
+    <el-dialog title="预警范围" :visible.sync="dialogDistributionVisible" width="80%">
+      <el-form ref="allocatedDataSet" :model="allocatedDataSet" label-width="120px">
+          <div class="dataVisible">
+            <el-row>
+              <el-col :span="10">
+                <div class="divScroll">
+                  <el-tree accordion ref="tree" :data="allocatedDataSet.dataVisible" @check="handleNodeClick"  default-expand-all show-checkbox node-key="id"  :props="defaultProps"></el-tree>
+                </div>
+              </el-col>
+              <el-col :span="14">
+                <el-transfer v-model="transferDataRange" :data="transferOptions" :props="{key: 'name',label: 'name'}"></el-transfer>
+              </el-col>
+            </el-row>
+          </div>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="distriButionSure">确定</el-button>
+        <el-button @click="distriButionConsole">取消</el-button>
+      </span>
+    </el-dialog>
+        <!-- 输出结果集 -->
+    <el-dialog title="输出结果集" :visible.sync="dialogVisible" width="50%" top="10vh" class="addDataTeam">
+      <el-form ref="addDataSets" :model="addDataSets" label-width="120px">
+        <el-form-item label="连接类型：" >
+                    <template>
+                        <el-select v-model="addDataSets.connId" placeholder="请选择" @change="handChangeSelectEvent" style="width:100%" :disabled="!ifadd">
+                            <el-option  label="jdbc" value="1"></el-option>
+                            <el-option  label="hbase" value="2"></el-option>
+                            <el-option  label="hdfs" value="3"></el-option>
+                            <el-option  label="odps" value="4"></el-option>
+                        </el-select>
+                    </template>
+        </el-form-item>
+      </el-form>
+        <div v-show="this.addDataSets.connId=== '1'">
+            <el-form ref="connectionjdbc" :model="connectionjdbc" label-width="120px" :rules="jdbcRules">
+                <el-form-item label="驱动：" prop="connDrive">
+                    <template>
+                        <el-select v-model="connectionjdbc.connDrive" style="width:100%" placeholder="请选择">
+                           <el-option  label="inceptor-5.1.0" value="hive2"></el-option>
+                            <el-option  label="MySQL" value="mysql"></el-option>
+                            <el-option  label="db2jcc4" value="db2"></el-option>
+                            <el-option  label="oracle6" value="oracle:thin"></el-option>
+                            <el-option  label="sqlserver41" value="sqlserver"></el-option>
+                        </el-select>
+                    </template>
+                </el-form-item>
+                <el-form-item label="地址：" prop="connAddress">
+                    <el-input v-model="connectionjdbc.connAddress" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="端口：" prop="connPort">
+                    <el-input v-model="connectionjdbc.connPort" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="数据库名称：" prop="connDatabase">
+                    <el-input v-model="connectionjdbc.connDatabase" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="目标表名：" prop="connTableName">
+                    <el-input v-model="connectionjdbc.connTableName" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="数据库链接：">
+                    <el-input disabled v-model="connUrl" placeholder="">
+                    </el-input>
+                </el-form-item>
+                <!-- <el-form-item label="是否远程集群：">
+                    <el-switch  v-model="connectionjdbc.jdbcRemoteCluster"  active-color="#409EFF"  inactive-color="#dcdfe6"></el-switch>
+                </el-form-item>
+                <el-form-item label="NameNodes：" v-if="connectionjdbc.jdbcRemoteCluster">
+                    <el-input v-model="connectionjdbc.nameNodes" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="port：" v-if="connectionjdbc.jdbcRemoteCluster">
+                    <el-input v-model="connectionjdbc.port" placeholder=""></el-input>
+                </el-form-item> -->
+                    <el-form-item label="用户名：" prop="connUsername">
+                    <el-input v-model="connectionjdbc.connUsername" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="密码：" prop="connPassword">
+                    <el-input v-model="connectionjdbc.connPassword" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <!-- <el-button type="primary" @click="testDataConnact">测试</el-button> -->
+                </el-form-item>
+            </el-form>
+        </div>
+        <div v-show="this.addDataSets.connId=== '2'">
+            <el-form ref="connectionhbase" :model="connectionhbase" label-width="120px" :rules="hbaseRules">
+                <el-form-item label="名称：" prop="hbaseName">
+                <el-input v-model="connectionhbase.hbaseName"></el-input>
+                </el-form-item>
+                <el-form-item label="nameSpace：" prop="hbaseNamespace">
+                <el-input type="textarea" v-model="connectionhbase.hbaseNamespace"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <!-- <el-button type="primary" @click="testDataConnact">测试</el-button> -->
+                </el-form-item>
+            </el-form>
+        </div>
+        <div v-show="this.addDataSets.connId=== '3'">
+            <el-form ref="connectionhdfs" :model="connectionhdfs" label-width="120px" :rules="hdfsRules">
+                <el-form-item label="名称：" prop="hdfsName">
+                <el-input v-model="connectionhdfs.hdfsName"></el-input>
+                </el-form-item>
+                <el-form-item label="是否远程集群：">
+                    <el-switch  v-model="connectionhdfs.hdfsRemoteCluster"  active-color="#13ce66"  inactive-color="#ff4949"></el-switch>
+                </el-form-item>
+                <el-form-item label="NameNodes：" v-if="connectionhdfs.hdfsRemoteCluster" prop="hdfsNameNodes">
+                    <el-input v-model="connectionhdfs.hdfsNameNodes" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="port：" v-if="connectionhdfs.hdfsRemoteCluster" prop="hdfsPort">
+                    <el-input v-model="connectionhdfs.hdfsPort" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <!-- <el-button type="primary" @click="testDataConnact">测试</el-button> -->
+                </el-form-item>
+            </el-form>
+        </div>
+        <div v-show="this.addDataSets.connId=== '4'">
+            <el-form ref="connectionodps" :model="connectionodps" label-width="120px"
+            :rules="nodpsRules">
+                <el-form-item label="名称：" prop="odpsName">
+                    <el-input v-model="connectionodps.odpsName" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="项目名称：" prop="odpsProjectName">
+                    <el-input v-model="connectionodps.odpsProjectName" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="驱动：" prop="odpsDrive">
+                    <template>
+                        <el-select v-model="connectionodps.odpsDrive" placeholder="请选择">
+                            <el-option  label="inceptor-5.1.0" value="hive2"></el-option>
+                            <el-option  label="MySQL" value="mysql"></el-option>
+                            <el-option  label="db2jcc4" value="db2"></el-option>
+                            <el-option  label="oracle6" value="oracle:thin"></el-option>
+                            <el-option  label="sqlserver41" value="sqlserver"></el-option>
+
+                        </el-select>
+                    </template>
+                </el-form-item>
+                <el-form-item label="目标表名：" prop="odpsAdditional">
+                    <el-input v-model="connectionodps.odpsAdditional" placeholder=""></el-input>
+                </el-form-item>
+                    <el-form-item label="数据库链接：">
+                    <el-input disabled v-model="odpsDbConnection" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="Access Id："  prop="odpsAccessId">
+                    <el-input v-model="connectionodps.odpsAccessId" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="Access Key"  prop="odpsAccessKey">
+                    <el-input v-model="connectionodps.odpsAccessKey" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <!-- <el-button type="primary" @click="testDataConnact">测试</el-button> -->
+                </el-form-item>
+            </el-form>
+        </div>
+      <span slot="footer" class="dialog-footer">
+          <!-- <el-button type="primary" @click="allocatedData">分配数据集</el-button> -->
+          <el-button type="primary" @click="sureDataSets" >确定</el-button>
+          <!-- v-if="this.addDataSets.dsId === null" -->
+          <el-button @click="cancelSetData">取消</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+<script>
+
+import {
+  selectInfo,
+  getDs,
+  getAuditList,
+  addDataCentratSets,
+  submitAudit,
+  obtainCentratSets,
+  tableNameCheck,
+  tableStrickCheck,
+  getResultSet
+} from '@/api/sys-monitoringAnalysis/modelInfoDataCR/submitExperiments'
+import cron from './cron'
+import { commonPattern, adminisValidInputModel } from '@/utils/formValidate'
+import { getToken } from '@/utils/auth'
+export default {
+  components: {
+    cron
+  },
+  data() {
+    const generateData = _ => {
+      const data = []
+      for (let i = 1; i <= 15; i++) {
+        data.push({
+          key: i,
+          label: `银行大额交易 ${i}`,
+          disabled: i % 4 === 0
+        })
+      }
+      return data
+    }
+    var tableNameValidInput = (rule, value, callback) => {
+      const specialChar = /[！#￥（——）：；“”‘、，|《。》？、【】[\]]/im
+      const specialEng = /[`~!@#$%^&*+<>?:"{},\/;'[\]]/im
+      if (specialChar.test(value) || specialEng.test(value) || !commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能填写特殊字符与空格'))
+      } else {
+        callback()
+      }
+    }
+    var tableStrValidInput = (rule, value, callback) => {
+      const specialChar = /[！#￥—：、|《。》？、【】[\]]/im
+      const specialEng = /[`~!@#$%^&*+<>?:{}\/[\]]/im
+      if (specialChar.test(value) || specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      filelength: 0,
+      enclosure: '',
+      showCronBox: false,
+      submitToFlag: false,
+      elapsedTime: '',
+      configurationMsg: [],
+      activeName: 's',
+      sVal: '',
+      mVal: '',
+      hVal: '',
+      dVal: '',
+      monthVal: '',
+      weekVal: '',
+      yearVal: '',
+      cronExpression: '',
+      data: generateData(),
+      checkbox: [],
+      warningData: [], // 展示预警范围数据
+      dataArrayInfo: [], // 数据来源
+      form: {
+        name: '',
+        descriptionInfo: '',
+        texatDescrip: '',
+        businessMeaning: '',
+        outputResultSet: '',
+        characteristics: '',
+        estimatedWarning: '',
+        tableName: '',
+        tableStructure: ''
+      },
+      dialogStorageVisible: false,
+      fileName: '',
+      onlyData: {},
+      options: [],
+      tableData: [],
+      // 接收选择数据的勾选数据
+      isReadyonly: [],
+      multipleTable: [],
+      fileList: [],
+      checkWeekList: [],
+      checkMouthList: [],
+      checkQuarterList: [],
+      routerPid: '',
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      total: null,
+      // 添加数据集
+      addDataSets: {
+        taskId: '',
+        dataModelName: '',
+        connId: '1',
+        dsId: ''
+      },
+      dialogVisible: false,
+      // 连接类型的四个字段
+      connectionjdbc: {
+        jdbcConnType: '',
+        connDrive: 'hive2',
+        connAddress: '',
+        connPort: '',
+        connUrl: '',
+        connDatabase: '',
+        connTableName: '',
+        connUsername: '',
+        connPassword: ''
+      },
+      jdbcRules: {
+        connDrive: [
+          { required: true, message: '内容不能为空', trigger: 'change' }
+        ],
+        connAddress: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        connPort: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        connDatabase: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        connTableName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        // nameNodes: '',
+        // port: '',
+        connUsername: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        connPassword: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connectionhbase: {
+        hbaseConnType: '',
+        hbaseName: '',
+        hbaseNamespace: ''
+      },
+      hbaseRules: {
+        hbaseName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        hbaseNamespace: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connectionhdfs: {
+        hdfsConnType: '',
+        hdfsName: '',
+        hdfsRemoteCluster: false,
+        hdfsNameNodes: '',
+        hdfsPort: ''
+      },
+      hdfsRules: {
+        hdfsName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        hdfsNameNodes: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        hdfsPort: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connectionodps: {
+        odpsConnType: '',
+        odpsName: '',
+        odpsProjectName: '',
+        odpsDrive: '',
+        odpsAdditional: '',
+        odpsDbConnection: '',
+        odpsAccessId: '',
+        odpsAccessKey: ''
+      },
+      nodpsRules: {
+        odpsName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsProjectName: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsDrive: [
+          { required: true, message: '内容不能为空', trigger: 'change' }
+        ],
+        odpsAdditional: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsDbConnection: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsAccessId: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ],
+        odpsAccessKey: [
+          { required: true, message: '内容不能为空', trigger: 'blur' }
+        ]
+      },
+      connMessageData: {},
+      ifadd: true,
+      ifRun: false,
+      dataFrom: [],
+      formRules: {
+        descriptionInfo: [
+          { required: true, message: '请选择可疑涉罪类型', trigger: 'change' }
+        ],
+        characteristics: [
+          { max: 100, message: '内容长度不能超100', trigger: 'blur' }
+        ],
+        businessMeaning: [
+          { max: 100, message: '内容长度不能超100', trigger: 'blur' }
+        ],
+        estimatedWarning: [
+          { validator: adminisValidInputModel, trigger: 'blur' },
+          { max: 50, message: '内容长度不能超50', trigger: 'blur' }
+        ],
+        tableName: [
+          { required: true, validator: tableNameValidInput, trigger: 'blur' },
+          { max: 50, message: '内容长度不能超50', trigger: 'blur' }
+        ],
+        tableStructure: [
+          { required: true, validator: tableStrValidInput, trigger: 'blur' },
+          { max: 1000, message: '内容长度不能超1000', trigger: 'blur' }
+        ]
+      },
+      submitExamine: false,
+      allocatedDataSet: {
+        dsId: '',
+        dataName: '',
+        dataVisible: []
+      },
+      transferData: [],
+      pid: '',
+      dialogDistributionVisible: false,
+      defaultProps: {
+        children: 'children',
+        label: 'text'
+      },
+      transferOptions: [],
+      transferDataRange: [],
+      fileNum: 0,
+      tabUpDataAllId: [],
+      tabUpDataAllStrName: []
+    }
+  },
+  computed: {
+    paramsObj: function() {
+      return {
+        pageSize: this.pageInfo.pageSize,
+        pageNum: this.pageInfo.pageNum,
+        pid: this.$route.query.id
+      }
+    },
+    tableDataCon() {
+      return [{
+        sVal: this.sVal,
+        mVal: this.mVal,
+        hVal: this.hVal,
+        dVal: this.dVal,
+        monthVal: this.monthVal,
+        weekVal: this.weekVal,
+        yearVal: this.yearVal
+      }]
+    },
+    connUrl: function() {
+      this.connectionjdbc.connUrl = 'jdbc:' +
+      this.connectionjdbc.connDrive + '://' + this.connectionjdbc.connAddress + ':' + this.connectionjdbc.connPort + '/' + this.connectionjdbc.connDatabase
+      return this.connectionjdbc.connUrl
+    },
+    odpsDbConnection: function() {
+      this.connectionodps.odpsDbConnection = 'jdbc:' +
+      this.connectionodps.odpsDrive + '//?project=' + this.connectionodps.odpsProjectName
+      return this.connectionodps.odpsDbConnection
+    },
+    addSetEventObj: function() {
+      var addSetEventObj = {}
+      switch (this.addDataSets.connId) {
+        case '1':
+          addSetEventObj.jdbc = this.connectionjdbc
+          addSetEventObj.jdbc.jdbcConnType = 'jdbc'
+          addSetEventObj.connType = 'jdbc'
+          break
+        case '2':
+          addSetEventObj.hbase = this.connectionhbase
+          addSetEventObj.hbase.hbaseConnType = 'hbase'
+          addSetEventObj.connType = 'hbase'
+          break
+        case '3':
+          addSetEventObj.hdfs = this.connectionhdfs
+          addSetEventObj.hdfs.hdfsConnType = 'hdfs'
+          addSetEventObj.connType = 'hdfs'
+          break
+        case '4':
+          addSetEventObj.odps = this.connectionodps
+          addSetEventObj.odps.odpsConnType = 'odps'
+          addSetEventObj.connType = 'odps'
+          break
+      }
+      // addSetEventObj.taskId = this.addDataSets.taskId
+      return addSetEventObj
+    }
+  },
+  mounted() {
+    this.form.name = this.$route.query.nameTableInfo
+    this.routerPid = this.$route.query.id
+    this.getSelectInfo()
+    this.getRultset()
+    // this.getAudit()
+    this.getTreeData()
+    this.getDataList()
+    this.productName = this.$route.query.name
+    // this.onlyData = this.$route.query.tableInfo.row
+  },
+  created() {
+  },
+  methods: {
+    getRultset() {
+      getResultSet(this.routerPid, encodeURI(this.$route.query.pathAid)).then(res => {
+        if (res.code === 200) {
+          this.form.outputResultSet = res.data
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.data,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    tableNameCheckFn() {
+      const obj = {
+        aListName: this.form.tableName
+      }
+      tableNameCheck(obj).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: res.data,
+            duration: 6000,
+            showClose: true
+          })
+        } else {
+          this.$message({
+            type: 'warning',
+            message: res.data,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    tableStructureCheckFn() {
+      const obj = {
+        databaseConnection: this.form.tableStructure
+      }
+      tableStrickCheck(obj).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: res.data,
+            duration: 6000,
+            showClose: true
+          })
+        } else {
+          this.$message({
+            type: 'warning',
+            message: res.data,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    showSelect() {
+      return true
+      // for (let i = 0; i < this.dataFrom.length; i++) {
+      //   if (this.dataFrom[i] === scope.row.id.toString()) {
+      //     return true
+      //   }
+      // }
+    },
+    checkYjRange() {
+      this.dialogDistributionVisible = true
+    },
+    getTreeData() {
+      var str = getToken()
+      addDataCentratSets(str).then(res => {
+        if (res.code === 200) {
+          this.allocatedDataSet.dataVisible = JSON.parse(JSON.stringify(res.data.data))
+        }
+      })
+    },
+    // 数据可见范围的数据
+    handleNodeClick(data) {
+      var str = getToken()
+      if (this.$refs.tree.getCheckedKeys().length) {
+        var arrString = this.$refs.tree.getCheckedKeys().join()
+        // console.log(arrString)
+        obtainCentratSets(str, arrString).then(res => {
+          if (res.code === 200) {
+            const data = res.data.data
+            const arr = []
+            // if (data.length > 0) {
+            for (var item in data) {
+              for (let i = 0; i < data[item].length; i++) {
+                arr.push(data[item][i])
+              }
+            }
+            this.transferOptions = arr
+            // }
+          } else {
+            this.$message({
+              message: res.message,
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+          }
+        })
+      } else {
+        this.transferOptions = []
+        this.transferData = []
+      }
+    },
+    distriButionSure() {
+      this.dialogDistributionVisible = false
+      this.warningData = this.transferDataRange
+      // console.log(this.transferDataRange)
+    },
+    xzsjjEvent() {
+      this.dataArrayInfo = []
+      this.dialogStorageVisible = false
+    },
+    distriButionConsole() {
+      this.dialogDistributionVisible = false
+      this.warningData = []
+      this.transferOptions = []
+      this.transferData = []
+      this.$refs.tree.setCheckedKeys([])
+    },
+    handleBeforeUpload(file) {
+      this.submitToFlag = true
+    },
+    // 选择文件change事件
+    changeUpload(file, fileList) {
+      // console.log(this.$refs['uploadName'].uploadFiles, file, fileList)
+      // var testmsg = file.name.substring(file.name.lastIndexOf('.') + 1)
+      // const extension = testmsg === 'xls'
+      // const extension2 = testmsg === 'xlsx'
+      const isLt2M = file.size / 1024 / 1024 < 10
+      const fileLenth = file.name.length <= 100
+      const fileListNum = fileList.length <= 5
+      var arInfoNum = 0
+      fileList.forEach((item, idx) => {
+        if (file.name === item.name) {
+          arInfoNum++
+          if (arInfoNum === 2) {
+            this.$message({
+              message: '相同文件名不能重复上传！',
+              type: 'warning',
+              duration: 6000,
+              showClose: true
+            })
+            fileList.splice(idx, 1)
+          }
+        }
+      })
+      if (!fileListNum) {
+        this.$message({
+          message: '上传文件数量最多只能上传5个!',
+          type: 'warning',
+          duration: 6000,
+          showClose: true
+        })
+        fileList.pop()
+      }
+      // if (!extension && !extension2) {
+      //   this.submitToFlag = false
+      //   this.$message({
+      //     message: '上传文件只能是 xls、xlsx格式!',
+      //     type: 'warning',
+      //     duration: 6000,
+      //     showClose: true
+      //   })
+      //   fileList.pop()
+      // }
+      if (!fileLenth) {
+        this.submitToFlag = false
+        this.$message({
+          message: '文件名称长度不能超过100位!',
+          type: 'warning',
+          duration: 6000,
+          showClose: true
+        })
+        fileList.pop()
+      }
+      if (!isLt2M) {
+        this.submitToFlag = false
+        this.$message({
+          message: '上传文件大小不能超过 10MB!',
+          type: 'warning',
+          duration: 6000,
+          showClose: true
+        })
+        fileList.pop()
+      }
+      // if (extension && extension2 && fileLenth && isLt2M) {
+      //   this.filelength = fileList.length
+      //   this.enclosure = file
+      // }
+      // console.log(this.filelength)
+      return (isLt2M && fileLenth && fileListNum) || (isLt2M && fileLenth && fileListNum)
+    },
+    getAudit() {
+      const str = encodeURI('审核岗')
+      getAuditList(str).then(res => {
+        if (res.code === 200) {
+          // console.log(res.data[0].members)
+          if (res.data[0].members) {
+            const data = res.data[0].members
+            for (let i = 0; i < data.length; i++) {
+              this.transferData.push({ 'label': data[i], 'value': data[i] })
+            }
+          }
+          // console.log(this.transferData)
+          // this.transferData = res.data
+        } else {
+          this.$message({
+            type: 'warning',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    getSelectInfo() {
+      selectInfo().then(res => {
+        this.options = res.data
+      })
+    },
+    // 勾选事件
+    handleSelectionChange(val) {
+      this.dataArrayInfo = []
+      for (let i = 0; i < val.length; i++) {
+        this.dataArrayInfo.push(val[i].name)
+      }
+      this.pid = val[0].pid
+      this.dataFrom = []
+      const data = val
+      for (let i = 0; i < data.length; i++) {
+        this.dataFrom.push(data[i].id.toString())
+      }
+    },
+    handleSuccess(response, file, fileList) {
+      if (response.code === 200) {
+        this.fileNum++
+        this.tabUpDataAllId.push(response.data.noteId)
+        this.tabUpDataAllStrName.push(response.data.aExternalFile)
+        if (this.fileNum === this.$refs['uploadName'].uploadFiles.length) {
+          this.submitToFlag = false
+          this.onSubCenterBtn()
+          this.fileNum = 0
+          this.$message({
+            type: 'success',
+            message: response.message,
+            showClose: true
+          })
+          this.$refs['uploadName'].uploadFiles = []
+        }
+        // this.fileName = response.data.aExternalFile
+        // this.noteId = response.data.noteId
+      }
+    },
+    handleError(err, file, fileList) {
+      console.log(err, file, fileList)
+      if (fileList.length === 0) {
+        this.submitToFlag = false
+      }
+    },
+    // 选择数据来源
+    chooseData() {
+      this.dialogStorageVisible = true
+    },
+    // 获取列表
+    getDataList() {
+      getDs(this.paramsObj).then(res => {
+        if (res.code === 200) {
+          const data = res.data[0].list
+          let index
+          for (index in data) {
+            if (data[index].modifyTimestamp) {
+              var unixTimestamp = new Date(data[index].modifyTimestamp)
+              data[index].modifyTimestamp = unixTimestamp.toLocaleString()
+            }
+          }
+          this.tableData = data
+          this.total = res.data[0].total
+        } else {
+          this.$message({
+            type: 'error',
+            message: res.message,
+            duration: 6000,
+            showClose: true
+          })
+        }
+      })
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getDataList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getDataList()
+    },
+    // 确定来源
+    sendAssemblyData() {
+      this.dialogStorageVisible = false
+    },
+    // 上传外部文件
+    handleRemove(file, fileList) {
+      // console.log(file, fileList)
+    },
+    handlePreview(file) {
+      // console.log(file)
+      // location.href = `/monitor/admInvestigation/download?token=${this.token}`
+    },
+    handleExceed(files, fileList) {
+      // console.log(fileList, files)
+      // if (fileList.legth > 5) {
+      //   this.$message({
+      //     message: '上传文件最多上传5个!',
+      //     type: 'warning',
+      //     duration: 6000,
+      //     showClose: true
+      //   })
+      // }
+      // this.$message.warning(`当前限制选择 1 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`)
+    },
+    beforeRemove(file, fileList) {
+      // this.$message({
+      //   type: 'warning',
+      //   message: '删除成功'
+      // })
+      // return this.$confirm(`确定移除 ${file.name}？`)
+    },
+    // 确定添加数据集
+    sureDataSets() {
+      // console.log(this.addSetEventObj)
+      switch (this.addDataSets.connId) {
+        case '1':
+          this.$refs.connectionjdbc.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.dialogVisible = false
+              this.connMessageData = this.addSetEventObj.jdbc
+            }
+          })
+          break
+        case '2':
+          this.$refs.connectionhbase.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.dialogVisible = false
+              this.connMessageData = this.addSetEventObj.hbase
+            }
+          })
+          break
+        case '3':
+          this.$refs.connectionhdfs.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.dialogVisible = false
+              this.connMessageData = this.addSetEventObj.hdfs
+            }
+          })
+          break
+        case '4':
+          this.$refs.connectionodps.validate(valid => {
+            if (valid) {
+              this.ifRun = true
+              this.dialogVisible = false
+              this.connMessageData = this.addSetEventObj.odps
+            }
+          })
+          break
+        default:
+          this.$message({
+            type: 'error',
+            message: '请选择连接类型',
+            duration: 6000
+          })
+      }
+    },
+    // 取消添加数据集
+    cancelSetData(scope) {
+      this.ifadd = true
+      this.dialogVisible = false
+      this.addDataSets.connId = ''
+      this.$refs['connectionjdbc'].resetFields()
+      this.$refs['connectionhbase'].resetFields()
+      this.$refs['connectionhdfs'].resetFields()
+      this.$refs['connectionodps'].resetFields()
+    },
+    // 连接类型值初始化（写校验时清空）
+    handChangeSelectEvent(val) {
+      this.$refs['connectionjdbc'].resetFields()
+      this.$refs['connectionhbase'].resetFields()
+      this.$refs['connectionhdfs'].resetFields()
+      this.$refs['connectionodps'].resetFields()
+    },
+
+    // 选择审核人员
+    handleChange() {},
+    handleClick() {},
+    // 中转提交审核按钮
+    onSubCenterBtn() {
+      var warningUserArr = []
+      for (let i = 0; i < this.transferOptions.length; i++) {
+        for (let j = 0; j < this.transferDataRange.length; j++) {
+          if (this.transferDataRange[j] === this.transferOptions[i].name) {
+            warningUserArr.push(this.transferOptions[i].userId)
+          }
+        }
+      }
+      var waringUserStr = warningUserArr.join(',')
+
+      const params = {
+        aId: this.$route.query.pathAid,
+        aName: this.form.name,
+        aSuspectOffenceType: this.form.descriptionInfo,
+        texatDescrip: this.form.texatDescrip,
+        aBusinessMeaning: this.form.businessMeaning,
+        aCharacteristicsTha: this.form.characteristics,
+        aWarningRate: this.form.estimatedWarning,
+        aDataSources: this.dataArrayInfo ? this.dataArrayInfo.join(',') : '',
+        aExternalFile: this.tabUpDataAllStrName ? this.tabUpDataAllStrName.join(',') : '',
+        noteId: this.tabUpDataAllId ? this.tabUpDataAllId.join(',') : '',
+        aListStructure: this.form.tableStructure,
+        aCycleOfRun: this.cronExpression,
+        // aRunTime: this.elapsedTime,
+        aAudit: this.configurationMsg.join(','),
+        aPid: this.pid,
+        productName: this.productName,
+        warningRang: this.transferDataRange.join(','),
+        warningRangProduct: this.$refs.tree.getCheckedKeys().join() ? this.$refs.tree.getCheckedKeys().join() : '',
+        warningRangUser: waringUserStr,
+        // connType: this.addSetEventObj.connType,
+        // // aListName: this.connMessageData.connTableName ? this.connMessageData.connTableName : '',
+        aListName: this.form.outputResultSet ? this.form.outputResultSet : '',
+        modelKey: this.$route.query.modelKey
+        // connMessage: this.connMessageData
+      }
+      // if (this.form.descriptionInfo === '13其他类型（非法外汇买卖，涉嫌以积分换取高价值礼品、民间借贷等）') {
+      //   params.texatDescrip = this.form.texatDescrip
+      // }
+
+      submitAudit(params).then(res => {
+        if (res.code === 200) {
+          this.submitExamine = false
+          this.$message({
+            type: 'success',
+            message: '提交审核成功！',
+            duration: 6000
+          })
+          this.tabUpDataAllId = []
+          this.tabUpDataAllStrName = []
+          if (sessionStorage.getItem('mySophon')) {
+            const obj = JSON.parse(sessionStorage.getItem('mySophon'))
+            obj.comeOnBloar = false
+            obj.twoCome = true
+            sessionStorage.setItem('mySophon', JSON.stringify(obj))
+            this.$router.go(-1)
+          }
+        } else {
+          this.tabUpDataAllId = []
+          this.tabUpDataAllStrName = []
+          this.submitExamine = false
+        }
+      })
+        .catch(() => {
+          this.submitExamine = false
+          this.tabUpDataAllId = []
+          this.tabUpDataAllStrName = []
+        })
+    },
+    onSubmit() {
+      this.submitExamine = true
+      this.$refs['form'].validate((valid) => {
+        if (valid) {
+          if (!this.transferDataRange.length) {
+            this.submitExamine = false
+            this.$message({
+              type: 'warning',
+              message: '请选择预警范围',
+              duration: 6000
+            })
+            return false
+          }
+          // if (!this.dataFrom.length) {
+          //   this.submitExamine = false
+          //   this.$message({
+          //     type: 'warning',
+          //     message: '请选择数据来源',
+          //     duration: 6000
+          //   })
+          //   return false
+          // }
+          if (this.$refs['uploadName'].uploadFiles.length > 0) {
+            this.$refs.uploadName.submit()
+          } else {
+            this.onSubCenterBtn()
+          }
+        } else {
+          this.submitExamine = false
+          this.$message({
+            type: 'warning',
+            message: '请输入必填项',
+            duration: 6000
+          })
+        }
+      })
+    },
+    hanldlChange(value) {
+      // console.log('改变之后的值是:' + value)
+      if (value === 3) {
+        this.autoRun = true
+        this.regular = !this.regular
+      } else if (value === 6) {
+        this.regular = true
+        this.autoRun = !this.autoRun
+      }
+    },
+    addDomain() {
+      this.domains.unshift({
+        value: '',
+        key: Date.now()
+      })
+    },
+    removeDomain(item, index) {
+      // var index = this.dynamicValidateForm.domains.indexOf(item)
+      if (index > 0) {
+        this.domains.splice(index, 1)
+      }
+    },
+    routerBack() {
+      this.$alert('返回后数据将不会保存!', '提示', {
+        confirmButtonText: '确定',
+        callback: action => {
+          if (sessionStorage.getItem('mySophon')) {
+            const obj = JSON.parse(sessionStorage.getItem('mySophon'))
+            obj.comeOnBloar = false
+            obj.twoCome = true
+            sessionStorage.setItem('mySophon', JSON.stringify(obj))
+            // this.$router.go(-1)
+          }
+          this.$router.go(-1)
+        }
+      })
+    }
+  }
+}
+</script>
+<style rel="stylesheet/scss" lang="scss">
+.auditDetail {
+    .box-card{
+        .el-card__body{
+            .content{
+                .el-form{
+                    .el-row{
+                        .el-col{
+                            .el-form-item{
+                                .el-form-item__content{
+                                    .btn button{
+                                        margin-bottom: 10px;
+                                    }
+                                    .el-select{
+                                        width: 100%;
+                                    }
+                                    .upload-demo{
+                                        .el-upload button{
+                                            width: 104px;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+  .card-center {
+    text-align: center;
+  }
+  .el-transfer-panel__body {
+    .el-checkbox-group {
+      .el-checkbox {
+        margin-right: 56px;
+      }
+    }
+  }
+  .card-header {
+    .el-card__header {
+      padding: 0px 20px;
+    }
+  }
+  .dataVisible {
+    // height: 20vh;
+    overflow-y: auto;
+  }
+  .addFont {
+    display: inline-block;
+    font-size: 26px;
+    vertical-align: bottom;
+    margin-left: 5px;
+  }
+  .exInpBox{padding:20px 0 0;}
+  .divScroll{
+    // height: 300px;
+    margin:0 20px 0 0;
+    overflow-y: auto;
+  }
+  .ml10{
+    margin-left: 10px;
+  }
+}
+</style>

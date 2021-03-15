@@ -1,0 +1,672 @@
+<template>
+  <div class="rosterManage_main">
+    <el-card>
+      <div slot="header" class="clearfix header">
+        <span>名单查询</span>
+        <div v-if="isShow" style="float:right;">
+          <router-link to="rosterManage/bigUpload">
+            <el-button type="text">大文件导入</el-button>
+          </router-link>
+          <span class="itemline">|</span>
+          <router-link to="rosterManage/batchImport">
+            <el-button type="text">批量导入</el-button>
+          </router-link>
+          <span class="itemline">|</span>
+
+          <router-link to="rosterManage/manualEntry">
+            <el-button type="text">手工录入</el-button>
+          </router-link>
+          <!-- <span class="itemline">|</span>
+          <router-link
+            :to="{name: 'rosterManage_comparison', query:{name: 'rosterWarning_rosterManage'}}"
+          >
+            <el-button type="text">名单比对</el-button>
+          </router-link> -->
+        </div>
+      </div>
+
+      <el-form :model="form" class="searchContent" ref="searchForm" label-width="140px" :rules="rules">
+        <template v-if="toggleSearch">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="主体名称" prop="subjectName">
+                <el-input v-model="form.subjectName" placeholder="最长512字符数" maxlength="512" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="主体证件号码" prop="subjectINum">
+                <el-input v-model="form.subjectINum" placeholder="最长128字符数" maxlength="128" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-button :loading="loadingA" type="primary" @click="searchFn('cx')">查询</el-button>
+              <el-button type="primary" plain @click="clearForm">清空</el-button>
+              <el-button type="text" icon="el-icon-arrow-down" @click="toggleSearch=false">展开</el-button>
+            </el-col>
+          </el-row>
+        </template>
+        <template v-else>
+          <el-row class="toggle" :gutter="18">
+            <el-col :span="8">
+              <el-form-item label="主体名称" prop="subjectName">
+                <el-input v-model="form.subjectName" placeholder="最长512字符数" maxlength="512" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="主体证件号码" prop="subjectINum">
+                <el-input v-model="form.subjectINum" placeholder="最长128字符数" maxlength="128" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="导入文件名称" prop="impName">
+                <el-input v-model="form.impName" placeholder="最长128字符数" maxlength="128" ></el-input>
+              </el-form-item>
+            </el-col>
+          <!-- </el-row>
+          
+           <el-row class="toggle" :gutter="18"> -->
+               <el-col :span="8">
+              <el-form-item label="账户号码" prop="accountNum">
+                <el-input v-model="form.accountNum" placeholder="最长64字符数" maxlength="64" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="名单来源文档编号" prop="listSourceDocNum">
+                <el-input v-model="form.listSourceDocNum" placeholder="最长128字符数" maxlength="128" ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="信息入库日期" prop="date">
+                <el-date-picker
+                  clearable
+                  value-format="yyyy-MM-dd"
+                  v-model="form.date"
+                  type="daterange"
+                  range-separator="至" 
+                  start-placeholder="开始日期" 
+                  end-placeholder="结束日期"
+                  unlink-panels
+                  :picker-options="pickerOptions1"
+                  style="width:100%"
+                ></el-date-picker>
+              </el-form-item>
+            </el-col>
+           <!-- </el-row>
+           <el-row class="toggle" :gutter="18"> -->
+             <el-col :span="8">
+               <el-form-item label="来源方向" prop="sourceDire">
+                <el-select v-model="form.sourceDire" placeholder="请选择" filterable clearable multiple  >
+                  <el-option
+                    v-for="(item,index) in sourceDireArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+              <el-col :span="8">
+               <el-form-item label="设置排序" prop="selectOrder">
+                <el-select v-model="form.selectOrder" placeholder="请选择"  clearable   >
+                  <el-option
+                    v-for="(item,index) in sorteArr"
+                    :key="index"
+                    :label="item.code"
+                    :value="item.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+             <el-col :span="8"  v-if="isShow">
+               <el-form-item label="操作类型" prop="validData">
+                <el-select v-model="form.validData" placeholder="请选择"  clearable   >
+                  <el-option
+                    v-for="(item,index) in isPowereArr"
+                    :key="index"
+                    :label="item.code"
+                    :value="item.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            </el-row>
+         
+          
+          <el-row :gutter="18">
+                       <el-col :span="24">
+              <el-form-item label="来源业务" prop="sourceBusiness">
+                <el-select v-model="form.sourceBusiness" placeholder="请选择" multiple filterable clearable>
+                  <el-option
+                    v-for="(item,index) in sourceBusinessArr"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+  
+            <el-row :gutter="18">
+              <el-col :span="24">
+              <!-- <preliminary-judgment :lableWidth="114" ref="judgment" @judgmentOther="judgmentOther"></preliminary-judgment> -->
+              <el-form-item label="初步判断" prop="preliminaryJudgment">
+                <el-select
+                  filterable
+                  v-model="form.preliminaryJudgment"
+                  multiple
+                  placeholder="请选择">
+                  <el-option
+                    v-for="(item,index) in dialogJudgmentData"
+                    :key="index"
+                    :label="item.codeName"
+                    :value="item.codeId">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              </el-col>
+          
+          </el-row>
+          <el-row :gutter="18">
+            <el-col :span="24">
+              <el-form-item label="备注" prop="remark">
+                <el-input type="textarea" v-model="form.remark" maxlength="1024" placeholder="最长1024字符数"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <div style="textAlign:right; margin-bottom:10px">
+            <el-button :loading="loadingA" type="primary" @click="searchFn('cx')">查询</el-button>
+            <el-button type="primary" plain @click="clearForm">清空</el-button>
+            <el-button type="text" icon="el-icon-arrow-up" @click="toggleSearch = true">收起</el-button>
+          </div>
+        </template>
+      </el-form>
+
+      <el-alert title type="primary" :closable="false">
+        <template>
+          <!-- <i class="el-icon-info" style="color:#1890ff"></i> -->
+          <el-button type="text" @click="exportExcel">批量导出</el-button>
+          <el-button type="text" @click="allowmassprune" v-if="isShow">批量删除</el-button>
+        </template>
+      </el-alert>
+      <br>
+      <el-table
+        v-loading="loadingA"
+        element-loading-text="拼命加载中"
+        element-loading-spinner="el-icon-loading"
+        element-loading-background="rgba(0, 0, 0, 0.1)"
+        @selection-change="handleSelectionChange"
+        :data="list"
+        tooltip-effect="dark"
+        ref="rosterTable"
+        :row-key="getRowKey"
+        style="width: 100%"
+      >
+        <el-table-column reserve-selection type="selection" fixed width="80"></el-table-column>
+        <el-table-column label="序号" type="index" width="80"></el-table-column>
+        <el-table-column prop="subjectName" label="主体名称" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="subjectINum" label="主体证件号码" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="accountNum" label="账户号码" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column
+          prop="listSourceDocNum"
+          label="名单来源文档编号"
+          min-width="140"
+          show-overflow-tooltip
+        ></el-table-column>
+        <el-table-column prop="preliminaryJudgment" show-overflow-tooltip label="初步判断" min-width="180">
+          <template slot-scope="scope">
+            <div>{{preliminaryJudgmeFiler(scope.row)}}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sourceDire" label="来源方向" min-width="120" show-overflow-tooltip ></el-table-column>
+        <el-table-column prop="sourceBusiness" label="来源业务" min-width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="infoSaveDate" label="信息入库日期" min-width="180" show-overflow-tooltip></el-table-column>
+        <!-- <el-table-column prop="updUser"  label="生效名单" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="updUser" v-if="isShow" label="删除名单" min-width="100" show-overflow-tooltip></el-table-column> -->
+        <el-table-column v-if="isShow" prop="delFlag" label="操作类型" min-width="100" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{scope.row.delFlag === 0?'新增': scope.row.delFlag === 1?'删除':'更新'}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="updUser" v-if="isShow" label="操作人" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="lastUpdDate" label="操作时间" min-width="180" show-overflow-tooltip></el-table-column>
+        <el-table-column fixed="right" label="操作" width="120" v-if="isShow">
+          <template slot-scope="scope">
+            <router-link v-if="scope.row.delFlag!== 1" :to="{name:'rosterManage_manualEntry',query: { id: scope.row.lcnId}}">
+              <el-button type="text">编辑</el-button>
+            </router-link>
+            <router-link :to="{name:'rosterManage_manualEntry',query: { id: scope.row.lcnId,type:true}}">
+              <el-button type="text">查看</el-button>
+            </router-link>
+            <el-button v-if="scope.row.delFlag!== 1" type="text" @click.prevent="delItem(scope)">删除</el-button>
+          </template>
+        </el-table-column>
+        <el-table-column fixed="right" label="操作" width="120" v-else>
+          <template slot-scope="scope">
+            <el-button type="text" @click="viewRoster(scope.row.lcnId)">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pageInfo.pageNum"
+        :page-size="pageInfo.pagesize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pageInfo.total"
+        background
+      ></el-pagination>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import { getToken } from '@/utils/auth'
+import { getTable, delRoster } from '@/api/sys-monitoringAnalysis/roster-warning/roster-manage.js'
+import { getsourceBusinessArr } from '@/api/sys-monitoringAnalysis/roster-warning/levelConfiguration.js'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+// import { adminisValidInput, adminisValid, delDataValidInput, commonPattern } from '@/utils/formValidate'
+import { ValidQueryInput, commonPattern } from '@/utils/formValidate'
+// import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/preliminaryJudgment.vue'
+import organizationTree from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/organizationTree.vue'
+
+export default {
+  components: {
+    organizationTree
+    // preliminaryJudgment
+  },
+  data() {
+    return {
+      getRowKey(row) {
+        return row.lcnId
+      },
+      pickerOptions1: {
+        disabledDate(time) {
+          return time.getTime() > Date.now() - 8.64e6
+        }
+      },
+      jurisdiction: 'monitor:nameEdit:query',
+      isShow: true, // 判断是不是管理员
+      loadingA: true,
+      toggleSearch: true, // 条件收起--展开
+      individual: 0,
+      organization: 0,
+      dialogJudgmentData: [],
+      form: {
+        impName: '',
+        selectOrder: '',
+        validData: '',
+        sourceDire: [],
+        sourceBusiness: [],
+        subjectName: '',
+        subjectINum: '',
+        accountNum: '',
+        listSourceDocNum: '',
+        date: '',
+        remark: '',
+        preliminaryJudgmentInp1: '', // 校验初步判断1401
+        preliminaryJudgmentInp2: '', // 校验初步判断1401
+        preliminaryJudgment: []
+      },
+      sorteArr: [
+        { code: '入库时间', value: 'S' },
+        { code: '操作时间', value: 'B' }
+      ],
+      isPowereArr: [
+        { code: '生效', value: '0' },
+        { code: '删除', value: '1' }
+      ],
+      sourceDireArr: [], // 来源方向
+      sourceBusinessArr: [], // 来源业务
+      list: [],
+      listLoading: true,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      },
+      select_orderId: [],
+      token: getToken(),
+      // rules: {
+      //   // 非必填
+      //   impName: [{ validator: adminisValidInput, trigger: 'blur' }],
+      //   accountNum: [{ validator: this.onlyNumberValidate1, trigger: 'blur' }],
+      //   // sourceDire: [{ validator: adminisValidInput, trigger: 'blur' }],
+      //   // sourceBusiness: [{ validator: adminisValidInput, trigger: 'blur' }],
+      //   subjectName: [{ validator: delDataValidInput, trigger: 'blur' }],
+      //   subjectINum: [{ validator: this.onlyNumberValidate, trigger: 'blur' }],
+      //   listSourceDocNum: [{ validator: adminisValid, trigger: 'blur' }],
+      //   remark: [{ validator: adminisValidInput, trigger: 'blur' }]
+      // }
+      rules: {
+        // 非必填
+        impName: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        accountNum: [{ validator: this.onlyNumberValidate1, trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }],
+        // sourceDire: [{ validator: adminisValidInput, trigger: 'blur' }],
+        // sourceBusiness: [{ validator: adminisValidInput, trigger: 'blur' }],
+        subjectName: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        subjectINum: [{ validator: this.onlyNumberValidate, trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }],
+        listSourceDocNum: [{ validator: ValidQueryInput, trigger: 'blur' }],
+        remark: [{ validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    // 列表查询参数
+    searchParams() {
+      const obj = Object.assign({}, this.form, this.pageInfo)
+      delete obj.date
+      delete obj.total
+      obj.validData = this.form.validData === '1' ? this.form.validData : '0'
+      obj.sourceDire = obj.sourceDire ? obj.sourceDire.join(',') : ''
+      obj.sourceBusiness = obj.sourceBusiness ? obj.sourceBusiness.join(',') : ''
+      obj.listSourceDocNum = encodeURI(this.form.listSourceDocNum)
+      if (this.form.date) {
+        obj.startInfoSaveDate = this.form.date[0] + ' 00:00:00'
+        obj.endInfoSaveDate = this.form.date[1] + ' 24:00:00'
+      }
+      return obj
+    },
+    ...mapGetters(['permissions_routers'])
+  },
+  created() {
+    if (sessionStorage.getItem('searchData')) {
+      const searchData = JSON.parse(sessionStorage.getItem('searchData'))
+      if (searchData.pageName === this.$route.name && searchData.ifReview) {
+        this.pageInfo = searchData.pageInfo
+        this.form = searchData.searchForm
+        this.toggleSearch = searchData.toggleSearch
+      }
+    }
+  },
+  mounted() {
+    this.fetchData(this.searchParams)
+    this.getDictionary('SCDT')
+    this.getDictionary('SCDS')
+    this.getDictionary('TOSC')
+    this.judge()
+    this.getarr()
+  },
+  methods: {
+    onlyNumberValidate(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== null && value !== '' && value !== undefined) {
+        if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    preliminaryJudgmeFiler(val) {
+      const arr = []
+      val.charosterPreliminaryJudgmentDOList.map(x => {
+        arr.push(x.preliminaryJudgme)
+      })
+      return arr.join(',')
+    },
+    // 判断是否是管理员
+    judge() {
+      if (this.permissions_routers.indexOf(this.jurisdiction) === -1) {
+        this.isShow = false
+      }
+    },
+    // 初步判断为1401 1402 的时候  返回的数据
+    judgmentOther(inp1, inp2) {
+      this.form.preliminaryJudgmentInp1 = inp1
+      this.form.preliminaryJudgmentInp2 = inp2
+    },
+    // 获取数据字典
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            // case 'SCDT':
+            // this.sourceDireArr = res.data
+            // break
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+            default:
+              break
+          }
+        }
+      })
+    },
+    getarr() {
+      var paramsObj = {
+        pageNum: 1,
+        pageSize: 9999
+      }
+      getsourceBusinessArr(paramsObj, '0').then(res => {
+        if (res.code === 200) {
+          this.sourceBusinessArr = res.data.list
+        }
+      })
+      getsourceBusinessArr(paramsObj, '1').then(res => {
+        if (res.code === 200) {
+          this.sourceDireArr = res.data.list
+        }
+      })
+    },
+    // 批量导出
+    exportExcel() {
+      if (this.select_orderId.length > 0) {
+        location.href = `/monitor/listwarn/center/${this.select_orderId.join()}/export?token=${this.token}`
+      } else {
+        this.$message({
+          message: '请先选择名单',
+          type: 'warning',
+          duration: 6000
+        })
+      }
+    },
+    // 查询条件清空
+    clearForm() {
+      // this.preliminaryJudgmentInp1 = ''
+      // this.preliminaryJudgmentInp2 = ''
+      this.form.preliminaryJudgment = []
+      this.form.impName = ''
+      this.form.sourceDire = ''
+      this.form.accountNum = ''
+      this.form.sourceBusiness = ''
+      this.form.subjectName = ''
+      this.form.subjectINum = ''
+      this.form.listSourceDocNum = ''
+      this.form.date = ''
+      this.form.remark = ''
+      this.form.validData = ''
+      this.$refs['searchForm'].clearValidate()
+    },
+    // 获取列表数据方法
+    fetchData(params, obj) {
+      params.preliminaryJudgment = params.preliminaryJudgment ? params.preliminaryJudgment.join(',') : ''
+      if (obj === 'cx') {
+        params.pageNum = 1
+        this.pageInfo.pageNum = 1
+      }
+      this.$refs.searchForm.validate(val => {
+        if (val) {
+          this.loadingA = true
+          getTable(params).then(res => {
+            if (res.code === 200) {
+              this.loadingA = false
+              this.list = res.data.pageInfo.list
+              this.pageInfo.total = res.data.pageInfo.total
+              this.individual = res.data.personal
+              this.organization = res.data.mechanism
+              const searchData = {
+                pageName: this.$route.name,
+                pageInfo: this.pageInfo,
+                searchForm: this.form,
+                toggleSearch: this.toggleSearch
+              }
+              sessionStorage.setItem('searchData', JSON.stringify(searchData))
+            }
+          }).catch(() => {
+            this.loadingA = false
+          })
+        }
+      })
+    },
+
+    // 查看名单
+    viewRoster(uid) {
+      this.$router.push({ name: 'rosterManage_detail', params: { rosterId: uid }})
+    },
+    // 点击查询
+    searchFn(obj) {
+      this.fetchData(this.searchParams, obj)
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.fetchData(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.fetchData(this.searchParams)
+    },
+    // 点击删除名单方法
+    delRosterFn(params) {
+      delRoster(params)
+        .then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '删除成功!',
+              duration: 6000
+            })
+            this.$refs.rosterTable.clearSelection()
+          }
+        })
+        .then(() => {
+          this.fetchData(this.searchParams)
+        })
+        .catch(() => {})
+    },
+    // 删除单条名单
+    delItem(scope) {
+      this.$confirm('是否要删除本条的数据？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          this.delRosterFn(scope.row.lcnId)
+        })
+        .catch(() => {
+          this.$message({
+            message: '已取消删除',
+            type: 'info',
+            duration: 6000
+          })
+        })
+    },
+
+    // 批量删除
+    allowmassprune() {
+      if (this.searchParams.validData === '1') {
+        if (this.select_orderId.length === 0) {
+          this.$message({
+            type: 'warning',
+            message: '请选择要删除的数据 ！',
+            duration: 6000
+          })
+        } else {
+          this.$message({
+            message: '不可再次删除',
+            type: 'warning',
+            duration: 6000
+          })
+        }
+      } else {
+        if (this.select_orderId.length > 0) {
+          this.$confirm('确定要删除选中的数据？', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          })
+            .then(() => {
+              this.delRosterFn(this.select_orderId.join())
+            })
+            .catch(() => {
+              this.$message({
+                message: '已取消删除',
+                type: 'info',
+                duration: 6000
+              })
+            })
+        } else {
+          this.$message({
+            type: 'warning',
+            message: '请选择要删除的数据 ！',
+            duration: 6000
+          })
+        }
+      }
+    },
+    handleSelectionChange(rows) {
+      this.select_orderId = []
+      if (rows) {
+        rows.forEach(row => {
+          if (row) {
+            this.select_orderId.push(row.lcnId)
+          }
+        })
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.rosterManage_main {
+  .el-select {
+    width: 100%;
+  }
+  .header {
+    .itemline {
+      color: #409eff;
+      padding: 0 4px;
+    }
+  }
+  .searchContent {
+    .el-range-editor {
+      min-width: 100%;
+    }
+  }
+  .el-checkbox {
+    margin-left: 12px;
+  }
+  .el-col-8 {
+    height: 55px;
+  }
+  .check-box--input {
+    position: absolute;
+    width: 90%;
+  }
+  @media screen and(max-width: 1400px) {
+    .toggle {
+      .el-col-8 {
+        width: 50%;
+      }
+    }
+  }
+}
+</style>

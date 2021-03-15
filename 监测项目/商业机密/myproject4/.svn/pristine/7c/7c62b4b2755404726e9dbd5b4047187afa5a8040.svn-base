@@ -1,0 +1,359 @@
+<template>
+  <div class="correct-approval">
+    <el-form :model="form" ref="form" :rules="suspRules" label-width="180px">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <div class="title">人工补正要求通知</div>
+          <div class="noticeMain" > 
+            <el-row>
+              <el-form-item label="报告机构：">{{ form.reportBody }}</el-form-item>
+            </el-row>
+            <el-row>
+              <!-- <el-form-item label="更正完成时限："> 
+                <el-date-picker v-model="form.correctLimitTime" value-format="yyyyMMdd" format="yyyy-MM-dd" type="date" placeholder="" :picker-options="updataPickerOptions" disabled>
+                </el-date-picker>
+              </el-form-item> -->
+              <el-col :span="24">
+                <el-form-item label="更正完成时限：" prop="correctLimitTime">
+                  <el-date-picker v-model="form.correctLimitTime"  value-format="yyyyMMdd" format="yyyy-MM-dd"  type="date" placeholder="选择更正完成时限" :disabled="isUpdate" :picker-options="updataPickerOptions">
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row>
+              <!-- <el-form-item label="更正填报要求：">{{ form.correctAsk }}</el-form-item> -->
+              <el-col :span="24">
+                <el-form-item label="原可疑交易报告报文名：" prop="ornm">
+                  <el-input v-model="form.ornm" style="width: 60%;" :disabled="isUpdate" placeholder="最大长度为50位" maxlength="50"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row>
+              <!-- <el-form-item label="原可疑交易报告报文名：">{{ form.ornm }}</el-form-item> -->
+              <el-col :span="24">
+                <el-form-item label="更正填报要求：" prop="correctAsk">
+                  <el-input type="textarea" v-model="form.correctAsk" placeholder="最大长度为1000位" maxlength="1000" :disabled="isUpdate" show-word-limit rows="5"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row>
+              <el-form-item label="待更正可疑交易总数：">{{ form.askNum }}</el-form-item>
+              <!-- <el-col :span="24">
+                <el-form-item label="待更正可疑交易总数：" prop="askNum"> 
+                  <el-input v-if="isView" type="text" style="width: 60%;" v-model="form.askNum"  placeholder="待更正可疑交易总数不能大于1000"></el-input>
+                  <span v-if="!isView">{{form.askNum}}</span>
+                </el-form-item>
+              </el-col> -->
+            </el-row>
+            <div> 
+              <el-table :data="form.list">
+                <el-table-column type="index" label="序号"></el-table-column>
+                <el-table-column label="可疑交易在原可疑交易报告中的序号" prop="tsno" min-width="150"></el-table-column>
+                <el-table-column label="待更正可疑交易发生日期"  prop="stdt" min-width="260">
+                  <template slot-scope="scope">
+                    <el-date-picker v-model="scope.row.stdt" type="datetime" value-format="yyyyMMddHHmmss" format="yyyy年MM月dd日HH时mm分ss秒" placeholder="选择日期" disabled style="width: 100%;">
+                    </el-date-picker>
+                  </template>
+                </el-table-column>
+                <!-- <el-table-column label="待更正字段（ITEM）" prop="item" min-width="300">
+                  <template slot-scope="scope">
+                    <el-form-item :prop="'list.'+scope.$index+'.item'"  :rules="suspRules.item"  class="change_length">
+                      <el-select multiple placeholder="请选择" v-model="scope.row.item" disabled style="width: 100%;">
+                        <el-option v-for="(sItem, index) in filedOptions" :key="index" :label="sItem.name" :value="sItem.code">
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </template>
+                </el-table-column> -->
+                <el-table-column label="待更正字段" prop="item" min-width="300">
+                  <template slot-scope="scope">
+                    <el-form-item :prop="'list.'+scope.$index+'.item'" :rules="suspRules.item" class="change_length">
+                      <el-select multiple placeholder="请选择" v-model="scope.row.item" @change="baoFont(scope.row)" style="width: 100%;" clearable :disabled="isUpdate">
+                        <el-option v-for="(sItem, index) in filedOptions" :key="index" :label="sItem.name" :value="sItem.code">
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="title">原交易详情</div>
+          <div class="noticeMain">
+            <TradeDetail :detailOptions="detailOptions"></TradeDetail>
+          </div>
+
+          <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-size="pageSize" layout="total, prev, pager, next, jumper" :total="total">
+          </el-pagination>
+        </el-col>
+      </el-row>
+    </el-form>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import { getFiled, getInfo } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch'
+import { updateForm, addWork } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch.js'
+import TradeDetail from '@/views/sys-monitoringAnalysis/dataGovernance/common/tradeDetail/components/tradeDetail'
+import { isValidInput, isValidBlank, onlyNumberValidate } from '@/utils/formValidate.js'
+export default {
+  components: {
+    TradeDetail
+  },
+  data() {
+    return {
+      updataPickerOptions: { // 更正时间 选中今天及以后
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7
+        }
+      },
+      form: {
+        reportBody: '',
+        reportCode: '',
+        correctAsk: '',
+        ornm: '',
+        correctLimitTime: '',
+        list: []
+      },
+      fenObj: [],
+      isUpdate: true,
+      suspRules: {
+        rinm: [{ required: true, message: '内容不能为空', trigger: 'blur' }],
+        // ricd: [{ required: true, message: '内容不能为空', trigger: 'blur' }],
+        ornm: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidBlank, trigger: 'blur' },
+          { max: 50, message: '最大长度为50位', trigger: 'blur' }
+        ],
+        // tsno: [{ max: 10, message: '最大长度为10位', trigger: 'blur' }],
+        correctAsk: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidBlank, trigger: 'blur' },
+          { max: 1000, message: '最大长度为1000位', trigger: 'blur' }
+        ],
+        askNum: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: onlyNumberValidate, trigger: 'blur' }
+        ],
+        correctLimitTime: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        tsno: [
+          { required: true, message: '内容不能为空', trigger: 'blur' },
+          { validator: isValidInput, trigger: 'blur' },
+          { max: 10, message: '最大长度为10位', trigger: 'blur' }
+        ],
+        tstm: [{ required: true, message: '内容不能为空', trigger: 'change' }],
+        item: [{ required: true, message: '内容不能为空', trigger: 'change' }]
+      },
+      filedOptions: [],
+      list: [],
+      detailOptions: null,
+      correctId: '',
+      pageNum: 1,
+      pageSize: 1,
+      total: null,
+      contentList: null
+    }
+  },
+  computed: {
+    ...mapGetters(['workFlow2business', 'businessFlag', 'formContent'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.updateForm()
+      this.$store.dispatch('changeFlag', false)
+    },
+    formContent: {
+      handler(newVal, oldVal) {
+        console.log(newVal)
+        this.form = newVal.report
+        this.correctId = newVal.workflow.pkId
+        if (newVal.report.reportCode) {
+          const obj = {
+            tradeId: newVal.report.tradeId,
+            industry: newVal.report.industry,
+            correctType: '1'
+          }
+          getInfo(obj, 1, 10).then(res1 => {
+            if (res1.code === 200 && res1.data.list !== null) {
+              const paramsObj = {
+                ricd: newVal.report.reportCode,
+                tradeType: '1',
+                dataSrc: res1.data.list[0].dataSrc
+              }
+              getFiled(paramsObj)
+                .then(res => {
+                  // 获取字段列表
+                  if (res.code === 200) {
+                    this.filedOptions = res.data
+                  }
+                })
+                .catch(() => {})
+            }
+          })
+        }
+
+        if (newVal.list[0] !== null) {
+          this.contentList = newVal.list
+          const obj = JSON.parse(newVal.list[0])
+          this.detailOptions = obj.trade
+          this.total = newVal.list.length
+        } else {
+          this.detailOptions = '无数据'
+        }
+        this.fenObj = newVal.report.list
+        if (newVal.workflow.nodeAttributes !== null && newVal.workflow.nodeAttributes[0].extendValue === 'Y') {
+          this.isUpdate = false
+        }
+      },
+      deep: true
+    }
+  },
+  methods: {
+    baoFont(scope) {
+      if (this.fenObj.length > 0) {
+        for (var i = 0; i < this.fenObj.length; i++) {
+          // 如果数组中的id等于当前选择数据的id那么就把当前scope的值赋值给数组中的值
+          if (scope.tradeId === this.fenObj[i].tradeId) {
+            this.fenObj[i] = scope
+            this.fenObj.splice(i, 1)
+            i--
+          }
+        }
+      }
+      const obj = Object.assign({}, scope)
+      this.fenObj.push(obj)
+    },
+    updateForm() {
+      if (this.isUpdate === false) {
+        this.$refs.form.validate(validate => {
+          if (validate) {
+            const paramsObj = {
+              correctType: '1',
+              tradeId: this.form.tradeId,
+              correctId: this.form.correctId,
+              reportCode: this.form.reportCode,
+              problemSource: '5',
+              correctLimitTime: this.form.correctLimitTime,
+              correctAsk: this.form.correctAsk,
+              industry: this.form.industry,
+              askNum: this.form.askNum,
+              ornm: this.form.ornm,
+              reportBody: this.form.reportBody,
+              xmlId: this.form.xmlId,
+              suspectTrades: this.fenObj,
+              workflow: this.workFlow2business
+            }
+            addWork(paramsObj).then(res => {
+              if (res.code === 200) {
+              // this.$emit('dialogState', this.largeVisible)
+              // this.resetForm('form')
+                updateForm(this.workFlow2business, this.correctId).then(res1 => {
+                  if (res1.code === 200) {
+                    this.$message({
+                      message: '提交成功',
+                      type: 'success'
+                    })
+                    setTimeout(() => {
+                      this.$router.push({ name: 'home' })
+                    }, 1000)
+                  }
+                }).catch(() => {
+                  this.$message.error('提交失败！')
+                })
+              }
+            }).catch(() => {
+              this.$message.error('提交失败！')
+            })
+          }
+        })
+      } else {
+        this.$refs.form.validate(validate => {
+          if (validate) {
+            updateForm(this.workFlow2business, this.correctId).then(res1 => {
+              if (res1.code === 200) {
+                this.$message({
+                  message: '提交成功',
+                  type: 'success'
+                })
+                setTimeout(() => {
+                  this.$router.push({ name: 'home' })
+                }, 1000)
+              }
+            }).catch(() => {
+              this.$message.error('提交失败！')
+            })
+          }
+        })
+      }
+    },
+    // updateForm() {
+    //   updateForm(this.workFlow2business, this.correctId).then(res => {
+    //     if (res.code === 200) {
+    //       this.$message({
+    //         message: '提交成功',
+    //         type: 'success'
+    //       })
+    //       setTimeout(() => {
+    //         this.$router.push({ name: 'home' })
+    //       }, 1000)
+    //     }
+    //   })
+    // },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.getPagInfo(val)
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.getPagInfo(val)
+    },
+    getPagInfo(val) {
+      if (this.contentList[parseInt(val) - 1]) {
+        this.detailOptions = JSON.parse(this.contentList[parseInt(val) - 1]).trade
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.correct-approval {
+  .el-table__header-wrapper .cell::before {
+    content: '*';
+    color: #f00;
+    margin-right: 4px;
+  }
+  .el-date-editor--datetime {
+    width: 230px !important;
+  }
+  .noticeMain {
+    // width: 100%;
+    height: 300px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 15px;
+    margin: 15px;
+    border: 1px solid #eeeeee;
+    font-size: 14px;
+  }
+  .el-form-item__content {
+    word-wrap:break-word;
+  }
+  .title {
+    margin: 10px 0 0 15px;
+  }
+  .change_length {
+    margin-bottom: 0;
+    .el-select__tags >span {
+      display: block!important;
+      width: 100%;
+    }
+    .el-form-item__content {
+      margin-left: 0!important;
+    } 
+  }
+}
+</style>

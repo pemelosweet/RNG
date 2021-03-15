@@ -1,0 +1,405 @@
+<template>
+  <div class="evaluationindicator">
+    <el-card>
+      <div slot="header" class="clearfix">
+        评价指标模板
+        <el-button type="text" style="float:right;" icon="el-icon-plus" @click="addDialog">新建评价指标模板</el-button>
+      </div>
+      <el-form :model="form" ref="form" label-width="140px">
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="评价指标模板名称：" prop="name" :rules="[{ required: false, validator: characterSpaceChecking, trigger: 'blur'}]">
+              <el-input v-model="form.name" maxlength="50" placeholder="请输入评价指标模板名称，最多可输入50位"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="创建时间：" prop="dateValue" :rules="[{ required: false, trigger: 'change'}]">
+              <el-date-picker
+                v-model="form.dateValue"
+                style="width: 100% !important;"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24" style="text-align: right;">
+            <el-button type="primary" :loading="queryLoading" @click="query">查 询</el-button>
+            <el-button type="primary" plain @click="clearForm">清 空</el-button>
+          </el-col>
+        </el-row>
+        <div style="margin-bottom: 15px;">评价指标模板列表</div>
+      <el-table :data="tableData" v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <!-- <el-table-column type="selection"></el-table-column> -->
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="targetTemplateName" label="评价指标模板名称" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="evaluationTarget" label="评价指标" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="createDate" label="创建时间" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="createPerson" label="创建人" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleExit(scope)" :disabled="scope.row.createPerson !== name">修订</el-button>
+            <el-button type="text" @click="delTab(scope.row.targetId)" :disabled="scope.row.createPerson !== name">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageNum" :page-sizes="[10,20,30,40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+      
+      </el-form>
+      <el-dialog :title="`${titleNames}评价指标`" :visible.sync="dialogVisible">
+        <div>
+            <el-form :model="newForm" ref="mewForm" label-width="140px">
+            <el-col :span="24">
+              <el-form-item label="评价指标模板名称：" label-width="150px" prop="addName" :rules="[{ required: true, message: '请输入评价指标模板名称', trigger: 'blur'}, { validator: characterSpaceChecking, trigger: 'blur'}]">
+                <el-input v-model="newForm.addName" maxlength="50" placeholder="最多可输入50位"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-table :data="newForm.dialogTabledata" :show-header="false" style="width:100%;">
+              <el-table-column type="index"></el-table-column>
+              <el-table-column>
+                <template slot-scope="scope">
+                  <el-form-item label="指标名称：" :prop="'dialogTabledata.' + scope.$index + '.name'" :rules="[{ required: true, message: '请输入指标名称', trigger: 'blur'}, { validator: characterSpaceChecking, trigger: 'blur'}]">
+                    <el-input v-model="scope.row.name" maxlength="50" placeholder="最多可输入50位"></el-input>
+                  </el-form-item>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80">
+                <template slot-scope="scope">
+                  <el-button type="text" :loading="deleRowLoading" @click="deleRow( scope, newForm.dialogTabledata )">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            </el-form>
+            <el-button type="primary" style="margin-top: 10px;" :loading="handleAddLoading" @click="handleAdd">添加</el-button>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="dialogVisible = false">返回</el-button>
+          <el-button type="primary" @click="onSubmit" :loading="onSubmitLoading">保存</el-button>
+        </span>
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import { targetlist, targetAdd, deleteTab, getTargetEntity, updateTarget } from '@/api/sys-monitoringAnalysis/evaluate/evaluationAllocation.js'
+export default {
+  data() {
+    return {
+      tableDataLoading: false,
+      onSubmitLoading: false,
+      deleRowLoading: false,
+      handleAddLoading: false,
+      titleNames: '',
+      queryLoading: false,
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      blankSpace: /[ ]/im, // 校验空格
+      targetId: '',
+      createPerson: '',
+      createPersonId: '',
+      formType: '',
+      idx: 0, // 索引
+      delVisible: false,
+      currentPage: 1,
+      dialogVisible: false, // 弹框
+      form: {
+        name: '',
+        dateValue: []
+      },
+      newForm: {
+        addName: '',
+        dialogTabledata: [{ name: '' }]
+      },
+      pageNum: 1,
+      pageSize: 10,
+      total: 0,
+      dialogForm: {
+        name: '',
+        indicatorName: ''
+      },
+      dialogRules: {
+        name: [
+          { required: true, message: '评价指标模板名称不为空', trigger: 'blur' }
+        ]
+      },
+      tableData: []
+    }
+  },
+  computed: {
+    ...mapGetters(['name'])
+  },
+  mounted() {
+    this.initQueryData()
+  },
+  methods: {
+    clearForm() {
+      this.form = {
+        name: '',
+        dateValue: []
+      }
+      this.pageNum = 1
+      // this.initQueryData()
+      setTimeout(() => {
+        this.$refs.form.clearValidate()
+      }, 0)
+    },
+    // 校验空格特殊字符
+    characterSpaceChecking(rule, value, callback) {
+      if (this.blankSpace.test(value)) {
+        callback(new Error('禁止输入空格'))
+      } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+        callback(new Error('禁止输入特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    addDialog() {
+      this.titleNames = '新建'
+      this.formType = 'add'
+      this.newForm.addName = ''
+      this.newForm.dialogTabledata = [
+        { name: '' }
+      ]
+      this.dialogVisible = true
+    },
+    getParamter() {
+      const obj = Object.assign({}, this.form)
+      const map = {
+        targetTemplateName: obj.name,
+        startDate: obj.dateValue ? obj.dateValue[0] : '',
+        endDate: obj.dateValue ? obj.dateValue[1] : '',
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      return map
+    },
+    initQueryData() {
+      this.tableDataLoading = true
+      targetlist(this.getParamter()).then(res => {
+        if (res.code === 200) {
+          this.queryLoading = false
+          this.tableData = res.data.list
+          this.total = res.data.total
+        } else {
+          this.queryLoading = false
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.queryLoading = false
+        this.tableDataLoading = false
+      })
+    },
+    // 查询列表
+    query() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.queryLoading = true
+          this.initQueryData()
+        } else {
+          return false
+        }
+      })
+    },
+    handleAdd() {
+      if (this.newForm.dialogTabledata.length > 49) {
+        this.handleAddLoading = true
+        this.$message({
+          type: 'warning',
+          message: '最多添加50条指标名称',
+          duration: 6000,
+          showClose: true,
+          onClose: function() {
+            this.handleAddLoading = false
+          }.bind(this)
+        })
+      } else {
+        this.newForm.dialogTabledata.push({ name: '' })
+      }
+    },
+    // 列表中删除单个数据
+    delTab(id) {
+      this.$confirm('是否删除？', '提示', {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteTab(id).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '删除成功',
+              duration: 6000,
+              showClose: true
+            })
+            this.initQueryData()
+          }
+        })
+      }).catch(() => {})
+    },
+    deleRow(scope, data) {
+      const index = scope.$index
+      if (data.length === 1) {
+        this.deleRowLoading = true
+        this.$message({
+          type: 'warning',
+          message: '至少有一条指标名称',
+          duration: 6000,
+          showClose: true,
+          onClose: function() {
+            this.deleRowLoading = false
+          }.bind(this)
+        })
+      } else {
+        this.$confirm('是否删除？', '提示', {
+          confirmButtonText: '确认',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          data.splice(index, 1)
+          this.$message({
+            type: 'success',
+            message: '删除成功',
+            duration: 6000,
+            showClose: true
+          })
+          this.delVisible = false
+        }).catch(() => {})
+      }
+    },
+    handleExit(scope) { // 修订操作
+      this.titleNames = '修订'
+      this.formType = 'revise'
+      this.newForm.dialogTabledata = []
+      getTargetEntity(scope.row.targetId).then(res => {
+        if (res.code === 200) {
+          this.targetId = res.data.targetId
+          this.createPerson = res.data.createPerson
+          this.createPersonId = res.data.createPersonId
+          this.newForm.addName = res.data.targetTemplateName
+          if (res.data.evaluationTarget) {
+            if (res.data.evaluationTarget.split(',').length > 1) {
+              res.data.evaluationTarget.split(',').forEach((el, index) => {
+                this.newForm.dialogTabledata.push({
+                  name: el
+                })
+              })
+            } else {
+              this.newForm.dialogTabledata.push({
+                name: res.data.evaluationTarget
+              })
+            }
+          }
+        }
+      })
+      this.dialogVisible = true
+    },
+    onSubmit() { // 新增表单保存操作
+      this.$refs.mewForm.validate((valid) => {
+        if (valid) {
+          this.onSubmitLoading = true
+          const arr = []
+          this.newForm.dialogTabledata.forEach(el => {
+            arr.push(el.name)
+          })
+          if (this.formType === 'add') {
+            const map = {
+              targetTemplateName: this.newForm.addName,
+              evaluationTarget: arr ? arr.join() : ''
+            }
+            targetAdd(map).then(res => {
+              if (res.code === 200) {
+                this.onSubmitLoading = false
+                this.$message({
+                  type: 'success',
+                  message: '添加成功',
+                  duration: 6000,
+                  showClose: true
+                })
+                this.dialogVisible = false
+                this.pageNum = 1
+                this.initQueryData()
+              } else {
+                this.$message({
+                  type: 'warning',
+                  message: res.message,
+                  duration: 6000,
+                  showClose: true,
+                  onClose: function() {
+                    this.onSubmitLoading = false
+                  }.bind(this)
+                })
+              }
+            })
+          } else {
+            const map = {
+              targetId: this.targetId,
+              targetTemplateName: this.newForm.addName,
+              evaluationTarget: arr ? arr.join() : '',
+              createPerson: this.createPerson,
+              createPersonId: this.createPersonId
+            }
+            updateTarget(map).then(res => {
+              if (res.code === 200) {
+                this.onSubmitLoading = false
+                this.$message({
+                  type: 'success',
+                  message: '保存成功',
+                  duration: 6000,
+                  showClose: true
+                })
+                this.dialogVisible = false
+                this.initQueryData()
+              } else {
+                this.$message({
+                  type: 'warning',
+                  message: res.message,
+                  duration: 6000,
+                  showClose: true,
+                  onClose: function() {
+                    this.onSubmitLoading = false
+                  }.bind(this)
+                })
+              }
+            })
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.pageNum = 1
+      this.initQueryData()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.initQueryData()
+    }
+  },
+  watch: {
+    dialogVisible: function(ol, nl) {
+      if (ol !== nl) {
+        setTimeout(() => {
+          this.$refs.mewForm.clearValidate()
+        }, 0)
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.evaluationorgan {
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

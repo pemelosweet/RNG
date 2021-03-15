@@ -1,0 +1,684 @@
+<template>
+  <div class="reportingManagement_information">
+    <el-card>
+      <el-row :gutter="20">
+        <el-col :span="1">
+          <div class="none-box"></div>
+        </el-col>
+        <el-col :span="3">
+          <el-button type="primary" class="buttonSize" :disabled="isDisBtn !== '1' || multipleSelection.length > 0" @click="$router.push({name:'reportingManagement_paper', type:'queryE'})">录入纸质举报</el-button>
+        </el-col>
+        <!-- <el-col :span="3">
+          <el-button type="primary" @click="queryHandl">查询处理情况</el-button>
+        </el-col> -->
+        <el-col :span="3">
+          <el-button type="primary" class="buttonSize" :disabled="isDisBtn !== '1'" @click="initiateProcessingFlow">发起处理流程</el-button>
+        </el-col>
+        <!-- <el-col :span="3">
+          <el-button type="primary" @click="printClick">打印举报处理单</el-button>
+        </el-col> -->
+        <!-- <el-col :span="3">
+          <router-link :to="{name:'reportingManagement_index', type:'index'}">
+            <el-button type="primary">举报新收入库</el-button>
+          </router-link>
+        </el-col> -->
+        <el-col :span="3">
+          <el-button type="primary" class="buttonSize" @click="launchLetters">发起函件审批流程</el-button>
+        </el-col>
+        <el-col :span="3">
+          <el-button type="primary" class="buttonSize" @click="analysisProcess">发起主动分析流程</el-button>
+        </el-col>
+      </el-row>
+      <div class="box-br"></div>
+      <el-form ref="form" :model="form" label-width="150px">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="举报编号：" prop="reportNo" :rules="[{ validator: isValidInputBuZheng, trigger: ['blur', 'change'] }]">
+              <el-input v-model="form.reportNo"></el-input>
+            </el-form-item>
+            <el-form-item label="被举报人证件号码：">
+              <el-input v-model="form.reportedCredNo"></el-input>
+            </el-form-item>
+
+            
+            <el-form-item label="举报事由：">
+              <el-select v-model="form.reporterReason" placeholder="请选择" style="width:100%;" clearable>
+                <el-option
+                  v-for="(ele, index) in options"
+                  :key="index"
+                  :label="ele.codeName"
+                  :value="ele.codeId">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="入库时间：">
+              <el-date-picker class="time-box" v-model="form.storageSdate" type="daterange" value-format="yyyy-MM-dd" format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+            <!-- <el-form-item label="当前部门：">
+              <el-input v-model="form.currDept"></el-input>
+            </el-form-item> -->
+            
+          </el-col>
+          <el-col :span="8">
+
+            <el-form-item label="被举报人名称：" prop="reportedName" :rules="[{ validator: isValidInputBuZheng, trigger: ['blur', 'change'] }]">
+              <el-input v-model="form.reportedName"></el-input>
+            </el-form-item>
+            <el-form-item label="账号：" prop="reportedAccountNo" :rules="[{ validator: isValidInputBuZheng, trigger: ['blur', 'change'] }]">
+              <el-input v-model="form.reportedAccountNo"></el-input>
+            </el-form-item>
+            <!-- <el-form-item label="举报事由（其他）：">
+              <el-input v-model="form.reporterRemark"></el-input>
+            </el-form-item> -->
+            
+            <!-- <el-form-item label="到岗时间：">
+              <el-date-picker class="time-box" v-model="form.dutySdate" type="daterange" value-format="yyyy-MM-dd" format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item> -->
+            <!-- <el-form-item label="当前用户：">
+              <el-input v-model="form.currUser"></el-input>
+            </el-form-item> -->
+            <el-form-item label="预处理情况：">
+              <el-select v-model="isBuCon" style="width:100%;" clearable>
+                <el-option label="有交易有关联" value="1"></el-option>
+                <el-option label="有交易无关联" value="2"></el-option>
+                <el-option label="无交易无关联" value="3"></el-option>
+                <el-option label="无交易有关联" value="4"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="标签：" prop="reporterMark" :rules="[{ validator: isValidInputBuZheng, trigger: ['blur', 'change'] }]">
+              <el-input v-model="form.reporterMark"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="被举报人证件类型：">
+              <el-select v-model="form.reportedCredType" style="width:100%;" clearable>
+                <el-option label="居民身份证" value="1"></el-option>
+                <el-option label="中国护照" value="3"></el-option>
+                <el-option label="港澳居民来往内地通行证" value="2"></el-option>
+                <el-option label="港澳居民居住证" value="4"></el-option>
+                <el-option label="台湾居民来往大陆通行证" value="7"></el-option>
+                <el-option label="台湾居民居住证" value="5"></el-option>
+                <el-option label="外国护照" value="6"></el-option>
+                <el-option label="外国人永久居留身份证" value="11"></el-option>
+                <el-option label="外国人工作许可证（A类）" value="12"></el-option>
+                <el-option label="外国人工作许可证（B类）" value="13"></el-option>
+                <el-option label="外国人工作许可证（C类）" value="14"></el-option>
+                <el-option label="其他个人证件" value="10"></el-option>
+                <el-option label="组织机构代码" value="8"></el-option>
+                <el-option label="企业信用代码" value="9"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="受理时间：">
+              <el-date-picker class="time-box" v-model="form.createSdate" type="daterange" value-format="yyyy-MM-dd" format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="有无附件：">
+              <el-radio-group v-model="form.isAttach">
+                <el-radio label="1">有</el-radio>
+                <el-radio label="0">无</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            
+            <el-form-item label="处理状态：">
+              <el-select v-model="form.reportStatus" style="width:100%;" clearable>
+                <el-option label="新入库" value="2"></el-option>
+                <el-option label="转送" value="3"></el-option>
+                <el-option label="调查" value="4"></el-option>
+                <el-option label="分析" value="5"></el-option>
+                <el-option label="移送" value="6"></el-option>
+                <el-option label="移送且反馈" value="7"></el-option>
+                <el-option label="重复（关联）" value="8"></el-option>
+                <el-option label="关注" value="9"></el-option>
+                <el-option label="无效" value="10"></el-option>
+                <el-option label="处理中" value="12"></el-option>
+                <el-option label="已完成" value="11"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div style="text-align:right;margin-bottom:10px" >
+        <el-button type="primary" @click="queryClick">查询</el-button>
+        <el-button type="primary" plain @click="clearClick">清空</el-button>
+      </div>
+
+      <el-table
+      :data="tableData"
+      style="width: 100%" ref="tableRef" @selection-change="handelSelects" v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+      <el-table-column type="selection" reserve-selection width="60" fixed="left">
+      </el-table-column>
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="reportNo" label="举报编号"  show-overflow-tooltip></el-table-column>
+        <el-table-column label="被举报人名称" prop="reportedName" show-overflow-tooltip></el-table-column>
+        <el-table-column label="举报事由"  prop="reporterReasonName" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="storageDate" label="入库时间" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column  prop="createDate" label="受理时间" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="reportStatusName" label="处理状态">
+          <template slot-scope="scope">
+              {{scope.row.reportStatusName}} {{scope.row.deptName === null || scope.row.deptName === '' ? '' :  '， ' + scope.row.deptName}} {{scope.row.docNum === null || scope.row.docNum === '' ? '' :  '， ' + scope.row.docNum}}
+          </template>
+        </el-table-column>
+        <el-table-column label="预处理情况" show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{scope.row.isBusinessName}}{{scope.row.isConnectionName}}
+          </template>
+        </el-table-column>
+        <el-table-column prop="reporterMark" label="标签" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template slot-scope="scope">
+            <el-button type="text" style="margin-left:0;" @click="$router.push({name:'reportingManagement_query',query: {id: scope.row.reportId}})">查看</el-button>
+            <el-button v-if="isDisBtn === '1'" type="text" @click="queryHandl(scope.row.reportId)">编辑</el-button>
+            <el-button type="text" @click="queryaaa(scope.row.reportNo, scope.row.reportId)" :disabled="scope.row.isSendLetter !== '1'">查看函件</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="block">
+      <el-pagination
+         @size-change="handleSizeChange"
+         @current-change="handleCurrentChange"
+         :current-page="tableData.pageNum"
+         :page-sizes="[10, 20, 30, 40]"
+         :page-size="tableData.pageSize"
+         layout="total, sizes, prev, pager, next, jumper"
+         :total="tableLength">
+      </el-pagination>
+     </div>
+     <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template>
+<script>
+import { warehousingIe } from '@/api/sys-monitoringAnalysis/reportingManagement/warehousingUrl'
+import { queryApi, identityApi, initiateProcessingFlowApi, initProcess, judgmentAuthority } from '@/api/sys-monitoringAnalysis/reportingManagement/uploadAttachments'
+import { inWorkflow } from '@/api/sys-monitoringAnalysis/reportingManagement/informationWorkflow'
+import { mapGetters } from 'vuex'
+import { isValidInputBuZheng } from '@/utils/formValidate.js'
+export default {
+  data() {
+    return {
+      reportId: '',
+      reportNo: '',
+      isValidInputBuZheng: isValidInputBuZheng,
+      tableDataLoading: false,
+      printType: 1,
+      id: '',
+      tableDatas: [],
+      tabJson: [],
+      form: {
+        reportId: '',
+        reportNo: '',
+        isDisabled: '',
+        reporterName: '',
+        reporterReason: '',
+        reporterRemark: '',
+        reporterText: '',
+        reporterMark: '',
+        reportStatus: '',
+        isAttach: '',
+        isSource: '',
+        currDept: '',
+        currUser: '',
+        pageNum: 1,
+        pageSize: 10,
+        reportedName: '',
+        reportedType: '',
+        reportedCredType: '',
+        reportedCredNo: '',
+        reportedAccountNo: '',
+        createSdate: '',
+        createEdate: '',
+        storageSdate: '',
+        storageEdate: '',
+        dutySdate: '',
+        dutyEdate: '',
+        isBusiness: '',
+        isConnection: ''
+      },
+      form2: {
+        reportId: '',
+        reportNo: '',
+        isDisabled: '',
+        reporterName: '',
+        reporterReason: '',
+        reporterRemark: '',
+        reporterText: '',
+        reporterMark: '',
+        reportStatus: '',
+        isAttach: '',
+        isSource: '',
+        currDept: '',
+        currUser: '',
+        pageNum: 1,
+        pageSize: 10,
+        reportedName: '',
+        reportedType: '',
+        reportedCredType: '',
+        reportedCredNo: '',
+        reportedAccountNo: '',
+        createSdate: '',
+        createEdate: '',
+        storageSdate: '',
+        storageEdate: '',
+        dutySdate: '',
+        dutyEdate: '',
+        isBusiness: '',
+        isConnection: ''
+      },
+      isBuCon: '',
+      tableData: [],
+      tableLength: 1,
+      currentPage1: 5,
+      currentPage2: 5,
+      currentPage3: 5,
+      currentPage4: 4,
+      tableProp: '',
+      paramster: 'JBSZ',
+      multipleSelection: [],
+      options: [],
+      storageDate: '',
+      dutyDate: '',
+      createDate: '',
+      isReportDealer: '',
+      formPageType: true,
+      checked: '',
+      isDisBtn: ''
+    }
+  },
+  mounted() {
+    this.judgmentAuthorityData()
+    this.warehousingFn(this.form)
+    this.queryApiFn()
+    this.inden()
+  },
+  computed: {
+    ...mapGetters(['roles', 'businessFlag', 'workFlow2business'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  methods: {
+    judgmentAuthorityData() {
+      judgmentAuthority().then(res => {
+        if (res.code === 200) {
+          this.isDisBtn = res.data
+        }
+      })
+    },
+    analysisProcess() {
+      if (this.multipleSelection.length > 0) {
+        if (this.multipleSelection.length === 1) {
+          initProcess(this.multipleSelection[0].reportId, this.multipleSelection[0].reportNo).then(res => {
+            if (res.code === 200) {
+              this.$router.push({
+                name: 'cueManage_autonomousAnalysis'
+              })
+            }
+          })
+        } else {
+          this.$message({
+            type: 'warning',
+            message: '最多选择一条数据'
+          })
+        }
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请选择'
+        })
+      }
+    },
+    queryaaa(reportNo, id) {
+      this.$router.push({
+        name: 'reportingManagement_letters',
+        query: {
+          reportNo: reportNo,
+          id: id,
+          disFlag: '1'
+        }
+      })
+    },
+    launchLetters() {
+      if (this.multipleSelection.length > 0) {
+        let isDis = false
+        this.multipleSelection.map(item => {
+          if (item.isSendLetter === '1') {
+            isDis = true
+            return false
+          }
+        })
+        if (isDis) {
+          this.$message({
+            type: 'warning',
+            message: '不能重复发起函件流程'
+          })
+        } else {
+          this.$router.push({
+            name: 'reportingManagement_letters',
+            query: {
+              reportNo: this.reportNo,
+              num: this.multipleSelection.length + '',
+              reportId: this.reportId
+            }
+          })
+        }
+      } else {
+        this.$message({
+          type: 'warning',
+          message: '请至少选择一条数据'
+        })
+      }
+    },
+    nextStep() {
+      initiateProcessingFlowApi(this.multipleSelection[0].reportId, this.multipleSelection[0].reporterMark === null ? '' : this.multipleSelection[0].reporterMark, this.workFlow2business).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '提交成功'
+          })
+          this.warehousingFn(this.form)
+        }
+      })
+    },
+    initiateProcessingFlow() {
+      const len = this.multipleSelection.length
+      if (len === 0) {
+        this.$message({
+          type: 'warning',
+          message: '请选择'
+        })
+      } else if (len > 1) {
+        this.$message({
+          type: 'warning',
+          message: '最多选择一条'
+        })
+      } else {
+        if (this.multipleSelection[0].isSendFlow !== '1') {
+          this.$store.dispatch('workFlow', { configCode: 'fillReport' })
+          this.$store.dispatch('openWorkFlow', true)
+        } else {
+          this.$message({
+            type: 'warning',
+            message: '不能重复发起处理流程'
+          })
+        }
+      }
+    },
+    inWorkflowFn() {
+      inWorkflow(this.id).then(res => {
+        if (res.code === 200) {
+          this.tabJson = res.data.reported
+          this.tableDatas = res.data.reporter
+        }
+      })
+    },
+    inden() {
+      identityApi().then(res => {
+        if (res.code === 200) {
+          this.isReportDealer = res.data.isReportDealer
+        }
+      })
+    },
+    queryHandl(rid) {
+      // if (this.multipleSelection.length === 1) {
+
+      // } else {
+      //   this.$message({
+      //     message: '请选择一条数据',
+      //     type: 'warning'
+      //   })
+      // }
+      identityApi().then(res => {
+        if (res.code === 200) {
+          this.isReportDealer = res.data.isReportDealer
+          this.$router.push({
+            path: 'handling',
+            query: {
+              id: rid,
+              isReportDealer: res.data.isReportDealer
+            }
+          })
+        }
+      })
+    },
+    getParamters(objs) {
+      const obj = Object.assign({}, objs)
+      const newObj = {
+        reportId: obj.reportId,
+        reportNo: obj.reportNo,
+        isDisabled: obj.isDisabled,
+        reporterName: obj.reporterName,
+        reporterReason: obj.reporterReason,
+        reporterRemark: obj.reporterRemark,
+        reporterText: obj.reporterText,
+        reporterMark: obj.reporterMark,
+        reportStatus: obj.reportStatus,
+        isAttach: obj.isAttach,
+        isSource: obj.isSource,
+        currDept: obj.currDept,
+        currUser: obj.currUser,
+        pageNum: obj.pageNum,
+        pageSize: obj.pageSize,
+        reportedName: obj.reportedName,
+        reportedType: obj.reportedType,
+        reportedCredType: obj.reportedCredType,
+        reportedCredNo: obj.reportedCredNo,
+        reportedAccountNo: obj.reportedAccountNo,
+        createSdate: obj.createSdate === null ? '' : obj.createSdate[0],
+        createEdate: obj.createSdate === null ? '' : obj.createSdate[1],
+        storageSdate: obj.storageSdate === null ? '' : obj.storageSdate[0],
+        storageEdate: obj.storageSdate === null ? '' : obj.storageSdate[1],
+        dutySdate: obj.dutySdate === null ? '' : obj.dutySdate[0],
+        dutyEdate: obj.dutySdate === null ? '' : obj.dutySdate[1],
+        isBusiness: this.isBuCon !== '' ? this.isBuCon === '1' || this.isBuCon === '2' ? '1' : '0' : '',
+        isConnection: this.isBuCon !== '' ? this.isBuCon === '2' || this.isBuCon === '3' ? '0' : '1' : ''
+      }
+      return newObj
+    },
+    warehousingFn(objs) {
+      this.tableDataLoading = true
+      warehousingIe(this.getParamters(objs)).then(res => {
+        if (res.code === 200) {
+          this.tableData = res.data.list
+          this.tableData.forEach(res => {
+            if (res.reporterReasonName.indexOf('涉嫌其他犯罪的可疑交易行为') !== -1) {
+              res.reporterReasonName = res.reporterReasonName.replace(/涉嫌其他犯罪的可疑交易行为/, '涉嫌其他犯罪的可疑交易行为' + '-' + res.reporterRemark)
+            }
+          })
+          this.tableLength = res.data.total
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.tableDataLoading = false
+      })
+    },
+    queryClick() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.formPageType = false
+          this.form.pageNum = 1
+          const newForm = this.form
+          this.form2 = Object.assign({}, newForm)
+          this.warehousingFn(this.form)
+        } else {
+          return false
+        }
+      })
+    },
+    clearClick() {
+      this.formPageType = true
+      this.form = {
+        reportId: '',
+        reportNo: '',
+        isDisabled: '',
+        reporterName: '',
+        reporterReason: '',
+        reporterRemark: '',
+        reporterText: '',
+        reporterMark: '',
+        reportStatus: '',
+        isAttach: '',
+        isSource: '',
+        currDept: '',
+        currUser: '',
+        pageNum: 1,
+        pageSize: 10,
+        reportedName: '',
+        reportedType: '',
+        reportedCredType: '',
+        reportedCredNo: '',
+        reportedAccountNo: '',
+        createSdate: '',
+        createEdate: '',
+        storageSdate: '',
+        storageEdate: '',
+        dutySdate: '',
+        dutyEdate: '',
+        isBusiness: '',
+        isConnection: ''
+      }
+      this.form2 = {
+        reportId: '',
+        reportNo: '',
+        isDisabled: '',
+        reporterName: '',
+        reporterReason: '',
+        reporterRemark: '',
+        reporterText: '',
+        reporterMark: '',
+        reportStatus: '',
+        isAttach: '',
+        isSource: '',
+        currDept: '',
+        currUser: '',
+        pageNum: 1,
+        pageSize: 10,
+        reportedName: '',
+        reportedType: '',
+        reportedCredType: '',
+        reportedCredNo: '',
+        reportedAccountNo: '',
+        createSdate: '',
+        createEdate: '',
+        storageSdate: '',
+        storageEdate: '',
+        dutySdate: '',
+        dutyEdate: '',
+        isBusiness: '',
+        isConnection: ''
+      }
+      this.isBuCon = ''
+
+      // this.warehousingFn(this.form)
+    },
+    handleSizeChange(val) {
+      this.form2.pageSize = val
+      this.warehousingFn(this.form2)
+    },
+    handleCurrentChange(val) {
+      this.form2.pageNum = val
+      this.warehousingFn(this.form2)
+    },
+    handelSelects(row) {
+      if (row.length > 1) {
+        console.log('---------------------------')
+        console.log(row)
+        this.$refs.tableRef.clearSelection()
+        this.$refs.tableRef.toggleRowSelection(row.pop())
+      } else {
+        this.multipleSelection = row
+      }
+      const arr = []
+      const arr2 = []
+      this.reportNo = ''
+      this.reportId = ''
+      this.multipleSelection.forEach(el => {
+        arr.push(el.reportNo)
+        arr2.push(el.reportId)
+      })
+      this.reportNo = arr.join(',')
+      this.reportId = arr2.join(',')
+    },
+    printClick() {
+      // window.print()
+      if (this.multipleSelection.length === 1) {
+        this.$router.push({
+          path: 'handling',
+          query: {
+            id: this.multipleSelection[0].reportId,
+            print: this.printType
+          }
+        })
+      } else {
+        this.$message({
+          message: '请选择一条数据',
+          type: 'warning'
+        })
+      }
+    },
+    queryApiFn() {
+      queryApi(this.paramster).then(res => {
+        if (res.code === 200) {
+          console.log(res)
+          this.options = res.data
+        }
+      })
+    }
+  }
+}
+</script>
+<style lang="scss">
+.none-box {
+  width: 100%;
+  height: 1px;
+}
+.box-br {
+  width: 100%;
+  height: 30px;
+}
+.time-box {
+  width: 100% !important;
+}
+.start-end{
+  width: 100%;
+  overflow: hidden;
+}
+.start {
+  width: 350px;
+  display: inline-block;
+}
+.end {
+  display: inline-block;
+  width: 100px;
+}
+
+.br-boxs {
+  width: 100%;
+  height: 30px;
+  float: left;
+}
+.reporter_p {
+  width: 20%;
+}
+.rep_tag {
+  background: none;
+  border:none;
+  color: #606266;
+}
+.buttonSize {
+  width: 130px;
+}
+.reportingManagement_information{
+  thead {
+    .el-table-column--selection {
+      .cell {
+        display: none;
+      }
+    }
+  }
+}
+</style>
+
+

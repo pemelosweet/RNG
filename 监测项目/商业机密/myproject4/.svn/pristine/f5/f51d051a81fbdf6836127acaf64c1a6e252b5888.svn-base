@@ -1,0 +1,590 @@
+<template>
+  <div class="acverify">
+    <el-card>
+      <div slot="header">
+        <span>补正结果核对</span>
+      </div>
+      <el-form ref="searchForm" :model="searchForm" label-width="120px" class="clearfix">
+        <el-col :span="8">
+          <el-form-item label="报告机构：" prop="reportBody">
+            <!-- <el-select v-model="searchForm.reportBody" filterable clearable>
+              <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.rinm"></el-option>
+            </el-select> -->
+            <el-autocomplete v-model="searchForm.reportBody" value-key="rinm" placeholder="报告机构" :fetch-suggestions="querySearchRinm" :trigger-on-focus="false" style="width: 100%;"></el-autocomplete>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="补正状态：" prop="correctState">
+            <el-select v-model="searchForm.correctState" clearable>
+              <el-option label="全部" value=""></el-option>
+              <!-- <el-option label="待补正" value="0"></el-option> -->
+              <el-option label="补正中" value="1"></el-option>
+              <el-option label="已补正" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="补正类型：" prop="correctType">
+            <el-select v-model="searchForm.correctType" clearable>
+              <el-option label="全部" value=""></el-option>
+              <el-option label="大额更正信息" value="0"></el-option>
+              <el-option label="可疑更正信息" value="1"></el-option>
+              <el-option label="信息补充" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="反馈评价：" prop="feedBack">
+            <el-select v-model="searchForm.feedBack" clearable>
+              <el-option label="全部" value=""></el-option>
+              <el-option label="良好" value="0"></el-option>
+              <el-option label="合格" value="1"></el-option>
+              <el-option label="不合格" value="2"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="补正发起时间：" prop="startAppTime">
+            <el-date-picker v-model="searchForm.startAppTime" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="4" class="btnalign">
+          <el-button type="primary" @click="handleQuery" :loading="loading">查 询</el-button>
+          <el-button type="primary" plain @click="resetForm('searchForm')">清 空</el-button>
+        </el-col>
+      </el-form>
+      <div style="margin: 10px 0;">人工补正情况列表：</div>
+      <el-table :data="list" style="width: 100%;">
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="reportBody" label="报告机构"></el-table-column>
+        <el-table-column prop="correctType" label="补正要求类型"></el-table-column>
+        <el-table-column prop="startAppTime" label="补正要求发起时间"></el-table-column>
+        <el-table-column prop="correctState" label="补正状态"></el-table-column>
+        <el-table-column prop="checkResult" label="核对结果"></el-table-column>
+        <el-table-column prop="feedback" label="反馈评价"></el-table-column>
+        <el-table-column label="操作" min-width="110">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleView(scope)" :disabled="scope.row.correctState === '补正中'">查看结果</el-button>
+            <!-- <el-button type="text" @click="handelCorrection(scope)" :disabled="scope.row.correctState === '补正中'">人工补正</el-button> -->
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination background @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total">
+      </el-pagination>
+
+      <!-- 查看和反馈 -->
+      <el-dialog title="人工补正信息" :visible.sync="backDialogVisible" width="90%" @open="show">
+        <div v-loading="backDialogLoading">
+          <el-form :model="dialogForm">
+            <el-row :gutter="20">
+              <el-col :span="12" v-if="cType !== '信息补充'">
+                <h3>原报告交易详情</h3>
+                <div class="noticeMain">
+                  <TradeDetail :detailOptions="detailOptions"></TradeDetail>   
+                </div>
+                <el-pagination background @size-change="handleSizeDialogChange" @current-change="handleCurrentDialogChange" :current-page="dialogInfo.pageNum" :page-size="dialogInfo.pageSize" layout="total, prev, pager, next, jumper" :total="dialogTotal">
+                </el-pagination>
+              </el-col>
+              <el-col :span="cType !== '信息补充'? 12: 24" v-if="cType === '信息补充'"> 
+                <h3>人工补正报文应答</h3>
+                <div class="noticeMain" ref="applyWrap"> 
+                  <ReportDetail :detailOptions="detailOptionsApply" :backDialogLoading="backDialogLoading" @setLoading="getLoading"></ReportDetail>
+                </div>
+                <el-pagination background @size-change="handleSizeReplyDialog" @current-change="handleCurrentReplyDialog" :current-page="dialogReply.pageNum" :page-size="dialogReply.pageSize" layout="total, prev, pager, next, jumper" :total="dialogReplyTotal">
+                </el-pagination>
+              </el-col>
+              <el-col :span="cType !== '信息补充'? 12: 24" v-if="cType !== '信息补充'"> 
+                <!-- jyl-改前代码 -->
+                <!-- <h3>原交易详情</h3> -->
+
+                <!-- jyl-改后代码 -->
+                <h3>人工补正报文应答</h3>
+                <div class="noticeMain"> 
+                  <TradeDetail :detailOptions="detailOptionsApply"></TradeDetail> 
+                </div>
+                <el-pagination background @size-change="handleSizeReplyDialog" @current-change="handleCurrentReplyDialog" :current-page="dialogReply.pageNum" :page-size="dialogReply.pageSize" layout="total, prev, pager, next, jumper" :total="dialogReplyTotal">
+                </el-pagination>
+              </el-col>
+            </el-row>
+            <el-row v-if="cType !== '信息补充'">
+              <el-form-item label="补正核对结果：" prop="checkResult" disabled="disabled" label-width="120px">
+                <!-- <el-input v-model="dialogForm.checkResult" disabled="disabled" style="width:60%;"></el-input> -->
+                <el-select v-model="dialogForm.checkResult" disabled="disabled">
+                  <el-option label="正常" value="0"></el-option>
+                  <el-option label="非异常" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-row>
+          </el-form>
+
+          <el-button type="primary" @click="handleCorrectInfo">查看补正通知</el-button>
+
+          <div v-if="isFeedBack">
+            <div class="divider divider-horizontal"></div>
+            <h3>结果反馈</h3>
+            <el-row :gutter="20">
+              <el-col :span="23">
+                <el-form ref="feedForm" :model="feedForm" :rules="feedRules" label-width="120px">
+                  <el-form-item label="反馈评价：" prop="feedBack">
+                    <el-select v-model="feedForm.feedBack">
+                      <el-option value="0" label="良好"></el-option>
+                      <el-option value="1" label="合格"></el-option>
+                      <el-option value="2" label="不合格"></el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-form>
+              </el-col>
+            </el-row>
+          </div>
+          
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="backDialogVisible = false">返回</el-button>
+          <el-button @click="verifySubmit('feedForm')" type="primary" v-if="isFeedBack" :loading="submitLoading">确定</el-button>
+        </span>
+      </el-dialog>
+
+     <!-- 人工补正弹框 -->
+    <el-dialog :title="correctionDialogTitle" :visible.sync="dialogVisible" width="70%" :before-close="dialogClose">
+      <component :is="correctionComName" :correctParams="correctParams" @dialogState="closeDialog" :dialogVisible="dialogVisible" :closeLoading="closeLoading"></component>
+    </el-dialog>
+
+      <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template> 
+
+<script>
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { getList, verifyResult, getViewAmend, getViewSupply } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/verify'
+import Large from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/large'
+import Suspicious from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/suspicious'
+import Notice from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/notice'
+import LargeSingle from '@/views/sys-monitoringAnalysis/dataGovernance/artificialCorrection/verify/correction/largeSingle.vue'
+import SuspiciousSingle from '@/views/sys-monitoringAnalysis/dataGovernance/artificialCorrection/verify/correction/suspiciousSingle'
+import NoticeSingle from '@/views/sys-monitoringAnalysis/dataGovernance/artificialCorrection/verify/correction/noticeSingle'
+import TradeDetail from '@/views/sys-monitoringAnalysis/dataGovernance/common/tradeDetail/components/tradeDetail'
+
+import ReportDetail from '@/views/sys-monitoringAnalysis/dataGovernance/common/tradeDetail/components/reportDetail.vue'
+
+export default {
+  components: {
+    Large,
+    Suspicious,
+    Notice,
+    LargeSingle,
+    SuspiciousSingle,
+    NoticeSingle,
+    TradeDetail,
+    ReportDetail
+  },
+  data() {
+    return {
+      loading: false,
+      submitLoading: false, // 反馈确定按钮loading
+      correctionComName: null,
+      correctionDialogTitle: null,
+      cleandialogVisible: false, // 自动清理弹框参数
+      dialogVisible: false, // 人工补正
+      backDialogVisible: false, // 反馈弹框
+      backDialogLoading: false, // 查看loading
+      searchForm: {
+        reportBody: '',
+        correctState: '',
+        feedBack: '',
+        startAppTime: '',
+        correctType: ''
+      },
+      rinmOptions: [], // 报告机构列表
+      list: [],
+      total: 0,
+      multipleSelection: [],
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      dialogInfo: {
+        pageNum: 1,
+        pageSize: 1
+      },
+      dialogTotal: 0,
+      dialogReply: {
+        pageNum: 1,
+        pageSize: 1
+      },
+      dialogReplyTotal: 0,
+      cResult: 0,
+      contentList: [], // 人工补正大额可疑更正分页存值
+      contentReplyList: [], // 人工补正大额可疑补充分页存值
+      correctParams: {}, // 人工补正弹框传值
+      xmlName: '', // 补正类型
+      dialogForm: {
+        checkResult: ''
+      },
+      feedForm: {
+        feedBack: ''
+      },
+      feedRules: {
+        feedBack: [{ required: true, message: '请选择审批结果', trigger: 'change' }]
+      },
+      cId: null,
+      tId: null,
+      cType: null,
+      isView: false, // 是否查看人工补正
+      detailInfo: {
+        // 交易详情参数传值
+        tradeId: '',
+        xmlName: '',
+        industry: ''
+      },
+      detailOptions: null, // 原交易详情参数
+      detailOptionsApply: null, // 人工补正应答参数
+      isFeedBack: false, // 是否显示结果反馈模块
+      closeLoading: false
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    show() {
+      this.$nextTick(function() {
+        if (this.$refs.applyWrap) {
+          this.$refs.applyWrap.scrollTop = 0
+        }
+      })
+    },
+    getLoading(val) {
+      this.backDialogLoading = val
+    },
+    getData() {
+      this.dialogTotal = 0
+      this.dialogInfo.pageNum = 1
+      this.dialogReplyTotal = 0
+      this.dialogReply.pageNum = 1
+      const paramsObj = {
+        reportBody: this.searchForm.reportBody,
+        correctState: this.searchForm.correctState,
+        correctType: this.searchForm.correctType,
+        feedback: this.searchForm.feedBack,
+        startDate: this.searchForm.startAppTime ? this.searchForm.startAppTime[0] : '',
+        endDate: this.searchForm.startAppTime ? this.searchForm.startAppTime[1] : '',
+        pageNum: this.pageInfo.pageNum,
+        pageSize: this.pageInfo.pageSize
+      }
+      getList(paramsObj)
+        .then(res => {
+          if (res.code === 200) {
+            this.loading = false
+            this.list = res.data.list
+            this.total = res.data.total
+            res.data.list.forEach(e => {
+              if (e.correctType !== null) {
+                switch (e.correctType) {
+                  case '0':
+                    e.correctType = '大额信息更正'
+                    break
+                  case '1':
+                    e.correctType = '可疑信息更正'
+                    break
+                  case '2':
+                    e.correctType = '信息补充'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.correctState !== null) {
+                switch (e.correctState) {
+                  case '1':
+                    e.correctState = '补正中'
+                    break
+                  case '2':
+                    e.correctState = '已补正'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.checkResult !== null) {
+                switch (e.checkResult) {
+                  case '0':
+                    e.checkResult = '正常'
+                    break
+                  case '1':
+                    e.checkResult = '异常'
+                    break
+                  default:
+                    break
+                }
+              }
+              if (e.feedback !== null) {
+                switch (e.feedback) {
+                  case '0':
+                    e.feedback = '良好'
+                    break
+                  case '1':
+                    e.feedback = '合格'
+                    break
+                  case '2':
+                    e.feedback = '不合格'
+                    break
+                  case '':
+                    e.feedback = ''
+                    break
+                  default:
+                    break
+                }
+              }
+            })
+          } else {
+            this.loading = false
+          }
+        })
+        .catch(() => {
+          this.loading = false
+        })
+    },
+    handleQuery() {
+      // 查询操作
+      this.pageInfo.pageNum = 1
+      this.loading = true
+      this.getData()
+    },
+    closeDialog(val) {
+      // 人工补正组件接收子组件弹框dialogVisible传值
+      this.dialogVisible = val
+    },
+    querySearchRinm(query, cb) {
+      if (query !== '') {
+        const paramsObj = {
+          region: 'all',
+          rinm: query
+        }
+        getRinmList(paramsObj).then(res => {
+          if (res.code === 200) {
+            cb(res.data)
+          }
+        })
+      } else {
+        // this.rinmData = []
+      }
+    },
+    handleView(scope) {
+      this.detailOptions = null
+      this.detailOptionsApply = null
+      this.isFeedBack = false
+      this.cResult = scope.row.checkResult
+      this.cType = scope.row.correctType
+      this.cId = scope.row.correctId
+      this.tId = scope.row.tradeId
+      this.backDialogLoading = true
+      if (this.cType !== '信息补充') {
+        getViewAmend(this.cId)
+          .then(res => {
+            if (res.code === 200) {
+              this.backDialogVisible = true
+              this.dialogForm.checkResult = this.cResult
+              if (res.data.list1) {
+                this.detailOptions = res.data.list1.length === 0 ? '无数据' : res.data.list1[0].trade
+                if (res.data.list1.length > 0) {
+                  this.contentList = res.data.list1
+                  this.dialogTotal = res.data.list1.length
+                }
+              }
+              if (res.data.list2) {
+                this.detailOptionsApply = res.data.list2.length === 0 ? '未应答' : res.data.list2[0].trade
+                if (res.data.list2.length > 0) {
+                  this.contentReplyList = res.data.list2
+                  this.dialogReplyTotal = res.data.list2.length
+                }
+              }
+              if (res.data.list1.length > 0 && res.data.list2.length > 0) {
+                this.isFeedBack = true
+              } else {
+                this.isFeedBack = false
+              }
+              this.$nextTick(function() {
+                this.backDialogLoading = false
+              })
+            } else {
+              this.$nextTick(function() {
+                this.backDialogLoading = false
+              })
+            }
+          })
+          .catch(() => {
+            this.$nextTick(function() {
+              this.backDialogLoading = false
+            })
+          })
+      } else {
+        // if (correctState !== '补正中') {
+        getViewSupply(this.cId)
+          .then(res => {
+            if (res.code === 200) {
+              this.backDialogVisible = true
+              if (res.data) {
+                this.detailOptionsApply = res.data
+                this.$set(this.detailOptionsApply, 'index', 1) // 调接口显示第一页数据，所以index为0（index在详情页用来判断是第几页）
+                if (res.data.xmlIdList.length > 0) {
+                  this.contentReplyList = res.data.xmlIdList
+                  this.dialogReplyTotal = res.data.xmlIdList.length
+                }
+              }
+              // this.$nextTick(function() {
+              //   this.backDialogLoading = false
+              // })
+            } else {
+              // this.$nextTick(function() {
+              //   this.backDialogLoading = false
+              // })
+            }
+          })
+          .catch(() => {
+            // this.$nextTick(function() {
+            //   this.backDialogLoading = false
+            // })
+          })
+        // } else {
+        //   this.backDialogVisible = true
+        //   this.detailOptionsApply = {}
+        // }
+      }
+    },
+    getPagInfo(val) {
+      if (this.contentList[parseInt(val) - 1]) {
+        this.detailOptions = this.contentList[parseInt(val) - 1].trade
+      }
+    },
+    getPagReplyInfo(val) {
+      if (this.contentReplyList[parseInt(val) - 1]) {
+        this.detailOptionsApply = this.contentReplyList[parseInt(val) - 1].trade
+      }
+    },
+    handleCorrectInfo() {
+      this.dialogVisible = true
+      switch (this.cType) {
+        case '大额信息更正':
+          this.correctionComName = 'LargeSingle'
+          this.correctionDialogTitle = '大额信息更正通知'
+          this.correctParams = {
+            correctId: this.cId,
+            cTitle: '0'
+          }
+          break
+        case '可疑信息更正':
+          this.correctionComName = 'SuspiciousSingle'
+          this.correctionDialogTitle = '可疑信息更正通知'
+          this.correctParams = {
+            correctId: this.cId,
+            cTitle: '0'
+          }
+          break
+        case '信息补充':
+          this.correctionComName = 'NoticeSingle'
+          this.correctionDialogTitle = '信息补充通知'
+          this.correctParams = {
+            correctId: this.cId,
+            cTitle: '0'
+          }
+          break
+        default:
+          break
+      }
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.getData()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.getData()
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleSizeDialogChange(val) {
+      this.dialogInfo.pageSize = val
+      this.getPagInfo()
+    },
+    handleCurrentDialogChange(val) {
+      this.dialogInfo.pageNum = val
+      this.getPagInfo(val)
+    },
+    handleSizeReplyDialog(val) {
+      this.dialogReply.pageSize = val
+      if (this.cType !== '信息补充') {
+        this.getPagReplyInfo()
+      } else {
+        this.$set(this.detailOptionsApply, 'index', val)
+      }
+    },
+    handleCurrentReplyDialog(val) {
+      this.dialogReply.pageNum = val
+      if (this.cType !== '信息补充') {
+        this.getPagReplyInfo(val)
+      } else {
+        this.$set(this.detailOptionsApply, 'index', val)
+      }
+    },
+    verifySubmit() {
+      this.$refs['feedForm'].validate(valid => {
+        if (valid) {
+          this.submitLoading = true
+          const feed = this.feedForm.feedBack
+          verifyResult(this.cId, feed).then(res => {
+            if (res.code === 200) {
+              this.submitLoading = false
+              this.$message({
+                type: 'success',
+                message: '反馈评价成功！'
+              })
+              this.backDialogVisible = false
+              this.getData()
+            } else {
+              this.submitLoading = false
+            }
+          }).catch(() => {
+            this.submitLoading = false
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    resetForm(formName) {
+      // 重置清空操作
+      this.$refs[formName].resetFields()
+    },
+    dialogClose() {
+      this.dialogVisible = false
+      this.closeLoading = false
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.acverify {
+  .btnalign {
+    text-align: right;
+  }
+  .tradetime {
+    .el-date-editor--datetimerange.el-input__inner {
+      width: 200px;
+    }
+  }
+  .noticeMain {
+    // width: 100%;
+    height: 300px;
+    overflow-x: auto;
+    overflow-y: auto;
+    padding: 15px;
+    margin: 15px;
+    border: 1px solid #eeeeee;
+    font-size: 14px;
+  }
+}
+</style>

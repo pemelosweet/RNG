@@ -1,0 +1,12 @@
+import request from '@/utils/request'
+// 交易详情--大额
+export function getTradeDetail(tradeId, type) {
+  return request({
+    url: '/caml-query/gbase/trade/trade/one/sync8a',
+    method: 'get',
+    params: {
+      tradeId: tradeId,
+      type: type
+    }
+  })
+}

@@ -1,0 +1,415 @@
+<template>
+  <div>
+    <el-card>
+      <el-row>
+        <el-col :span="24">
+              <el-button type="primary" @click="printClick">打印</el-button>
+              <el-button v-if="juBaoIdYes" @click="goTopClick">返回</el-button>
+            </el-col>
+
+
+        <el-form ref="form" :model="form" label-width="120px">
+          <div v-for="(element, ind) in form.reported" :key="ind">
+            
+            <el-col :span="24" class="pre_blue">
+              <p style="float:left;">被举报人信息1</p>
+            </el-col>
+  
+            <el-col :span="24" style="border-top:1px solid #ccc;">
+              <div class="br-box"></div>
+            </el-col>
+            <el-col :span="24">
+              <el-col :span="8">
+              <el-form-item label="类别：" class="wrodBreak">
+                {{element.memberTypeName}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="证件类型：" class="wrodBreak">
+                {{element.memberCredTypeName}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="证件号码：" class="wrodBreak">
+                {{element.memberCredNo}}
+              </el-form-item>
+            </el-col>
+            </el-col>
+            
+            <el-col :span="24">
+              <el-col :span="8">
+              <el-form-item label="账号：" class="wrodBreak">
+                {{element.accountNo}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="姓名/名称：" class="wrodBreak">
+                {{element.memberName}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="单位：" class="wrodBreak">
+                {{element.memberCompany}}
+              </el-form-item>
+            </el-col>
+            </el-col>
+            
+            <el-col :span="24">
+              <el-col :span="8">
+              <el-form-item label="职务：" class="wrodBreak">
+                {{element.memberPosition}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="联系方式：" class="wrodBreak">
+                {{element.telNo}}
+              </el-form-item>
+            </el-col>
+            </el-col>
+            
+            <el-col :span="24">
+              <el-form-item label="已向其他执法机关报案或举报的情况：" class="wrodBreak">
+                {{element.memberOthers}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="已向人民银行系统（司局、分支行等）举报、投诉及处理情况：" class="wrodBreak">
+                {{element.memberPbc}}
+              </el-form-item>
+            </el-col>
+          </div>
+          
+          <el-col :span="24" class="pre_blue" v-if="form.report.isDisabled === 0">
+            <p style="float:left;">举报人信息（已匿名）</p>
+          </el-col>
+          <template v-if="form.report.isDisabled === 1">
+          <div v-for="(el, nums) in form.reporter" :key="nums + '-label'">
+          <el-col :span="24" class="pre_blue">
+            <p style="float:left;">举报人信息</p>
+          </el-col>
+            <el-col :span="24" style="border-top:1px solid #ccc;">
+            <div class="br-box"></div>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="姓名/名称：" class="wrodBreak">
+              {{el.memberName}}
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="类别：" class="wrodBreak">
+              {{el.memberTypeName}}
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="证件类型：" class="wrodBreak">
+                {{el.memberCredTypeName}}
+              </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="证件号码：" class="wrodBreak">
+              {{el.memberCredNo}}
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+              <el-form-item label="单位：" class="wrodBreak">
+                {{el.memberCompany}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="职务：" class="wrodBreak">
+                {{el.memberPosition}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="联系方式：" class="wrodBreak">
+                {{el.telNo}}
+              </el-form-item>
+            </el-col>
+          </div>
+          </template>
+          <el-col :span="24" class="pre_blue" style="border-bottom:1px solid #ccc;">
+            <p>举报详细信息</p>
+          </el-col>
+          <div class="br-box" style="height:20px;"></div>
+          <el-col :span="24">
+            <el-form-item label="举报事由：" class="wrodBreak">
+              {{form.report.reporterReasonName}}
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="10">
+            <el-form-item label="举报事由（其他）：">
+              {{form.report.reporterRemark}}
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="24">
+            <el-form-item label="举报正文：" class="wrodBreak">
+              {{form.report.reporterText}}
+            </el-form-item>
+          </el-col>
+          
+        </el-form>
+        
+        <el-form ref="form" :model="form" label-width="120px">
+        <el-col :span="20" v-if="form.report.isAttach === 0">
+            <el-form-item label="附件：">
+              <div type="primary">暂无附件</div>
+            </el-form-item>
+          </el-col>
+        <el-col :span="12" v-if="form.report.isAttach === 1">
+            <el-form-item label="附件：">
+              <div v-for="(el, nums) in this.enclosureX" :key="nums" style="width:100%;margin-bottom:10px;height:50px;">
+                <div style="float:left;">{{el.attachName}} </div>
+                <i ref="icon_click" class="el-icon-download" @click="downloadClick(el.attachId)" style="margin-left:20px;color:#46a3ff;cursor:pointer;">下载</i>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-form>
+        <div class="printdiv" style="display:none;">
+
+        <el-form ref="form" :model="form" label-width="120px">
+          <div v-for="(element, ind) in form.reported" :key="ind">
+            
+            <el-col :span="24" class="pre_blue">
+              <p style="float:left;">被举报人信息</p>
+            </el-col>
+  
+            <el-col :span="24" style="border-top:1px solid #ccc;">
+              <div class="br-box"></div>
+            </el-col>
+            <el-col :span="24">
+              <el-col :span="8">
+              <el-form-item label="类别：" class="wrodBreak">
+                {{element.memberTypeName}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="证件类型：" class="wrodBreak">
+                {{element.memberCredTypeName}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="证件号码：" class="wrodBreak">
+                {{element.memberCredNo}}
+              </el-form-item>
+            </el-col>
+            </el-col>
+            
+            <el-col :span="24">
+              <el-col :span="8">
+              <el-form-item label="账号：" class="wrodBreak">
+                {{element.accountNo}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="姓名/名称：" class="wrodBreak">
+                {{element.memberName}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="单位：" class="wrodBreak">
+                {{element.memberCompany}}
+              </el-form-item>
+            </el-col>
+            </el-col>
+            
+            <el-col :span="24">
+              <el-col :span="8">
+              <el-form-item label="职务：" class="wrodBreak">
+                {{element.memberPosition}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="联系方式：" class="wrodBreak">
+                {{element.telNo}}
+              </el-form-item>
+            </el-col>
+            </el-col>
+            
+            <el-col :span="24">
+              <el-form-item label="已向其他执法机关报案或举报的情况：" class="wrodBreak">
+                {{element.memberOthers}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="已向人民银行系统（司局、分支行等）举报、投诉及处理情况：" class="wrodBreak">
+                {{element.memberPbc}}
+              </el-form-item>
+            </el-col>
+          </div>
+          
+          <el-col :span="24" class="pre_blue" v-if="form.report.isDisabled === 0">
+            <p style="float:left;">举报人信息（已匿名）</p>
+          </el-col>
+          <template v-if="form.report.isDisabled === 1">
+          <div v-for="(el, nums) in form.reporter" :key="nums + '-label'">
+          <el-col :span="24" class="pre_blue">
+            <p style="float:left;">举报人信息</p>
+          </el-col>
+            <el-col :span="24" style="border-top:1px solid #ccc;">
+            <div class="br-box"></div>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="姓名/名称：" class="wrodBreak">
+              {{el.memberName}}
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="类别：" class="wrodBreak">
+              {{el.memberTypeName}}
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="证件类型：" class="wrodBreak">
+                {{el.memberCredTypeName}}
+              </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="证件号码：" class="wrodBreak">
+              {{el.memberCredNo}}
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+              <el-form-item label="单位：" class="wrodBreak">
+                {{el.memberCompany}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="职务：" class="wrodBreak">
+                {{el.memberPosition}}
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="联系方式：" class="wrodBreak">
+                {{el.telNo}}
+              </el-form-item>
+            </el-col>
+          </div>
+          </template>
+          <el-col :span="24" class="pre_blue" style="border-bottom:1px solid #ccc;">
+            <p>举报详细信息</p>
+          </el-col>
+          <div class="br-box" style="height:20px;"></div>
+          <el-col :span="24">
+            <el-form-item label="举报事由：" class="wrodBreak">
+              {{form.report.reporterReasonName}}
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="10">
+            <el-form-item label="举报事由（其他）：">
+              {{form.report.reporterRemark}}
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="24">
+            <el-form-item label="举报正文：" class="wrodBreak">
+              {{form.report.reporterText}}
+            </el-form-item>
+          </el-col>
+          
+        </el-form>
+        
+        <el-form ref="form" :model="form" label-width="120px">
+        <el-col :span="20" v-if="form.report.isAttach === 0">
+            <el-form-item label="附件：">
+              <div type="primary">暂无附件</div>
+            </el-form-item>
+          </el-col>
+        <el-col :span="12" v-if="form.report.isAttach === 1">
+            <el-form-item label="附件：">
+              <div v-for="(el, nums) in this.enclosureX" :key="nums" style="width:100%;margin-bottom:10px;height:50px;">
+                <div style="float:left;">{{el.attachName}} </div>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-form>
+        </div>
+      </el-row>
+    </el-card>
+  </div>
+</template>
+<script>
+import { queryApi } from '@/api/sys-monitoringAnalysis/reportingManagement/queryInformation'
+import { uploadApi } from '@/api/sys-monitoringAnalysis/reportingManagement/queryInformation'
+import { getToken } from '@/utils/auth'
+export default {
+  props: {
+    juBaoId: {
+      type: String,
+      default: ''
+    }
+  },
+  data() {
+    return {
+      form: {},
+      id: '',
+      juBaoIdYes: true,
+      numType: false,
+      enclosureX: '',
+      token: getToken()
+    }
+  },
+  mounted() {
+    console.log(this.$route.query)
+    if (this.juBaoId !== '') {
+      this.juBaoIdYes = false
+      this.id = this.juBaoId
+      this.queryApiFn()
+      this.queryClickFn()
+    } else {
+      this.id = this.$route.query.id
+      this.queryApiFn()
+      this.queryClickFn()
+    }
+  },
+  methods: {
+    downloadClick(attachId) {
+      location.href = '/file-service/upload/download/' + attachId + '?token=' + this.token
+    },
+    printClick() {
+      document.getElementsByClassName('printdiv')[0].style.display = 'block'
+      var newHtml = document.getElementsByClassName('printdiv')[0].innerHTML
+      document.body.innerHTML = newHtml
+      window.print()
+      window.location.reload()
+    },
+    queryApiFn() {
+      queryApi(this.id).then(res => {
+        if (res.code === 200) {
+          this.form = res.data
+        }
+      })
+    },
+    uploadApiFn() {
+      uploadApi(this.id).then(res => {
+        if (res.code === 200) {
+          console.log(res)
+          this.enclosureX = res.data
+          console.log(this.enclosureX)
+        }
+      })
+    },
+    queryClickFn() {
+      this.uploadApiFn()
+      this.numType = true
+    },
+    goTopClick() {
+      this.$router.go(-1)
+    }
+  }
+}
+</script>
+<style>
+.br-box {
+  width: 100%;
+  height: 10px;
+  float: left;
+}
+.none-box {
+  width: 100%;
+  height: 1px;
+}
+.wrodBreak {
+  word-break:break-all;
+}
+</style>
+
+

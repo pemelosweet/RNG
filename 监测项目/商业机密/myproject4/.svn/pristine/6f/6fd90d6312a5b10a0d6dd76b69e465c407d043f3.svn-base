@@ -1,0 +1,445 @@
+<template>
+  <div class="configstatistics">
+    <el-card>
+      <div slot="header">定制结果</div>
+      <div class="configtitle">定制结果要素列表：</div>
+      <el-table :data="list" ref="cTable" style="width: 100%; margin-bottom: 20px;">
+        <el-table-column type="index" label="序号" min-width="40"></el-table-column>
+        <el-table-column prop="qttQttcCh" label="库表名称" min-width="80">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.qttQttcCh}}</div>
+              <span>{{ scope.row.qttQttcCh }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="qstIdsCh" label="结果要素" min-width="200">
+          <template slot-scope="scope">
+            <el-tooltip class="item" effect="dark" placement="top-start">
+              <div slot="content">{{ scope.row.qstIdsCh}}</div>
+              <span>{{ scope.row.qstIdsCh }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column prop="creDate" label="创建时间" min-width="70"></el-table-column> -->
+        <el-table-column prop="qttcStatus" label="状态" min-width="40">
+          <template slot-scope="scope">{{scope.row.qttcStatus === '1' ? '禁用' : '启用'}}</template>
+        </el-table-column>
+        <el-table-column prop="dataCount" label="查询总条数" min-width="40"></el-table-column>
+        <el-table-column label="操作" min-width="90">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleUpdate(scope)" v-if="scope.row.creDate === null ||scope.row.creDate === ''">定制</el-button>
+            <el-button type="text" @click="handleUpdate(scope)" v-if="scope.row.creDate !== null && scope.row.creDate !== ''">修改</el-button>
+            <el-button type="text" @click="handleSelect(scope)" v-if="scope.row.qttcStatus === '2'">禁用</el-button>
+            <el-button type="text" @click="handleSelect(scope)" v-if="scope.row.qttcStatus === '1'">启用</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <!-- <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]"
+        :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next" :total="total" background></el-pagination> -->
+    
+      <el-dialog :title="'修改' + updateObj.qstNameCh + '信息'" :visible.sync="dialogVisible" width="94%" class="dialogWrap" >
+        <el-form :model="dialogForm" ref="dialogForm" :rules="dialogRules" label-width="120px">
+          <el-row>
+            <el-form-item label="查询总条数：" prop="queryNo">
+              <el-input v-model="dialogForm.queryNo" placeholder="查询总条数" style="width:10%;"></el-input> 条
+            </el-form-item>
+          </el-row>
+          <el-row>
+            <el-transfer v-model="dialogForm.value" :data="dialogForm.checkedDialogList" :titles="['未选列表','已选列表']" target-order="push">
+              <div slot-scope="{ option }">
+                <span style="float:left;"><i style="display: none;">{{ option.key }}</i> {{ option.label }}</span>
+                <span style="float:right;"> <span @click="sortUp(option.key)"><el-button type="primary" plain style="margin-right: 5px;" icon="el-icon-top" circle></el-button></span>
+                <span @click="sortDown(option.key)"><el-button type="primary" plain style="margin-right: 10px;" icon="el-icon-bottom" circle></el-button></span></span>
+              </div>
+            </el-transfer>
+          </el-row>
+          <el-row style="text-align: right; margin-top: 10px;">
+            <el-button type="primary" @click="onUpdate" :loading="updateLoading">确 定</el-button>
+            <el-button type="primary" plain @click="dialogVisible = false">取 消</el-button>
+          </el-row>
+        </el-form>
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { isValidInput, onlyNumberValidate } from '@/utils/formValidate.js'
+import {
+  getList,
+  getViewData,
+  updateData,
+  updateState
+} from '@/api/sys-monitoringAnalysis/dataQuery/customResult'
+
+export default {
+  data() {
+    return {
+      loading: false,
+      updateLoading: false,
+      dialogVisible: false,
+      selectCheck: ['交易ID', '报告机构名称', '客户姓名', '客户身份证件号码', '客户账号', '金融机构网点名称', '交易时间', '交易发生地', '交易方式', '资金收付标志', '交易金额（折人民币）', '对方金融机构网点名称', '交易对手姓名/名称', '交易对手身份证件/证明文件号码', '交易对手账号', '落地日期', '交易币种', '落地时间'],
+      tempArr: [],
+      updateObj: [],
+      updateOptions: [],
+      // updatePkQstc: [],
+      diaolgPkQstc: '', // 记录表字段id
+      dialogForm: {
+        queryNo: '',
+        value: [],
+        checkedDialogList: [],
+        checkAll: false,
+        isDialogIndeter: true
+      },
+      dialogRules: {
+        queryNo: [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: onlyNumberValidate, trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { max: 6, message: '最大长度为6位', trigger: 'blur' }]
+      },
+      list: [],
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      activeList: [],
+      form: {
+        queryNo: [],
+        checkAllList: [], // 全选绑值
+        checkList: []
+      },
+      rule: {
+        queryNo: [{ validator: isValidInput, trigger: 'blur' }, { max: 6, message: '最大长度为6位', trigger: 'blur' }]
+      },
+      isAllIndeter: [], // 控制全选参数
+      activeNames: [], // 手风琴
+      type: [], // 复选框
+      checked: [], // 定制弹框表格复选
+      pkQttcId: '',
+      status: '' // 定制结果有没有选中
+    }
+  },
+  mounted() {
+    this.getData()
+  },
+  methods: {
+    resetForm() {
+      this.$nextTick(function() {
+        this.$refs.dialogForm.clearValidate()
+      })
+    },
+    isReport(scope) {
+      const pkQst = scope.row.fkQttc
+      console.log('id', pkQst)
+      if (pkQst === 'w_11' || pkQst === 'w_22' || pkQst === 'w_33' || pkQst === 'w_44' || pkQst === 'w_55' || pkQst === 'w_66' || pkQst === 'w_100' || pkQst === 'w_110' || pkQst === 'w_120' || pkQst === 'w_130' || pkQst === 'w_140' || pkQst === 'w_150') {
+        return true
+      } else {
+        return false
+      }
+    },
+    initUpdateData(arr) {
+      const data = []
+      for (let i = 0; i < arr.length; i++) {
+        data.push({
+          key: i,
+          label: arr[i]
+        })
+      }
+      return data
+    },
+    handleSelect(scope) {
+      const obj = scope.row
+      this.status = ''
+
+      if (obj.qttcStatus === '1') {
+        this.status = '2'
+      } else {
+        this.status = '1'
+      }
+
+      updateState(scope.row.pkQttc, this.status).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: '操作成功！',
+            type: 'success'
+          })
+          setTimeout(() => {
+            this.getData()
+          }, 1000)
+        } else {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: res.message,
+            type: 'error'
+          })
+        }
+      }).catch(() => {
+      })
+    },
+    isValidTrade(rule, value, callback) {
+      if (value >= 0 && value <= 50000) {
+        callback()
+      } else {
+        callback(new Error('查询条数在0到5万之间'))
+      }
+    },
+    isValidReport(rule, value, callback) {
+      if (value >= 0 && value <= 30000) {
+        callback()
+      } else {
+        callback(new Error('查询条数在0到3万之间'))
+      }
+    },
+    handleUpdate(scope) { // 修改
+      this.resetForm()
+      if (this.isReport(scope)) {
+        this.dialogRules.queryNo = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: onlyNumberValidate, trigger: 'blur' }, { validator: this.isValidTrade, trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { max: 6, message: '最大长度为6位', trigger: 'blur' }]
+      } else {
+        this.dialogRules.queryNo = [{ required: true, message: '内容不能为空', trigger: 'blur' }, { validator: onlyNumberValidate, trigger: 'blur' }, { validator: this.isValidReport, trigger: 'blur' }, { validator: isValidInput, trigger: 'blur' }, { max: 6, message: '最大长度为6位', trigger: 'blur' }]
+      }
+      const pkQttc = scope.row.pkQttc
+      const tableId = scope.row.fkQttc
+      this.dialogForm.queryNo = scope.row.dataCount
+      this.updateObj = {}
+      this.dialogForm.checkedDialogList = []
+      this.dialogForm.value = []
+      getViewData(pkQttc, tableId).then(res => {
+        if (res.code === 200) {
+          this.dialogVisible = true
+          this.pkQttcId = pkQttc
+          this.updateObj = res.data.scopeTables ? res.data.scopeTables : {}
+
+          const qId = res.data.ttConcequences ? res.data.ttConcequences.qstcIds.split(',') : [] // 选中的数据
+          this.updateOptions = []
+          if (qId.length !== 0) {
+            qId.forEach((item, index) => {
+              this.updateObj.scopeTableColumns.forEach((item2, index2) => {
+                if (item === item2.pkQstc) {
+                  this.dialogForm.value.push(index2)
+                }
+              })
+            })
+          }
+          if (this.updateObj.scopeTableColumns.length !== 0) {
+            this.updateObj.scopeTableColumns.forEach((item, index) => {
+              this.updateOptions.push(item.qstcNameCh) // 获取弹窗列表
+            })
+          }
+          this.dialogForm.checkedDialogList = this.initUpdateData(this.updateOptions)
+          console.log('value', this.dialogForm.value)
+        }
+      }).catch()
+    },
+    getUpdateParams() {
+      this.pageInfo.pageNum = 1
+      var obj = {}
+      if (this.updateObj.scopeTableColumns) {
+        const qId = []
+        const qName = []
+        this.dialogForm.value.forEach((item, index) => {
+          this.updateObj.scopeTableColumns.forEach((item2, index2) => {
+            if (item === index2) {
+              qId.push(item2.pkQstc)
+              qName.push(item2.qstcNameCh)
+            }
+          })
+        })
+        obj = {
+          fkQttc: this.updateObj.pkQst, // 表id
+          qstcIds: qId.toString(), // 表字段id
+          qttQttcCh: this.updateObj.qstNameCh, // 表名
+          qstIdsCh: qName.toString(), // 表字段名
+          dataCount: this.dialogForm.queryNo
+        }
+      }
+      return obj
+    },
+    onUpdate() { // 修改确定按钮
+      this.$refs.dialogForm.validate((valid) => {
+        if (valid) {
+          const paramsObj = this.getUpdateParams()
+          this.updateLoading = true
+          updateData(paramsObj, this.pkQttcId).then(res => {
+            if (res.code === 200) {
+              this.updateLoading = false
+              this.$message({
+                showClose: true,
+                duration: 6000,
+                message: '修改成功！',
+                type: 'success'
+              })
+              this.dialogVisible = false
+              setTimeout(() => {
+                this.getData()
+              }, 50)
+            } else {
+              this.updateLoading = false
+              this.$message({
+                showClose: true,
+                duration: 6000,
+                message: res.message,
+                type: 'error'
+              })
+            }
+          }).catch(() => {
+            this.updateLoading = false
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    getSubmitParams() {
+      this.pageInfo.pageNum = 1
+      const checkBoxList = []
+      this.activeList.map((item, key) => {
+        const arrId = []
+        const arrName = []
+        item.scopeTableColumns.forEach((item2, i) => {
+          this.form.checkList[key].forEach((item3, i2) => {
+            if (item2.qstcNameCh === item3) {
+              arrId.push(item2.pkQstc)
+              arrName.push(item2.qstcNameCh)
+            }
+          })
+        })
+        if (arrId.toString()) {
+          const obj = {
+            fkQttc: item.pkQst, // 表id
+            qstcIds: arrId.toString(), // 表字段id
+            qttQttcCh: item.qstNameCh, // 表名
+            qstIdsCh: arrName.toString(), // 表字段名
+            dataCount: this.form.queryNo[key].toString()
+          }
+          checkBoxList.push(obj)
+        }
+      })
+      return checkBoxList
+    },
+    getData() {
+      getList()
+        .then(res => {
+          if (res.code === 200) {
+            this.list = res.data.list
+            this.total = res.data.total
+          }
+        })
+        .catch(() => {})
+    },
+    // handleSizeChange(val) {
+    //   this.pageInfo.pageSize = val
+    //   this.getData()
+    // },
+    // handleCurrentChange(val) {
+    //   this.pageInfo.pageNum = val
+    //   this.getData()
+    // },
+    sortUp(key) {
+      const arrTmp = Object.assign(this.dialogForm.value)
+      for (let index = 0; index < this.dialogForm.value.length; index++) {
+        let tmp = null
+        if (this.dialogForm.value[index] === key) {
+          if (index !== 0) {
+            tmp = arrTmp[index]
+            arrTmp[index] = arrTmp[index - 1]
+            arrTmp[index - 1] = tmp
+            this.$set(this.dialogForm.value, index, arrTmp[index])
+            return
+          } else {
+            this.$confirm('已置顶，可以向下调整顺序', '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+            return
+          }
+        }
+      }
+    },
+    sortDown(key) {
+      const arrTmp = Object.assign(this.dialogForm.value)
+      for (let index = this.dialogForm.value.length - 1; index >= 0; index--) {
+        let tmp = null
+        if (this.dialogForm.value[index] === key) {
+          if (index !== (this.dialogForm.value.length - 1)) {
+            tmp = arrTmp[index]
+            arrTmp[index] = arrTmp[index + 1]
+            arrTmp[index + 1] = tmp
+            this.$set(this.dialogForm.value, index, arrTmp[index])
+            return
+          } else {
+            this.$confirm('已到底部，可以向上调整顺序', '提示', {
+              confirmButtonText: '确定',
+              showCancelButton: false,
+              type: 'warning'
+            })
+            return
+          }
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.configstatistics {
+  .item { // 表格加省略号
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .el-dialog__body {
+    padding-top: 0px;
+  }
+  .el-button--small.is-circle {
+    padding: 2px;
+  }
+  .el-transfer {
+    text-align: center;
+    .el-transfer-panel,
+    .el-transfer-panel {
+      text-align: left;
+    }
+    .el-transfer-panel:first-child {
+      .el-button--primary.is-plain {
+        display: none;
+      }
+    }
+    .el-transfer-panel:last-child {
+      .el-checkbox-group .el-checkbox {
+        width: 100%;
+      }
+    }
+  }
+  .el-transfer-panel__body {
+    height: 420px;
+  }
+  .el-transfer-panel__list {
+    height: 420px;
+  }
+  thead {
+    .el-table-column--selection {
+      .cell {
+        display: none;
+      }
+    }
+  }
+  // 复选框样式
+  .el-transfer-panel {
+    width: 45%;
+  }
+  .dialogWrap .el-checkbox-group .el-checkbox {
+    width: 50%;
+  }
+  .el-checkbox {
+    margin-right: 0;
+  }
+  .active {
+    color: #409EFF;
+  }
+}
+</style>

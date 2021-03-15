@@ -1,0 +1,1865 @@
+<template>
+<div style='width:100%;height:100%;background-color:#fff;position: relative'>
+  <div class="statisticformbig" v-if='dataPermission && initPermission' v-loading="loading2" element-loading-text="首次加载较慢，请稍侯……" element-loading-background="rgba(0, 0, 0, 0.1)">
+    <el-card>
+      <div slot="header" class="clearfix"><span>交易主体统计分析</span>
+      <el-popover placement="bottom-start" width="1000" trigger="hover">
+          <el-row>
+            <el-col style="margin-left:20px" :span="22">
+              <div v-for="(item,index) in title" :key="index">
+              <span>{{item}}</span>
+              <br/>
+              </div>
+            </el-col>
+          </el-row>
+          <el-button type="text" slot="reference" icon="el-icon-warning">口径说明</el-button>
+        </el-popover>
+      </div>
+      <el-row>
+        <div style='text-align: right;font-size:10px'>
+          <el-button type='text' color="red">*统计时间区间限制在10天以内</el-button>
+        </div>
+        <el-form label-position="right"  :model="form"  label-width="150px" ref="searchForm" :rules='formRules'>
+          <el-row :gutter="24">
+            <el-col :span="12">
+              <el-form-item label="统计类型："  prop="statisticalType">
+                <el-select clearable style="width:100%;" v-model="form.statisticalType" placeholder="请选择统计类型(必选)"   @change="meterCntroller">
+                  <el-option label="按指定客户统计" value="RICD" ></el-option>
+                  <el-option label="按排名统计" value="INDUSTRY"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="落地日期："  prop="statisticalTime">
+                <el-date-picker style="width:100%!important;" v-model="form.statisticalTime" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :picker-options="pickerOptions"></el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- <el-col :span="12">
+              <el-form-item label="地区："  prop="area">
+               <treeselect :multiple="true" v-if="citiesOptions.length>0" :options="citiesOptions" placeholder="请选择地区(必填)" v-model="area"/>
+              </el-form-item>
+            </el-col> -->
+            <el-row :gutter="24">
+              <!-- <el-col :span="12">
+                <el-form-item label="义务机构类型：" ref="inpCust" prop="Cust">
+                    <el-select clearable style="width:100%;" v-model="form.Cust" placeholder="请选择" @change="clearType">
+                      <el-option v-for="(item,index) in typeDate" :key="index" :label="item.text" :value="item.value">
+                      </el-option>
+                    </el-select>
+                </el-form-item>
+              </el-col> -->
+              <el-col :span="12" >
+              <el-row>
+              <el-col :span="14" >
+                <el-form-item label="义务机构类型：" prop="Cust">
+                      <!-- <treeselect :multiple="true" :options="options"  v-if="options.length>0" placeholder="请选择义务机构类型(必填)" v-model="form.Cust" /> -->
+                  <el-select clearable v-model="form.Cust" placeholder="请选择" @clear='clearOptions' @change="changeTypeDate" style="width: 100%">
+                    <el-option v-for="(item,index) in options" :key="index" :label="item.text" :value="item.value">
+                    </el-option>
+                  </el-select>
+
+                </el-form-item>
+                <!-- <el-form-item v-if="!ww" label="义务机构类型：" prop="levelType1">
+                  <el-select clearable v-model="form.levelType" placeholder="请选择" @change="isTypeShow" style="width:100%;">
+                    <el-option v-for="(item,index) in options" :key="index" :label="item.codeName" :value="item.codeDesc">
+                    </el-option>
+                  </el-select>
+                </el-form-item> --> 
+              </el-col>
+              <el-col :span="10">
+                <el-form-item label="" label-width="0" prop="indChild">
+                  <el-select class='custOptions' multiple v-model="form.indChild" placeholder="请选择" @focus="getIndustry" @change='changeOptions' style="width: 100%">
+                    <el-option v-for="(item,index) in typeDate" :key="index" :label="item.text" :value="item.value" :disabled="item.disabled">
+                    </el-option>
+                  </el-select>
+                </el-form-item>      
+              </el-col>
+              </el-row>
+            </el-col>
+              <!-- <el-col :span="12">
+                <el-form-item label="义务机构名称：" class="multiple_select" prop="str">
+                  <el-select v-model="form.str" multiple filterable allow-create default-first-option  @focus="getDivision()" placeholder="请选择义务机构名称(非必选)" >
+                    <el-option v-for="(item,index) in rinmOptions" :key="index" :label="item.rinm" :value="item.ricd"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>               -->
+              <!-- <el-col :span="12">
+                <el-form-item label="义务机构名称：">
+                  <el-autocomplete
+                  style="width:100%;"
+                  class="inline-input"
+                  v-model="select"
+                  :fetch-suggestions="querySearch"
+                  placeholder="请输入内容进行检索"
+                  :trigger-on-focus="false"
+                  value-key="rinm"
+                  @select="handleSelect"
+                ></el-autocomplete>
+                </el-form-item>
+              </el-col> -->
+              <el-col :span="12">
+                <el-form-item label="数据类型：" prop="type">
+                  <el-select clearable style="width:100%;" v-model="form.type" @focus="relevanceType" @change="changeType">
+                    <el-option v-for="(item,index) in dataType" :key="index" :label="item.label" :value="item.value"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <!-- <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="大额/可疑："  prop="largeSuspicious">
+                  <el-select style="width:100%;" v-model="form.largeSuspicious">
+                    <el-option label="大额" value="B" ></el-option>
+                    <el-option label="可疑" value="S"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row> -->
+            <el-row :gutter="20">
+              <el-col :span="24" v-if="form.statisticalType === 'RICD'">
+                <el-form-item label="批量导入主体：">
+                  <el-switch v-model="value2" @change='switchValue'>
+                  </el-switch>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20" v-if="form.statisticalType === 'RICD' && value2 === false">
+              <el-col :span="7">
+                <el-form-item label="交易主体类型：" prop="subjectType">
+                  <el-radio-group v-model="form.subjectType">
+                    <el-radio label="0">个人</el-radio>
+                    <el-radio label="1">机构</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <!-- <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="证件号：" prop="credNo">
+                  <el-input oninput="value=value.replace(/[^\d]/g,'')" v-model="form.credNo"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row> -->
+            <el-row :gutter="20">
+              <el-col :span="12" v-if="form.statisticalType === 'RICD' && form.subjectType === '1' && value2 === false">
+                <el-form-item label="交易主体名称：" prop="subjectName">
+                  <el-input v-model="form.subjectName" placeholder="最多输入128位" maxlength="128"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12" v-if="form.statisticalType === 'RICD' && form.subjectType === '0' && value2 === false">
+                <el-form-item label="交易主体证件号码：" prop="credNo">
+                  <el-input  v-model="form.credNo" placeholder="最多输入128位" maxlength="128"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12" v-if="form.statisticalType === 'RICD' && form.subjectType === '1' && value2 === false">
+                <el-form-item label="交易主体证件号码：" prop="credNo">
+                  <el-input v-model="form.credNo" placeholder="最多输入128位" maxlength="128"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20" v-show="isShow && value2">
+              <el-col >
+                <el-form-item label="交易主体：">
+                  <!-- <el-upload
+                  :action="upfileUrl"
+                  accept=".xlsx,.xls" 
+                  :on-success='handleSuccess'
+                  :headers = "headers"
+                  >
+                  <el-button size="small" type="primary" plain>模板上传</el-button>                                                
+                  </el-upload>
+                  <el-button type="text" icon="el-icon-download" @click="handleDownloadModel">模板下载</el-button>  -->
+                  <el-upload class="upload-demo" :headers = "headers" ref="upload" :action="upfileUrl"  accept=".xlsx,.xls" :on-success='handleSuccess'>
+                    <el-button slot="trigger" type="primary" plain>选取文件</el-button>
+                    <!-- <el-button style="margin-left: 10px;" type="success" plain>导入</el-button> -->
+                    <el-button type="text" icon="el-icon-download"  @click="handleDownloadModel">模版下载</el-button>
+                  </el-upload>
+                  
+                </el-form-item>
+              </el-col> 
+           </el-row>                
+           <el-row :gutter="20" v-if="rankShow">
+            <el-col :span="12">
+              <el-form-item label="排名方式：" prop="sortByType">
+                <!-- 
+                  按涉及大额报告份数：3
+                    按涉及大额交易金额：4
+                    按涉及大额报告机构数：13
+                    按涉及可疑报告份数：8
+                    按涉及可疑交易金额：9
+                    涉及可以报告机构数：13
+                 -->
+                <el-select clearable v-model="form.sortByType" style="width:100%;" @focus="choosePremise">
+                  <el-option v-if="form.type === 'B'" label="按涉及大额交易笔数" value="5"></el-option>
+                  <el-option v-if="form.type === 'B'" label="按涉及大额交易金额" value="4"></el-option>
+                  <el-option v-if="form.type === 'B'" label="按涉及大额报告机构数" value="13"></el-option>
+                  <el-option v-if="form.type === 'S'" label="按涉及可疑报告份数" value="8"></el-option>
+                  <el-option v-if="form.type === 'S'" label="按涉及可疑交易金额" value="9"></el-option>
+                  <el-option v-if="form.type === 'S'" label="按涉及可疑报告机构数" value="www"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+             <el-col :span="12">
+              <el-form-item label="显示记录条数：" prop="recordNum">
+                <el-input v-model="form.recordNum" placeholder="最多输入9位数字" maxlength="9" style="width: 50%;"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+      </el-row>
+         <!-- <div class="app-container"  v-show="isShow">
+           <upload-excel-component :on-success="handleSuccess" :before-upload="beforeUpload"/>
+       </div> -->
+      <div class="btnalign"><el-button type="primary" @click="handleQury">统计</el-button><el-button  @click="clearForm" type="primary" plain >清空</el-button></div>
+      <div style="margin-bottom:10px;margin-left:35px;">
+        统计结果表：
+          <el-button type="primary"  @click="exportStaAll" plain style="margin-left:10px;">导出全部</el-button>
+          <el-button type="primary"  @click="exportStatistics" plain style="margin-left:10px;">导出已选</el-button>
+          <el-button type="primary" @click="graphicalDisplay" style="margin-left:10px;">图形化展示</el-button>
+          </div>
+      <!-- 初始化统计结果 -->
+      <el-table v-if="!initType" :empty-text="tableClue" :data="list" v-loading="loadingTab" :element-loading-text="loadingStr" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection"></el-table-column>
+        <el-table-column prop="index" label="序号" width="55"></el-table-column>
+        <el-table-column prop="ctnm"  min-width="80" label="客户名称" ></el-table-column>
+        <el-table-column prop="ctid"  min-width="80" label="客户证件号码" ></el-table-column>
+        <el-table-column prop="hNum"  min-width="105" label="涉及的大额报告份数" ></el-table-column>
+        <el-table-column prop="hCratNumStr" min-width="135" label="涉及的大额交易总金额(万元)" ></el-table-column>
+        <el-table-column prop="hRepNum" min-width="125" label="涉及的大额交易笔数" ></el-table-column>
+        <el-table-column prop="hCtacNum" min-width="120" label="涉及的大额交易账户数" ></el-table-column>
+        <el-table-column prop="hSubNum" min-width="135" label="涉及的大额交易对手主体数" ></el-table-column>
+        <el-table-column prop="sNum" min-width="110" label="涉及的可疑交易报告份数" ></el-table-column>
+        <el-table-column prop="sCratNumStr" min-width="135" label="涉及的可疑交易报告总金额(万元)" ></el-table-column>
+        <el-table-column prop="sRepNum" min-width="120" label="涉及的可疑交易报告交易笔数" ></el-table-column>
+        <el-table-column prop="sCtacNum" min-width="120" label="涉及的可疑交易报告账户数" ></el-table-column>
+        <el-table-column prop="sSubNum" min-width="135" label="涉及的可疑交易报告交易主体数" ></el-table-column>
+        <el-table-column prop="ricdNum" min-width="90" label="报告机构数" v-if="presentationType" ></el-table-column>
+      </el-table>
+      <!-- 实际统计结果 -->
+      
+      <el-table v-if="initType" :data="list.length > 0 ? list.concat([sum]) : list" :empty-text="tableClue" @selection-change="handleSelectionChange" @sort-change="tabSortChange" v-loading="loadingTab" :element-loading-text="loadingStr" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection"></el-table-column>
+        <el-table-column prop="index" label="序号" width="55"></el-table-column>
+        <!-- <el-table-column prop="rowNum"  min-width="100" label="序号"></el-table-column> -->
+        <el-table-column prop="ctnm"  min-width="80" label="客户名称" sortable="custom" key='1'>
+          <template slot-scope="scope">
+            <el-tooltip  effect="dark" placement="top-start">
+              <div slot="content" style="margin:4px">{{scope.row.ctnm}}</div>
+              <span class="tableCell">{{scope.row.ctnm}}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ctid"  min-width="105" label="客户证件号码" sortable="custom" key='2'>
+          <template slot-scope="scope">
+            <el-tooltip  effect="dark" placement="top-start">
+              <div slot="content" style="margin:4px">{{scope.row.ctid}}</div>
+              <span class="tableCell">{{scope.row.ctid}}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column prop="industry"  min-width="170" label="行业名称"></el-table-column> -->
+        <el-table-column prop="hNum"  min-width="105" v-if="btype" label="涉及的大额报告份数" sortable="custom" key='3'></el-table-column>
+        <el-table-column prop="hCratNumStr" min-width="135" v-if="btype" label="涉及的大额交易总金额(万元)" sortable="custom" key='4'></el-table-column>
+        <el-table-column prop="hRepNum" min-width="125" v-if="btype" label="涉及的大额交易笔数  " sortable="custom" key='5'></el-table-column>
+        <el-table-column prop="hCtacNum" min-width="115" v-if="btype" label="涉及的大额交易账户数 " sortable="custom" key='6'></el-table-column>
+        <el-table-column prop="hSubNum" min-width="130" v-if="btype" label="涉及的大额交易对手主体数" sortable="custom" key='7'></el-table-column>
+        <el-table-column prop="sNum" min-width="105" v-if="stype" label="涉及的可疑交易报告份数" sortable="custom" key='8'></el-table-column>
+        <el-table-column prop="sCratNumStr" min-width="135" v-if="stype" label="涉及的可疑交易报告总金额(万元)" sortable="custom" key='9'></el-table-column>
+        <el-table-column prop="sRepNum" min-width="125" v-if="stype" label="涉及的可疑交易报告交易笔数" sortable="custom" key='10'></el-table-column>
+        <el-table-column prop="sCtacNum" min-width="115" v-if="stype" label="涉及的可疑交易报告账户数  " sortable="custom" key='11'></el-table-column>
+        <el-table-column prop="sSubNum" min-width="130" v-if="stype" label="涉及的可疑交易报告交易主体数" sortable="custom" key='12'></el-table-column>
+        <el-table-column prop="ricdNum" min-width="95" label="报告机构数" v-if="presentationType" key='13'></el-table-column>
+      </el-table>
+       <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+       
+      <graphical :id="id" :dialogTableVisible="dialogTableVisible" :S_TYPES="form.newStatisticalType" :S_NAMES="'交易主体统计分析 ' + S_NAME" :D_TYPES="form.newType" :tablist="list" @setDialog="setDialog"></graphical>
+
+    </el-card>
+  </div>
+  <div v-if='!dataPermission||!initPermission' style="height:656px;position: relative;">
+    <div style="position: absolute;left: 50%; top: 50%; transform: translateX(-50%) translateY(-50%);text-align: center">
+      <i v-if='!dataPermission' class="el-icon-warning" style="font-size:65px;color: #E6A23C;"></i>
+      <p v-if='!dataPermission' style="height:40px;font-size:18px;letter-spacing: 2px" >您还未申请数据权限，请到"数据权限管理模块"申请!</p>
+    </div>
+  </div>
+</div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import VeHistogram from 'v-charts/lib/histogram'
+import Treeselect from '@riophae/vue-treeselect'
+import { mapGetters } from 'vuex'
+import {
+  getRinmList,
+  getList,
+  getSum,
+  getIndustryFrist,
+  getIndustrySecond,
+  administrativeDivision,
+  getInstitutionName,
+  getDataFlag,
+  getCacheData,
+  exportApi,
+  exportAllApi
+} from '@/api/sys-monitoringAnalysis/statisticForm/subject'
+import { ValidQueryInput } from '@/utils/formValidate'
+import { endTimes, getPermission, outputLog } from '@/api/sys-monitoringAnalysis/statisticForm/large'
+import UploadExcelComponent from '@/components/UploadExcel/index.vue'
+import graphical from '@/views/sys-monitoringAnalysis/statisticForm/antimoneyAuthority/graphical'
+export default {
+  components: {
+    Treeselect,
+    VeHistogram,
+    UploadExcelComponent,
+    graphical
+  },
+  computed: {
+    ...mapGetters(['roles']),
+    downLoadURL() {
+      const obj1 = JSON.parse(JSON.stringify(this.form))
+      var arr1 = []
+      this.tableData.forEach((item, index) => {
+        arr1.push(item.客户证件号码)
+      })
+      const obj = {
+        starStatisticalTime: obj1.statisticalTime[0],
+        endStatisticalTime: obj1.statisticalTime[1],
+        industryType: this.form.Cust,
+        customerData: arr1.join(),
+        st: obj1.str,
+        sort: obj1.sort,
+        region: this.area.join(',')
+      }
+      const arr = []
+      this.multipleSelection.map(function(item) {
+        arr.push(item.rowNum)
+      })
+      obj.ids = arr.join(',')
+      var str = ''
+      for (var key in obj) {
+        str += `${key}=${obj[key]}&`
+      }
+      str = str.substr(0, str.length - 1)
+      return '/monitor/subject/statist/export?' + str + '&token=' + this.token
+    },
+    upfileUrl() {
+      return `/monitor/subject/statist/import-validation`
+    },
+    form_Cust: {
+      get: function() {
+        return this.form.Cust
+      },
+      set: function(val) {
+        this.form.Cust = val
+      }
+    }
+  },
+  data() {
+    const numJudgement = (rule, value, callback) => {
+      const num = /^\d{1,}$/
+      if (value === '') {
+        callback(new Error('请输入显示记录条数'))
+      } else if (num.test(value) === false) {
+        callback(new Error('只能输入数字'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      downIndChild: '',
+      allValues: [],
+      formTwo: {},
+      dialogTableVisible: false,
+      id: '3',
+      S_NAME: '',
+      btype: false,
+      stype: false,
+      initType: false,
+      pickerMinDate: '',
+      dateRule: 9,
+      title: [
+        '分支行所统计的范围为：该统计不分辖区，为全国范围内报告机构报送的大额、可疑报告的数据。',
+        '大额计算通过一级校验，可疑计算通过二级校验',
+        '1、涉及的大额报告份数：通过一级校验的交易特征数COUNT(REPORT_ID)',
+        '2、涉及的大额交易总金额(万元)：统计该主体所在的所有大额交易中“交易金额(转人民币)“总和sum(CRAT_RMB)',
+        '3、涉及的大额交易笔数：统计该查询主体的所在的大额交易笔数count(trade_ID)',
+        '4、涉及的大额交易账户数：统计该查询主体所在的大额交易交易方的账户数(去重标准：按账户号和账户类型均相同记为同一账户去重)',
+        '5、涉及的大额交易对手主体数：统计该查询主体所在的大额交易的对手方数量(去重标准：按对手名称和对手证件号码均相同记为同一主体去重)',
+        '6、涉及的可疑交易报告份数：统计该查询主体所在的可疑报告的数量(判断可疑报告存在查询主体的依据：查询主体存在于报告中的可疑主体)',
+        '7、涉及的可疑交易报告总金额(万元)：统计该查询主体所在的可疑报告中的所有交易中的“交易金额(转人民币)“的总和sum(CRAT_RMB)',
+        '8、涉及的可疑交易报告交易笔数：统计该查询主体所在的可疑报告中的交易数',
+        '9、涉及的可疑交易报告账户数：统计该查询主体所在的可疑报告中所有交易的交易方账户数(去重标准：按账户号和账户类型均相同记为同一账户的规则报文内去重)',
+        '10、涉及的可疑交易报告交易主体数：统计该查询主体所在的可疑报告中所有交易的对手方数量(去重标准：按对手名称和对手证件号码均相同记为同一主体的规则报文内去重)'
+      ],
+      pickerOptions: {
+        onPick: ({ maxDate, minDate }) => {
+          console.log(maxDate, minDate)
+          this.pickerMinDate = minDate.getTime()
+          if (!maxDate) {
+            this.pickerOptions.disabledDate = (time) => {
+              var _now = this.pickerMinDate
+              var seven = this.dateRule * 24 * 60 * 60 * 1000
+              var sevenDays = _now - seven
+              var minusSevenDays = _now + seven
+              if (this.endTime !== '') {
+                const d = new Date(this.endTime)
+                return time.getTime() > minusSevenDays || time.getTime() < sevenDays || time.getTime() > d.getTime()
+              } else {
+                return time.getTime() > minusSevenDays || time.getTime() < sevenDays
+              }
+            }
+          } else {
+            this.pickerOptions.disabledDate = (time) => {
+              if (this.endTime !== '') {
+                const d = new Date(this.endTime)
+                return time.getTime() > d.getTime()
+              } else {
+                return time.getTime() > Date.now()
+              }
+            }
+          }
+        },
+        disabledDate: (time) => {
+          if (this.endTime !== '') {
+            const d = new Date(this.endTime)
+            return time.getTime() > d.getTime()
+          } else {
+            return time.getTime() > Date.now()
+          }
+        }
+      },
+      endTime: '',
+      dataType: [
+        {
+          label: '大额',
+          value: 'B'
+        },
+        {
+          label: '可疑',
+          value: 'S'
+        }
+      ],
+      typeDate: [],
+      oldOptions: [],
+      choiceDate: '',
+      loading2: false,
+      dataPermission: true,
+      initPermission: false,
+      presentationType: true,
+      value2: false,
+      select: '',
+      aloneListTime: true,
+      aloneListKey: '',
+      restaurants: [],
+      corresponding: '',
+      octnm: true, // 客户名称
+      oindustry: true, //  行业名称
+      ohNum: true, //   涉及的大额交易报告份数
+      ohRepNum: true, //  涉及的大额交易报告交易笔数
+      ohCtacNum: true, //  涉及的大额交易报告账户数
+      ohSubNum: true, //  涉及的大额交易报告交易主体数
+      osNum: true, // 涉及的可疑交易报告份数
+      osCratNum: true, //  涉及的可疑交易报告金额
+      osRepNum: true, // 涉及的可疑交易报告交易笔数
+      osCtacNum: true, //  涉及的可疑交易报告账户数
+      osSubNum: true, //  涉及的可疑交易报告交易主体数
+      oricdNum: true, //  涉及的报告机构数
+      isShow: true,
+      rankShow: false,
+      lastlineShow: false,
+      listKey: '',
+      sumKey: '',
+      listType: '',
+      sumType: '',
+      isTime: true,
+      isTimer: null,
+      exportKey: '',
+      exportTime: true,
+      tableData: [],
+      tableHeader: [],
+      area: '',
+      citiesOptions: [], //   地区
+      countryData: [],
+      uploadData: [],
+      tableClue: ' ',
+      loadingStr: '',
+      form: {
+        levelType: '',
+        newType: '',
+        newStatisticalType: '',
+        sortType: '',
+        statisticalType: 'RICD',
+        statisticalTime: [],
+        region: '',
+        str: '',
+        mechanismType: '',
+        industryType: '',
+        tsdr: '',
+        ids: '',
+        sort: '',
+        sortByType: '',
+        CustomerType: '',
+        custNameData: '',
+        credTypeData: '',
+        Cust: [],
+        credNoData: '',
+        subjectType: '0',
+        subjectName: '',
+        credNo: '',
+        recordNum: '100',
+        type: 'B'
+      },
+      loadingTab: false,
+      rinmOptions: [],
+      options: [],
+      list: [],
+      sum: {},
+      multipleSelection: [], // 表格选择项
+      total: 0,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      token: getToken(),
+      headers: {
+        Authorization: 'bearer ' + getToken()
+      },
+      formRules: {
+        statisticalType: [{ required: true, message: '请选择统计类型', trigger: 'change' }],
+        statisticalTime: [{ required: true, message: '请选择统计时间', trigger: 'change' }],
+        Cust: [{ required: true, message: '请选择义务机构类型', trigger: 'blur' }],
+        credNo: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { required: true, message: '请输入交易主体证件号码', trigger: 'blur' }
+          // { type: 'number', max: 20, message: '请输入数字', trigger: 'blur' }
+        ],
+        subjectName: [
+          { validator: ValidQueryInput, trigger: 'blur' },
+          { required: true, message: '请输入交易主体名称', trigger: 'blur' }
+        ],
+        sortByType: [
+          { required: true, message: '请选择排名方式', trigger: 'change' }
+        ],
+        type: [
+          { required: true, message: '请选择数据类型', trigger: 'change' }
+        ],
+        recordNum: [
+          { required: true, validator: numJudgement, trigger: 'change' }
+
+        ]
+      }
+    }
+  },
+  created() {
+    this.imFile = document.getElementById('imFile')
+    this.outFile = document.getElementById('downlink')
+    this.getPermission()
+  },
+  mounted() {
+    this.getData()
+    this.outputLog()
+  },
+  destroyed() {
+    this.$message.closeAll()
+  },
+  methods: {
+    outputLog() {
+      outputLog('4').then(res => {
+      })
+    },
+    setDialog(val) {
+      this.dialogTableVisible = val
+    },
+    tabSortChange(column) {
+      if (column.prop === 'ctnm') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '1'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '1'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'ctid') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '2'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '2'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'hNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '3'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '3'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'hCratNumStr') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '4'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '4'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'hRepNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '5'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '5'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'hCtacNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '6'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '6'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'hSubNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '7'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '7'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'sNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '8'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '8'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'sCratNumStr') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '9'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '9'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'sRepNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '10'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '10'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'sCtacNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '11'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '11'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'sSubNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '12'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '12'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      } else if (column.prop === 'ricdNum') {
+        if (column.order === 'ascending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '13'
+          this.form.sortType = '1'
+          this.getList()
+        } else if (column.order === 'descending') {
+          this.loadingStr = '排序中，请稍候……'
+          this.loadingTab = true
+          this.form.sort = '13'
+          this.form.sortType = '2'
+          this.getList()
+        }
+      }
+    },
+    changeType() {
+      this.form.sortByType = ''
+    },
+    clearType() {
+      this.form.type = ''
+    },
+    // 关联数据类型判断
+    relevanceType() {
+      if (this.form.Cust === '') {
+        this.$message({
+          message: '请选择义务机构类型',
+          showClose: true,
+          duration: 6000,
+          type: 'success'
+        })
+        this.dataType = []
+      } else {
+        if (this.form.Cust === 'B' || this.form.Cust === 'S' || this.form.Cust === 'I') {
+          this.form.type = 'B'
+          this.dataType = [{
+            label: '大额',
+            value: 'B'
+          },
+          {
+            label: '可疑',
+            value: 'S'
+          }]
+        } else if (this.form.Cust === 'UZ') {
+          this.form.type = 'S'
+          this.dataType = [
+            {
+              label: '可疑',
+              value: 'S'
+            }]
+        } else {
+          this.form.type = 'B'
+          this.dataType = [
+            {
+              label: '大额',
+              value: 'B'
+            },
+            {
+              label: '可疑',
+              value: 'S'
+            }]
+        }
+      }
+    },
+
+    choosePremise() {
+      if (this.form.type === '') {
+        this.$message({
+          message: '请选择数据类型',
+          showClose: true,
+          duration: 6000,
+          type: 'success'
+        })
+      }
+    },
+    listSort(column, prop, order) {
+      console.log(column, 1)
+      console.log(prop, 2)
+      console.log(order, 3)
+    },
+    graphicalDisplay() {
+      if (this.list.length === 0) {
+        this.$message({
+          message: '无可展示数据',
+          showClose: true,
+          duration: 6000,
+          type: 'warning'
+        })
+      } else {
+        this.dialogTableVisible = true
+      }
+    },
+    getData() {
+      endTimes('2').then(res => {
+        if (res.code === 200) {
+          this.endTime = res.data
+        }
+      })
+      // getIndustryFrist()
+      //   .then(res => {
+      //     if (res.code === 200) {
+      //       this.typeDate = res.data
+      //       this.form.Cust = this.typeDate[0].value
+      //     }
+      //   })
+      //   .catch(() => {})
+
+      getIndustryFrist()
+        .then(res => {
+          if (res.code === 200) {
+            this.options = res.data
+            this.form.Cust = 'B'
+            var params = { type: this.form.Cust }
+            getIndustrySecond(params)
+              .then(res => {
+                if (res.code === 200) {
+                  this.typeDate = res.data
+                  this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+                  // const arr = []
+                  // this.typeDate.forEach(res => {
+                  //   arr.push(res.value)
+                  // })
+                  // this.form.indChild = arr
+                }
+              })
+          }
+        })
+        .catch(() => {})
+      administrativeDivision()
+        .then(res => {
+          if (res.code === 200) {
+            this.citiesOptions = res.data
+          }
+        })
+        .catch()
+    },
+    getFormDa() {
+      this.tableClue = ' '
+      if (this.uploadData.length > 0) {
+        const arr = []
+        const arr1 = []
+        const arr2 = []
+        this.uploadData.forEach(element => {
+          arr.push(element.subjectType)
+          if (element.subjectName !== null) {
+            arr1.push(element.subjectName)
+          }
+          arr2.push(element.credNo)
+        })
+        this.form.custNameData = arr1.toString()
+        this.form.credTypeData = arr.toString()
+        this.form.credNoData = arr2.toString()
+      } else {
+        if (this.value2) {
+          this.form.credTypeData = ''
+        } else {
+          if (this.form.subjectType === '0') {
+            this.form.credTypeData = 'GR'
+          } else {
+            this.form.credTypeData = 'JG'
+          }
+          this.form.custNameData = this.form.subjectName
+          this.form.credNoData = this.form.credNo
+        }
+      }
+      if (this.form.statisticalType === 'INDUSTRY') {
+        this.form.credTypeData = ''
+        this.form.credNoData = ''
+      }
+      const startDate = this.form.statisticalTime[0].split('-')
+      if (startDate[1] < 10) {
+        startDate[1] = '0' + Number(startDate[1])
+        this.form.statisticalTime[0] = startDate.join('-')
+      }
+      const endDate = this.form.statisticalTime[1].split('-')
+      if (endDate[1] < 10) {
+        endDate[1] = '0' + Number(endDate[1])
+        this.form.statisticalTime[1] = endDate.join('-')
+      }
+      const obj = JSON.parse(JSON.stringify(this.form))
+      if (this.form.sortType === '') {
+        obj.sort = this.form.sortByType
+      } else {
+        obj.sort = this.form.sort
+      }
+      if (obj.sort === 'www') {
+        obj.sort = '13'
+      }
+      obj.sortType = this.form.sortType
+      obj.CustomerType = this.form.Cust
+      obj.total = Number(this.form.recordNum)
+      obj.region = obj.region.toString()
+      if (this.form.indChild.length === 0) {
+        obj.indChild = this.form.Cust
+      } else {
+        if (this.form.indChild.includes('ALL_SELECT')) {
+          obj.indChild = this.allValues
+        } else {
+          obj.indChild = this.form.indChild
+        }
+        obj.indChild = obj.indChild.join(',')
+      }
+      this.formTwo = Object.assign({}, this.form)
+
+      getList(obj, this.pageInfo)
+        .then(res => {
+          // this.initType = false
+          if (res) {
+            if (res.code === 200) {
+              this.listKey = res.data
+              this.sum = ''
+              if (this.uploadData.length > 0) {
+                const arr = []
+                const arr1 = []
+                const arr2 = []
+                this.uploadData.forEach(element => {
+                  arr.push(element.subjectType)
+                  if (element.subjectName !== null) {
+                    arr1.push(element.subjectName)
+                  }
+                  arr2.push(element.credNo)
+                })
+                this.form.custNameData = arr1.toString()
+                this.form.credTypeData = arr.toString()
+                this.form.credNoData = arr2.toString()
+              } else {
+                if (this.value2) {
+                  this.form.credTypeData = ''
+                } else {
+                  if (this.form.subjectType === '0') {
+                    this.form.credTypeData = 'GR'
+                  } else {
+                    this.form.credTypeData = 'JG'
+                  }
+                  this.form.custNameData = this.form.subjectName
+                  this.form.credNoData = this.form.credNo
+                }
+              }
+              if (this.form.statisticalType === 'INDUSTRY') {
+                this.form.credTypeData = ''
+                this.form.credNoData = ''
+              }
+
+              const startDate = this.form.statisticalTime[0].split('-')
+              if (startDate[1] < 10) {
+                startDate[1] = '0' + Number(startDate[1])
+                this.form.statisticalTime[0] = startDate.join('-')
+              }
+              const endDate = this.form.statisticalTime[1].split('-')
+              if (endDate[1] < 10) {
+                endDate[1] = '0' + Number(endDate[1])
+                this.form.statisticalTime[1] = endDate.join('-')
+              }
+              const obj = JSON.parse(JSON.stringify(this.form))
+              if (this.form.sortByType) {
+                obj.sort = this.form.sortByType
+              } else if (this.form.sort) {
+                obj.sort = this.form.sort
+              } else {
+                obj.sort = ''
+              }
+              if (obj.sort === 'www') {
+                obj.sort = '13'
+              }
+              obj.sortType = this.form.sortType
+              obj.CustomerType = this.form.Cust
+              obj.total = Number(this.form.recordNum)
+              obj.region = obj.region.toString()
+
+              if (this.form.indChild.length === 0) {
+                obj.indChild = this.form.Cust
+              } else {
+                if (this.form.indChild.includes('ALL_SELECT')) {
+                  obj.indChild = this.allValues
+                } else {
+                  obj.indChild = this.form.indChild
+                }
+                obj.indChild = obj.indChild.join(',')
+              }
+              this.downIndChild = obj.indChild
+
+              getSum(obj, this.pageInfo).then(res => {
+                if (res.code === 200) {
+                  this.sumKey = res.data
+                  if (this.listKey !== '' && this.sumKey !== '') {
+                    this.isTime = false
+                  }
+                }
+              })
+            }
+          } else {
+            this.loadingTab = false
+            this.loading2 = false
+          }
+        })
+        .catch()
+    },
+    getList() {
+      this.tableClue = ' '
+      if (this.uploadData.length > 0) {
+        const arr = []
+        const arr1 = []
+        const arr2 = []
+        this.uploadData.forEach(element => {
+          arr.push(element.subjectType)
+          if (element.subjectName !== null) {
+            arr1.push(element.subjectName)
+          }
+          arr2.push(element.credNo)
+        })
+        this.form.custNameData = arr1.toString()
+        this.form.credTypeData = arr.toString()
+        this.form.credNoData = arr2.toString()
+      } else {
+        if (this.value2) {
+          this.form.credTypeData = ''
+        } else {
+          if (this.form.subjectType === '0') {
+            this.form.credTypeData = 'GR'
+          } else {
+            this.form.credTypeData = 'JG'
+          }
+          this.form.custNameData = this.form.subjectName
+          this.form.credNoData = this.form.credNo
+        }
+      }
+      if (this.form.statisticalType === 'INDUSTRY') {
+        this.form.credTypeData = ''
+        this.form.credNoData = ''
+      }
+      const startDate = this.form.statisticalTime[0].split('-')
+      if (startDate[1] < 10) {
+        startDate[1] = '0' + Number(startDate[1])
+        this.form.statisticalTime[0] = startDate.join('-')
+      }
+      const endDate = this.form.statisticalTime[1].split('-')
+      if (endDate[1] < 10) {
+        endDate[1] = '0' + Number(endDate[1])
+        this.form.statisticalTime[1] = endDate.join('-')
+      }
+      const obj = JSON.parse(JSON.stringify(this.form))
+      if (this.form.sortType === '') {
+        obj.sort = this.form.sortByType
+      } else {
+        obj.sort = this.form.sort
+      }
+      if (obj.sort === 'www') {
+        obj.sort = '13'
+      }
+      obj.sortType = this.form.sortType
+      obj.CustomerType = this.form.Cust
+      obj.total = Number(this.form.recordNum)
+      obj.region = obj.region.toString()
+      if (this.form.indChild.length === 0) {
+        obj.indChild = this.form.Cust
+      } else {
+        if (this.form.indChild.includes('ALL_SELECT')) {
+          obj.indChild = this.allValues
+        } else {
+          obj.indChild = this.form.indChild
+        }
+        obj.indChild = obj.indChild.join(',')
+      }
+      this.formTwo = Object.assign({}, this.form)
+
+      getList(obj, this.pageInfo)
+        .then(res => {
+          // this.initType = false
+          if (res) {
+            if (res.code === 200) {
+              this.aloneListKey = res.data
+              this.aloneListTime = false
+            } else {
+              this.loadingTab = false
+              this.loading2 = false
+              this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+                .then(() => {})
+                .catch(() => {})
+            }
+          } else {
+            this.loadingTab = false
+            this.loading2 = false
+          }
+        })
+        .catch()
+    },
+    getSum() {
+
+    },
+    beforeUpload(file) {
+      const isLt1M = file.size / 1024 / 1024 < 1
+
+      if (isLt1M) {
+        return true
+      }
+
+      this.$message({
+        message: 'Please do not upload files larger than 1m in size.',
+        type: 'warning'
+      })
+      return false
+    },
+    handleSuccess(res, file) {
+      if (res.code === 200) {
+        this.uploadData = res.data
+        this.$message({
+          message: '上传模板成功',
+          type: 'success'
+        })
+      } else {
+        this.$refs.upload.clearFiles()
+        this.$message({
+          showClose: true,
+          duration: 6000,
+          message: res.message,
+          type: 'error'
+        })
+      }
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    createFilter(queryString) {
+      return (restaurant) => {
+        return (restaurant.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0)
+      }
+    },
+    // changeTypeDate() {
+    //   this.form.Cust = []
+    //   this.typeDate = []
+    // }
+    changeTypeDate() {
+      if (this.form.Cust) {
+        this.form.indChild = []
+        this.typeDate = []
+        getIndustrySecond({ type: this.form.Cust })
+          .then(res => {
+            if (res.code === 200) {
+              this.typeDate = res.data
+              this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+              // const arr = []
+              // this.typeDate.forEach(res => {
+              //   arr.push(res.value)
+              // })
+              // this.form.indChild = arr
+            }
+          })
+      }
+    },
+    allOptions(val) {
+      if (val.includes('ALL_SELECT')) {
+        this.typeDate.map(item => {
+          if (item.value === 'ALL_SELECT') {
+            this.form.indChild = ['ALL_SELECT']
+            item.disabled = false
+          } else {
+            item.disabled = true
+          }
+        })
+      } else {
+        this.typeDate.map(item => {
+          item.disabled = false
+        })
+      }
+    },
+    getIndustry() {
+      if (this.form.Cust !== '') {
+        var params = { type: this.form.Cust }
+        getIndustrySecond(params)
+          .then(res => {
+            if (res.code === 200) {
+              this.typeDate = res.data
+              this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+              if (this.form.indChild.includes('ALL_SELECT')) {
+                this.typeDate.map(item => {
+                  if (item.value === 'ALL_SELECT') {
+                    this.form.indChild = ['ALL_SELECT']
+                    item.disabled = false
+                  } else {
+                    item.disabled = true
+                  }
+                })
+              } else {
+                this.typeDate.map(item => {
+                  item.disabled = false
+                })
+              }
+            }
+          })
+      } else {
+        this.typeDate = []
+        this.$message({
+          type: 'success',
+          showClose: true,
+          duration: 6000,
+          message: '请先选择义务机构类型'
+        })
+      }
+    },
+    // 实时查询
+    querySearch(queryString, cb) {
+      var industry = ''
+      if (this.form.Cust.length > 0) {
+        industry = this.form.Cust.join(',')
+      }
+      getInstitutionName(queryString, '', industry).then(res => {
+        if (res.code === 200) {
+          cb(res.data)
+        }
+      })
+      // console.log(this.restaurants, 2222)
+      // var restaurants = this.restaurants
+      // var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants
+      // 调用 callback 返回建议列表的数据
+    },
+    handleSelect(item) {
+      this.form.str = item.ricd
+    },
+    handleQury() {
+      this.$refs.searchForm.validate(valid => {
+        if (valid) {
+          this.loading2 = true
+          this.form.newStatisticalType = this.form.statisticalType
+          this.form.newType = this.form.type
+          if (this.form.statisticalType === 'RICD') {
+            this.S_NAME = '按指定客户统计的'
+          } else if (this.form.statisticalType === 'INDUSTRY') {
+            this.S_NAME = '按排名统计的'
+          }
+          this.form.sort = ''
+          this.form.sortType = ''
+          this.getFormDa()
+          return false
+        }
+      })
+    },
+    // 批量导出
+    exportStatistics() {
+      for (var i = 0; i < this.multipleSelection.length; i++) {
+        if (this.multipleSelection[i].rowNum == null) {
+          this.multipleSelection.splice(i, 1)
+        }
+      }
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$message({
+          type: 'warning',
+          showClose: true,
+          duration: 6000,
+          message: '请选择至少一条导出数据'
+        })
+      } else {
+        const ids = this.multipleSelection
+          .map(function(item) {
+            return item.rowNum
+          })
+          .toString()
+        if (ids) {
+          if (this.uploadData.length > 0) {
+            const arr = []
+            const arr1 = []
+            const arr2 = []
+            this.uploadData.forEach(element => {
+              arr.push(element.subjectType)
+              if (element.subjectName !== null) {
+                arr1.push(element.subjectName)
+              }
+              arr2.push(element.credNo)
+            })
+            this.formTwo.custNameData = arr1.toString()
+            this.formTwo.credTypeData = arr.toString()
+            this.formTwo.credNoData = arr2.toString()
+          } else {
+            if (this.value2) {
+              this.formTwo.credTypeData = ''
+            } else {
+              if (this.formTwo.subjectType === '0') {
+                this.formTwo.credTypeData = 'GR'
+              } else {
+                this.formTwo.credTypeData = 'JG'
+              }
+              this.formTwo.custNameData = this.formTwo.subjectName
+              this.formTwo.credNoData = this.formTwo.credNo
+            }
+          }
+          if (this.formTwo.statisticalType === 'INDUSTRY') {
+            this.formTwo.credTypeData = ''
+            this.formTwo.credNoData = ''
+          }
+          const obj = JSON.parse(JSON.stringify(this.formTwo))
+          if (this.form.statisticalType === 'INDUSTRY' && this.form.sortByType) {
+            obj.sort = this.form.sortByType
+          } else if (this.form.sort) {
+            obj.sort = this.form.sort
+          } else {
+            obj.sort = ''
+          }
+          if (obj.sort === 'www') {
+            obj.sort = '13'
+          }
+          obj.sortType = this.form.sortType
+          // obj.customerData = this.tableData.join()
+          // obj.str = obj.str.join(',')
+          if (obj.sort === 'www') {
+            obj.sort = 'RICD_NUM'
+          }
+          obj.industryType = this.formTwo.Cust
+          obj.region = obj.region.toString()
+          obj.ids = ids
+          obj.starStatisticalTime = obj.statisticalTime[0]
+          obj.endStatisticalTime = obj.statisticalTime[1]
+          delete obj.statisticalTime
+          exportApi(obj).then(res => {
+            if (res.code === 200) {
+              this.exportKey = res.data
+              this.exportTime = false
+            }
+          })
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    exportStaAll() {
+      if (this.list.length === 0) {
+        this.$message({
+          message: '无可导出数据',
+          showClose: true,
+          duration: 6000,
+          type: 'warning'
+        })
+      } else {
+        this.$confirm('此操作将导出此统计条件下的所有数据, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          if (this.uploadData.length > 0) {
+            const arr = []
+            const arr1 = []
+            const arr2 = []
+            this.uploadData.forEach(element => {
+              arr.push(element.subjectType)
+              if (element.subjectName !== null) {
+                arr1.push(element.subjectName)
+              }
+              arr2.push(element.credNo)
+            })
+            console.log(arr)
+            console.log(arr1)
+            console.log(arr2)
+            this.formTwo.custNameData = arr1.toString()
+            this.formTwo.credTypeData = arr.toString()
+            this.formTwo.credNoData = arr2.toString()
+          } else {
+            if (this.value2) {
+              this.formTwo.credTypeData = ''
+            } else {
+              if (this.formTwo.subjectType === '0') {
+                this.formTwo.credTypeData = 'GR'
+              } else {
+                this.formTwo.credTypeData = 'JG'
+              }
+            }
+            this.formTwo.custNameData = this.formTwo.subjectName
+            this.formTwo.credNoData = this.formTwo.credNo
+          }
+          if (this.formTwo.statisticalType === 'INDUSTRY') {
+            this.formTwo.credTypeData = ''
+            this.formTwo.credNoData = ''
+          }
+          const obj = JSON.parse(JSON.stringify(this.formTwo))
+          if (obj.sort === 'www') {
+            obj.sort = 'RICD_NUM'
+          }
+          if (this.form.statisticalType === 'INDUSTRY' && this.form.sortByType) {
+            obj.sort = this.form.sortByType
+          } else if (this.form.sort) {
+            obj.sort = this.form.sort
+          } else {
+            obj.sort = ''
+          }
+          if (obj.sort === 'www') {
+            obj.sort = '13'
+          }
+          obj.sortType = this.form.sortType
+          obj.total = Number(this.formTwo.recordNum)
+          obj.industryType = this.formTwo.Cust
+          obj.region = obj.region.toString()
+          obj.starStatisticalTime = obj.statisticalTime[0]
+          obj.endStatisticalTime = obj.statisticalTime[1]
+          delete obj.statisticalTime
+          exportAllApi(obj).then(res => {
+            if (res.code === 200) {
+              this.exportKey = res.data
+              this.exportTime = false
+            }
+          })
+          // location.href = '/monitor/subject/statist/all?industryType=' +
+          // obj.CustomerType +
+          // '&starStatisticalTime=' +
+          // obj.statisticalTime[0] +
+          // '&endStatisticalTime=' +
+          // obj.statisticalTime[1] +
+          // '&custNameData=' +
+          // encodeURI(obj.custNameData) +
+          // '&credTypeData=' +
+          // encodeURI(obj.credTypeData) +
+          // '&credNoData=' +
+          // obj.credNoData +
+          // '&sort=' +
+          // obj.sort +
+          // '&sortType=' +
+          // obj.sortType +
+          // '&st=' +
+          // '' +
+          // '&type=' +
+          // obj.type +
+          // '&total=' +
+          // Number(obj.total) +
+          // '&token=' +
+          // this.token
+        }).catch()
+      }
+    },
+    // exportStatistics() {
+    //   console.log(this.downLoadURL, 1111111111)
+    //   location.href = this.downLoadURL
+    // },
+    // 如果没有选地区 和 行业的时候 提醒
+    getDivision() {
+      if (this.form.Cust.length === 0) {
+        this.$message({
+          message: '请选择行业',
+          showClose: true,
+          duration: 6000,
+          type: 'success'
+        })
+      }
+    },
+    getMechanism(val) {
+      const category = []
+      category.push('B')
+      category.push('I')
+      getRinmList(this.form.CustomerType.join(','))
+        .then(res => {
+          if (res.code === 200) {
+            this.rinmOptions = res.data
+          } else {
+            this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+              .then(() => {})
+              .catch(() => {})
+          }
+        })
+        .catch()
+    },
+    //  表头控制方法
+    meterCntroller() {
+      this.list = []
+      this.initType = false
+      this.total = 0
+      this.isShow = false
+      this.rankShow = false
+      if (this.form.statisticalType === 'RICD') {
+        this.isShow = true
+        this.rankShow = false
+        // this.clearForm()
+        // this.form.statisticalType = 'RICD'
+      } else if (this.form.statisticalType === 'INDUSTRY') {
+        this.rankShow = true
+        this.isShow = false
+        // this.clearForm()
+        // this.form.statisticalType = 'INDUSTRY'
+      }
+      this.$nextTick(function() {
+        this.$refs.searchForm.clearValidate()
+      })
+      this.form.Cust = 'B'
+      this.form.type = ''
+      this.form.statisticalTime = ''
+      this.form.indChild = []
+    },
+    //   查询条件清空
+    clearData() {
+      this.$nextTick(function() {
+        this.$refs.searchForm.clearValidate()
+      })
+      // eslint-disable-next-line no-sequences
+      this.form.type = '',
+      this.form.statisticalTime = '',
+      this.form.region = '',
+      this.form.str = '',
+      this.form.mechanismType = '',
+      this.form.industryType = '',
+      this.form.tsdr = '',
+      this.form.ids = '',
+      this.form.sort = '',
+      this.form.CustomerType = '',
+      this.form.custNameData = '',
+      this.form.credTypeData = '',
+      this.form.Cust = '',
+      this.form.credNoData = '',
+      this.form.subjectType = '0',
+      this.form.subjectName = '',
+      this.form.credNo = ''
+    },
+    clearForm() {
+      this.form = {
+        type: '',
+        statisticalType: '',
+        statisticalTime: '',
+        region: '',
+        str: '',
+        mechanismType: '',
+        industryType: '',
+        tsdr: '',
+        ids: '',
+        sort: '',
+        indChild: [],
+        CustomerType: '',
+        custNameData: '',
+        credTypeData: '',
+        Cust: '',
+        credNoData: '',
+        subjectType: '0',
+        subjectName: '',
+        credNo: ''
+      }
+      this.list = []
+      this.initType = false
+      this.total = 0
+      this.value2 = false
+      this.rankShow = false
+      this.$refs.searchForm.resetFields()
+      this.$nextTick(function() {
+        this.$refs.searchForm.clearValidate()
+      })
+    },
+    handleChange() {
+      this.clearForm()
+      this.meterCntroller()
+    },
+    handleRegionChange(val) {
+      console.log(val)
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      this.loadingStr = '正在统计中，请稍候……'
+      this.loadingTab = true
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      this.loadingStr = '正在统计中，请稍候……'
+      this.loadingTab = true
+      this.getList()
+    },
+    handleDownloadModel() {
+      // 下载模板
+      // location.href = process.env.BASE_API + '/monitor/subject/statist/downloadFile'
+      location.href = '/monitor/subject/statist/downloadFile?token=' + this.token
+    },
+    changeOptions(val) {
+      this.allValues = []
+      // 保留所有值
+      for (const item of this.typeDate) {
+        this.allValues.push(item.value)
+      }
+      this.allOptions(val)
+      // 用来储存上一次的值，可以进行对比
+      // const oldVal = this.oldOptions.length === 1 ? this.oldOptions[0] : []
+
+      // 若是全部选择
+      // if (val.includes('ALL_SELECT')) this.form.indChild = allValues
+
+      // 取消全部选中 上次有 当前没有 表示取消全选
+      // if (oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) this.form.indChild = []
+
+      // 点击非全部选中 需要排除全部选中 以及 当前点击的选项
+      // 新老数据都有全部选中
+      // if (oldVal.includes('ALL_SELECT') && val.includes('ALL_SELECT')) {
+      //   const index = val.indexOf('ALL_SELECT')
+      //   val.splice(index, 1) // 排除全选选项
+      //   this.form.indChild = val
+      // }
+
+      // 全选未选 但是其他选项全部选上 则全选选上 上次和当前 都没有全选
+      // if (!oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) {
+      //   if (val.length === allValues.length - 1) this.form.indChild = ['ALL_SELECT'].concat(val)
+      // }
+
+      // 储存当前最后的结果 作为下次的老数据
+      // this.oldOptions[0] = this.form.indChild
+    },
+    clearOptions() {
+      this.typeDate = []
+      this.form.indChild = []
+    },
+    getPermission() {
+      getPermission().then(res => {
+        if (this.roles === 'branch' && !res.data.includes('AJYZTTJ')) {
+          this.dataPermission = false
+        }
+        this.initPermission = true
+      })
+    },
+    switchValue(val) {
+      if (!val) {
+        this.uploadData = ''
+      }
+    }
+  },
+  watch: {
+    isTime(val) {
+      if (!val) {
+        this.timer = setInterval(() => {
+          getDataFlag(this.listKey).then(res => {
+            if (res.code === 200) {
+              this.listType = res.data
+              getDataFlag(this.sumKey).then(res => {
+                if (res.code === 200) {
+                  this.sumType = res.data
+                  this.isTime = this.listType && this.sumType
+                }
+              })
+            }
+          })
+        }, 2000)
+      } else {
+        getCacheData(this.listKey).then(res => {
+          if (res.code === 200) {
+            // this.loadingTab = false
+            this.loading2 = false
+            if (this.form.statisticalType === 'RICD') {
+              this.presentationType = false
+            } else {
+              this.presentationType = true
+            }
+            if (this.form.type === 'B') {
+              this.btype = true
+              this.stype = false
+            }
+            if (this.form.type === 'S') {
+              this.btype = false
+              this.stype = true
+            }
+            this.list = res.data.list
+            this.total = res.data.total
+            if (this.list.length > 0) {
+              this.initType = true
+            } else {
+              this.tableClue = '暂无数据'
+              this.$alert('暂无数据', '提示', {
+                confirmButtonText: '确定'
+              })
+            }
+            for (var i = 0; i < this.list.length; i++) {
+              this.list[i].index = i + 1
+            }
+            getCacheData(this.sumKey).then(res => {
+              if (res.code === 200) {
+                this.sum = res.data
+              }
+            })
+          } else {
+            this.loadingTab = false
+            this.loading2 = false
+            this.$confirm(res.message, '提示', { showCancelButton: false, type: 'warning' })
+              .then(() => {})
+              .catch(() => {})
+          }
+        })
+        clearInterval(this.timer)
+      }
+    },
+    exportTime(val) {
+      if (!val) {
+        this.timer = setInterval(() => {
+          getDataFlag(this.exportKey).then(res => {
+            if (res.code === 200) {
+              this.exportTime = res.data
+            }
+          })
+        }, 2000)
+      } else {
+        location.href = '/caml-query/subject/statist/cache/export/' + this.exportKey
+        clearInterval(this.timer)
+      }
+    },
+    aloneListTime(val) {
+      if (!val) {
+        this.timer = setInterval(() => {
+          getDataFlag(this.aloneListKey).then(res => {
+            if (res.code === 200) {
+              this.aloneListTime = res.data
+            }
+          })
+        }, 2000)
+      } else {
+        getCacheData(this.aloneListKey).then(res => {
+          if (res.code === 200) {
+            if (this.form.statisticalType === 'RICD') {
+              this.presentationType = false
+            } else {
+              this.presentationType = true
+            }
+            if (this.form.type === 'B') {
+              this.btype = true
+              this.stype = false
+            }
+            if (this.form.type === 'S') {
+              this.btype = false
+              this.stype = true
+            }
+            this.list = res.data.list
+            if (this.list.length > 0) {
+              this.initType = true
+              this.loadingTab = false
+            } else {
+              this.tableClue = '暂无数据'
+              this.$alert('暂无数据', '提示', {
+                confirmButtonText: '确定'
+              })
+            }
+            for (var i = 0; i < this.list.length; i++) {
+              this.list[i].index = i + 1
+            }
+            this.loading2 = false
+          }
+        })
+        clearInterval(this.timer)
+      }
+    },
+    // 'form.statisticalType': function(ol, nl) {
+    //   if (nl !== ol) {
+    //     this.clearData()
+    //     this.$refs.searchForm.clearValidate()
+    //   }
+    // },
+    value2: function(ol, nl) {
+      if (nl !== ol) {
+        this.form.credNo = ''
+        this.form.subjectName = ''
+        this.$refs.searchForm.clearValidate(['credNo', 'subjectName'])
+      }
+    },
+    'form.subjectType': function(ol, nl) {
+      if (nl !== ol) {
+        this.form.credNo = ''
+        this.form.subjectName = ''
+        this.$refs.searchForm.clearValidate(['credNo', 'subjectName'])
+      }
+    },
+    form_Cust: function(val) {
+      this.form.Cust = val
+      if (this.form.Cust.length > 0) {
+        getRinmList(this.form.Cust.join(','))
+          .then(res => {
+            if (res.code === 200) {
+              this.rinmOptions = res.data
+            }
+          })
+          .catch()
+      }
+    },
+    area: function(val) {
+      this.area = val
+      if (this.form.Cust.length > 0) {
+        getRinmList(this.area.join(','))
+          .then(res => {
+            if (res.code === 200) {
+              this.rinmOptions = res.data
+            }
+          })
+          .catch()
+      }
+    }
+  }
+}
+</script>
+
+<style src="@riophae/vue-treeselect/dist/vue-treeselect.min.css"></style>
+<style lang="scss">
+
+.tableCell{
+    text-align: left; 
+    overflow:hidden; 
+    white-space: nowrap; 
+    text-overflow:ellipsis;
+}
+
+.statisticformbig {
+  .multiple_select {
+    .el-select {
+      width: 100%;
+    }
+  }
+  .title {
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .addtype {
+    .el-form-item__label {
+      padding-right: 0;
+    }
+  }
+  .btnalign {
+    text-align: right;
+    margin-bottom: 15px;
+  }
+  .custOptions > div{
+    word-break:normal;
+    display:block;
+    white-space:pre-wrap;
+    overflow:hidden;
+  }
+  .el-table thead tr th>.cell{
+    white-space:normal !important;
+  } 
+}
+</style>

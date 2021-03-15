@@ -1,0 +1,323 @@
+<template>
+  <div>
+    <el-card>
+      <div slot="header">发起人工补正</div>
+        <el-form :model="searchForm" ref="searchForm" :rules="rules" label-width="150px">
+          <el-row>
+            <el-col :span="12">
+              <el-form-item label="选择补正类型：" prop="correctType" >
+                <el-select v-model="searchForm.correctType" clearable @change="correctTypeChange" @clear="hanldeClear" style="width: 80%;">
+                  <el-option label="大额信息更正" value="0"></el-option>
+                  <el-option label="可疑信息更正" value="1"></el-option>
+                  <el-option label="信息补充" value="2"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12" v-show="isTradeIdShow">
+              <el-form-item label="行业类型：" prop="industry">
+                <el-select v-model="searchForm.industry" placeholder="选择行业类型" clearable style="width: 80%;" @change="handleIndusChange">
+                  <el-option v-for="(item, index) in indusOptions" :key="index" :label="item.label" :value="item.val"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row v-show="isTradeIdShow">
+            <el-col :span="12">
+              <el-form-item label="补正交易ID：" prop="tradeId">
+                <el-input v-model="searchForm.tradeId" style="width: 80%;"  type="textarea" placeholder="补正交易ID，中间以英文字符‘,’隔开" @input="handleIndusChange"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+ 
+      <div style="text-align: center;">
+        <el-button type="primary" @click="handleChange('searchForm')" :loading="loading">生成补正任务通知单</el-button>
+      </div>
+
+      <!-- 人工补正弹框 -->
+      <el-dialog :title="correctionDialogTitle" :visible.sync="dialogVisible" width="90%" :before-close="dialogClose"> 
+        <component :is="correctionComName" :tradeIdLength="this.tradeIdLength" :correctParams="searchForm" @dialogState="closeDialog" :dialogVisible="dialogVisible" :closeLoading="closeLoading"></component>
+      </el-dialog>
+    </el-card>
+
+    <monitor-workflow></monitor-workflow>
+  </div>
+</template>
+
+<script>
+import Notice from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/notice'
+import Large from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/large'
+import Suspicious from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/suspicious'
+import { getUUIDTo } from '@/utils/index.js'
+import { correctCheck, correctCheckError, getLog } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch.js'
+import { ValidQueryInput } from '@/utils/formValidate.js'
+
+const isTradeIdLength = (rule, value, callback) => {
+  if (value) {
+    const len = value.split(',').length
+    if (len > 1000) {
+      callback(new Error('补正交易Id不能超过1000条，“,”用英文字符'))
+    } else {
+      callback()
+    }
+  } else {
+    callback()
+  }
+}
+
+export default {
+  components: {
+    Notice,
+    Large,
+    Suspicious
+  },
+  inject: ['reload'],
+  data() {
+    return {
+      loading: false,
+      searchForm: {
+        correctType: '',
+        tradeId: '',
+        organ: '5',
+        industry: ''
+      },
+      rules: {
+        correctType: [{ required: true, message: '请选择补正类型', trigger: 'change' }],
+        // tradeId: [{ validator: isValidInputBuZheng, trigger: 'blur' }],
+        industry: [{ required: false, message: '请选择行业类型', trigger: 'change' }],
+        tradeId: [{ validator: ValidQueryInput, trigger: 'blur' }, { validator: isTradeIdLength, trigger: 'blur' }]
+        // industry: [{ required: false, message: '请选择行业类型', trigger: 'change' }]
+      },
+      indusOptions: [{
+        label: '银行业',
+        val: 'B'
+      }, {
+        label: '证券业',
+        val: 'S'
+      }, {
+        label: '保险业',
+        val: 'I'
+      }, {
+        label: '信托公司等八类',
+        val: 'J'
+      }, {
+        label: '贵金属',
+        val: 'PM'
+      }, {
+        label: '房地产',
+        val: 'RP'
+      }, {
+        label: '会计师事务所',
+        val: 'AF'
+      }, {
+        label: '社会组织',
+        val: 'ORG'
+      }, {
+        label: '律师事务所',
+        val: 'LO'
+      }, {
+        label: '公证机构',
+        val: 'NO'
+      }, {
+        label: '公司服务提供',
+        val: 'ISP'
+      }, {
+        label: '互联网金融',
+        val: 'NF'
+      }],
+      indusOptions1: [{
+        label: '银行业',
+        val: 'B'
+      }, {
+        label: '证券业',
+        val: 'S'
+      }, {
+        label: '保险业',
+        val: 'I'
+      }, {
+        label: '信托公司等八类',
+        val: 'J'
+      }, {
+        label: '贵金属',
+        val: 'PM'
+      }, {
+        label: '房地产',
+        val: 'RP'
+      }, {
+        label: '会计师事务所',
+        val: 'AF'
+      }, {
+        label: '社会组织',
+        val: 'ORG'
+      }, {
+        label: '律师事务所',
+        val: 'LO'
+      }, {
+        label: '公证机构',
+        val: 'NO'
+      }, {
+        label: '公司服务提供',
+        val: 'ISP'
+      }, {
+        label: '互联网金融',
+        val: 'NF'
+      }],
+      indusOptions2: [{
+        label: '银行业',
+        val: 'B'
+      }, {
+        label: '证券业',
+        val: 'S'
+      }, {
+        label: '保险业',
+        val: 'I'
+      }],
+      dialogVisible: false, // 弹框
+      isTradeIdShow: true,
+      correctionComName: null,
+      correctionDialogTitle: null,
+      tradeIdLength: 0,
+      closeLoading: false,
+      UUID: ''
+    }
+  },
+  mounted() {
+    this.isTradeIdShow = true
+    this.UUID = getUUIDTo()
+    this.getLog()
+  },
+  // computed: {
+  //   getIndustry: function() {
+  //     return this.searchForm.industry
+  //   }
+  // },
+  // watch: {
+  //   getIndustry: {
+  //     handler: function() {
+  //       this.rules.tradeId = [{ required: true, message: '请填写交易ID', trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }, { validator: isTradeIdLength, trigger: 'blur' }]
+  //       this.rules.industry = [{ required: true, message: '请选择行业类型', trigger: 'change' }]
+  //     }
+  //   }
+  // },
+  methods: {
+    getLog() {
+      getLog()
+    },
+    closeDialog(val) {
+      // 人工补正组件接收子组件弹框dialogVisible传值
+      this.dialogVisible = val
+      if (this.dialogVisible === false) {
+        this.resetForm('searchForm')
+      }
+      setTimeout(() => {
+        this.reload()
+      }, 1000)
+    },
+    resetForm(formName) {
+      this.$refs[formName].resetFields()
+    },
+    handleIndusChange(val) {
+      if (this.searchForm.industry === '' && this.searchForm.tradeId === '') {
+        this.rules.tradeId = [{ required: false, message: '请填写交易ID', trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }, { validator: isTradeIdLength, trigger: 'blur' }]
+        this.rules.industry = [{ required: false, message: '请选择行业类型', trigger: 'change' }]
+        this.$refs['searchForm'].clearValidate(['tradeId', 'industry'])
+      } else {
+        this.rules.tradeId = [{ required: true, message: '请填写交易ID', trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }, { validator: isTradeIdLength, trigger: 'blur' }]
+        this.rules.industry = [{ required: true, message: '请选择行业类型', trigger: 'change' }]
+      }
+    },
+    filedsRules(val) {
+      if (val) {
+        this.rules.tradeId = [{ required: true, message: '请填写交易ID', trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }, { validator: isTradeIdLength, trigger: 'blur' }]
+        this.rules.industry = [{ required: true, message: '请选择行业类型', trigger: 'change' }]
+      } else {
+        this.rules.tradeId = [{ required: false, message: '请填写交易ID', trigger: 'blur' }, { validator: ValidQueryInput, trigger: 'blur' }, { validator: isTradeIdLength, trigger: 'blur' }]
+        this.rules.industry = [{ required: false, message: '请选择行业类型', trigger: 'change' }]
+        // this.rules.tradeId = [{ required: false, message: '请填写交易ID', trigger: 'blur' }, { validator: isValidInputBuZheng, trigger: 'blur' }]
+        // this.rules.industry = [{ required: false, message: '请选择行业类型', trigger: 'change' }]
+      }
+    },
+    handleChange(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          if (this.searchForm.tradeId && this.searchForm.correctType) {
+            this.tradeIdLength = 0
+            this.tradeIdLength = this.searchForm.tradeId.split(',').length
+            // const tradeId = this.searchForm.tradeId
+            // const correctType = this.searchForm.correctType
+            // const industry = this.searchForm.industry
+            const obj = {
+              tradeId: this.searchForm.tradeId,
+              correctType: this.searchForm.correctType,
+              industry: this.searchForm.industry
+            }
+            this.loading = true
+            this.UUID = getUUIDTo()
+            correctCheck(obj, this.UUID).then(res => {
+              if (res.code === 200) {
+                correctCheckError(this.UUID).then(response => {
+                  if (response.code === 200) {
+                    this.loading = false
+                    this.dialogVisible = true
+                  } else {
+                    this.loading = false
+                  }
+                }).catch(() => {
+                  this.loading = false
+                })
+              } else {
+                this.loading = false
+                this.$message.error(res.message)
+              }
+            }).catch(() => {
+              this.loading = false
+            })
+          } else {
+            this.dialogVisible = true
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    correctTypeChange(val) {
+      switch (val) {
+        case '0':
+          this.correctionComName = 'Large'
+          this.correctionDialogTitle = '大额信息更正通知'
+          this.isTradeIdShow = true
+          this.indusOptions = this.indusOptions1
+          // this.filedsRules(this.searchForm.industry)
+          break
+        case '1':
+          this.correctionComName = 'Suspicious'
+          this.correctionDialogTitle = '可疑信息更正通知'
+          this.isTradeIdShow = true
+          this.indusOptions = this.indusOptions2
+          // this.filedsRules(this.searchForm.industry)
+          break
+        case '2':
+          this.correctionComName = 'Notice'
+          this.correctionDialogTitle = '信息补充通知'
+          this.isTradeIdShow = false
+          this.$refs.searchForm.clearValidate()
+          this.searchForm.tradeId = ''
+          this.rules.tradeId = []
+          break
+        default:
+          break
+      }
+    },
+    hanldeClear() {
+      this.isTradeIdShow = true
+    },
+    dialogClose() {
+      this.dialogVisible = false
+      this.closeLoading = false
+    }
+  }
+}
+</script>
+
+<style>
+</style>

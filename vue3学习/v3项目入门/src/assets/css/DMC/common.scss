@@ -1,0 +1,15 @@
+.el-col-after-style {
+    position: relative;
+    border-right: 1px solid #DCDFE6;
+    &::after {
+        content: '';
+        display: block;
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background:#666666;
+        right: -10px;
+        bottom:0;
+    }
+    height: 100%;
+}

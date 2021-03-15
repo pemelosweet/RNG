@@ -1,0 +1,678 @@
+<template>
+  <div class="conjointAnalysisList"
+  v-loading="loading"
+  element-loading-text="查询中，请稍等......"
+  element-loading-spinner="el-icon-loading"
+  element-loading-background="rgba(0, 0, 0, 0.3)">
+    <el-card class="box-card">
+      <div
+        slot="header"
+        class="clearfix"
+      >
+        <span>查询列表</span>
+      </div>
+      <div class="text item">
+
+        <el-form
+          :model="formInline"
+          ref="searchForm"
+          :rules="rulesSearch"
+          class="demo-form-inline"
+          label-width="120px"
+        >
+            <el-row class="toggle" :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="任务名称："
+                  prop="jointAnalysisName"
+                  label-width="120px"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.jointAnalysisName"
+                    placeholder="请输入任务名称，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="起止日期："
+                  class="organId"
+                  prop="rangeDate"
+                >
+                  <el-date-picker
+                    value-format="yyyy-MM-dd"
+                    v-model="formInline.rangeDate"
+                    type="daterange"
+                    range-separator="至"
+                   
+                  ></el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="涉及分支机构："
+                  prop="organId"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.organId"
+                    multiple
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="请选择涉及分支机构"
+                  >
+                    <el-option
+                      v-for="(item,index) in branchData"
+                      :key="index"
+                      :label="item.codeName"
+                      :value="item.codeId"
+                    >
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item
+                  label="状态："
+                  prop="state"
+                >
+                  <el-select
+                    clearable
+                    v-model="formInline.state"
+                  >
+                    <el-option
+                      v-if="statusList"
+                      label="已保存"
+                      value="1"
+                    ></el-option>
+                    
+                    <el-option
+                      label="已结束"
+                      value="2"
+                    ></el-option>
+                    <el-option
+                      label="已分发"
+                      value="3"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item
+                  label="发起方："
+                  prop="createUser"
+                  label-width="120px"
+                >
+                  <el-input
+                    maxlength="100"
+                    v-model="formInline.createUser"
+                    placeholder="请输入发起方，最多输入100字符"
+                  ></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <!-- <preliminary-judgment :lableWidth="200" :labelName="'涉罪类型：'" ref="judgment"     judgmentOther="judgmentOther"></preliminary-judgment> -->
+            <div style="text-align:right;margin-bottom:10px">
+              <el-button
+                type="primary"
+                @click="onSubmit('searchForm')"
+              >查询</el-button>
+              <el-button
+                type="primary"
+                plain
+                @click="cleanUp"
+              >清空</el-button>
+
+            </div>
+
+
+        </el-form>
+
+        <el-table
+          style="width: 100%"
+          :data="tableData"
+        >
+          <el-table-column
+            type="index"
+            label="序号"
+            min-width="80"
+          ></el-table-column>
+          <el-table-column
+            prop="analyseName"
+            label="任务名称"
+            min-width="110"
+            show-overflow-tooltip
+          >
+            <template slot-scope="scope">
+              <el-button @click="seeInfo(scope.row)" type="text">{{scope.row.analyseName}}</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="startTime"
+            label="起止日期"
+            min-width="220"
+          >
+          </el-table-column>
+          <el-table-column
+            prop="organId"
+            label="涉及分支机构"
+            min-width="140"
+            show-overflow-tooltip
+            :formatter="turnOrg"
+          >
+          </el-table-column>
+          <el-table-column
+            prop="isGu"
+            label="发起方"
+            min-width="140"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="state"
+            label="状态"
+            width="120"
+          >
+          <template slot-scope="scope">
+            <div>
+              {{scope.row.status ==='1'?'已保存':scope.row.status ==='2'?'已结束':'已分发'}}
+            </div>
+          </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text"  @click="seeInfo(scope.row)">查看</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pageInfo.pageNum"
+          :page-size="pageInfo.pagesize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.total"
+          background
+        >
+        </el-pagination>
+      </div>
+    </el-card>
+  </div>
+</template>
+<script>
+import { mapGetters } from 'vuex'
+import preliminaryJudgment from '@/views/sys-monitoringAnalysis/monitoringWarning/rosterWarning/components/preliminaryJudgment.vue'
+import { getList, branch, deleteInfoById } from '@/api/sys-monitoringAnalysis/sendTaskInfo/list.js'
+import { canEdit4 } from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+import { dictionary } from '@/api/sys-monitoringAnalysis/roster-warning/common.js'
+import { commonPattern, ValidQueryInput } from '@/utils/formValidate'
+import {
+  canEdit1
+} from '@/api/sys-monitoringAnalysis/conjointAnalysis/index.js'
+export default {
+  name: 'www',
+  components: {
+    preliminaryJudgment
+  },
+  data() {
+    return {
+      loading: false,
+      isReplenishOne: false,
+      isReplenishTwo: false,
+      isFxqjRole: true,
+      dialogJudgmentData: [],
+      formInline: {
+        jointAnalysisName: '',
+        createUser: '',
+        state: '',
+        rangeDate: [],
+        organId: []
+      },
+      rulesSearch: {
+        jointAnalysisName: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+          // { max: 50, message: '字符长度必须50位', trigger: 'blur' }
+        ],
+        createUser: [
+          { validator: ValidQueryInput, trigger: 'blur' }
+        ]
+      },
+      sort: [],
+      typeId: [],
+      branchData: [
+        {
+          value: '1',
+          label: '涉及分支机构1'
+        },
+        {
+          value: '2',
+          label: '涉及分支机构2'
+        },
+        {
+          value: '3',
+          label: '涉及分支机构3'
+        },
+        {
+          value: '4',
+          label: '涉及分支机构4'
+        }
+      ],
+      statusList: true,
+      toggleSearch: true,
+      tableData: [
+      ],
+      currentPage: 1,
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 10,
+        total: 0
+      }
+    }
+  },
+  // 列表查询参数
+  computed: {
+    ...mapGetters([
+      'permissions_routers'
+    ]),
+    // preliminaryJudgmeStr1() {
+    //   return this.$refs.judgment.searchParams.join()
+    // },
+    searchParams() {
+      const obj = Object.assign({}, this.formInline, this.pageInfo)
+      obj.analyseName = this.formInline.jointAnalysisName
+      obj.status = this.formInline.state
+      obj.orgKey = this.formInline.organId.join(',')
+      delete obj.jointAnalysisName
+      delete obj.total
+
+      if (this.formInline.rangeDate !== null) {
+        obj.startTime = this.formInline.rangeDate[0]
+        obj.endTime = this.formInline.rangeDate[1]
+      }
+      delete obj.organId
+      delete obj.rangeDate
+      return obj
+    },
+    ...mapGetters([
+      'businessFlag',
+      'permissions_routers',
+      'workFlow2business',
+      'userInfo',
+      'institution'
+    ]),
+    isCenter() {
+      return this.institution === this.GLOBAL.INSTITUTION_CENTER
+    },
+    isBranch() {
+      return this.institution === this.GLOBAL.INSTITUTION_BRANCH
+    }
+  },
+  created() {
+    if (sessionStorage.getItem('conjointAnalysis')) {
+      const conjointAnalysis = JSON.parse(sessionStorage.getItem('conjointAnalysis'))
+      if (conjointAnalysis.pageName === this.$route.name && conjointAnalysis.ifReview) {
+        this.pageInfo = conjointAnalysis.pageInfo
+        this.formInline = conjointAnalysis.searchForm
+        this.toggleSearch = conjointAnalysis.toggleSearch
+      }
+    }
+  },
+  mounted() {
+    // this.isFxqj()
+    this.getSort()
+    this.initList(this.searchParams)
+    this.getBranch()
+    this.getDictionary('TOSC')
+    // this.judge()
+  },
+  methods: {
+    // 涉及分支机构转换汉字
+    turnOrg(row) {
+      if (row.analyseTaskOrgkeyDos.length > 0) {
+        const arr = []
+        row.analyseTaskOrgkeyDos.forEach(item => {
+          this.branchData.forEach(item2 => {
+            if (item.orgKey === item2.codeId) {
+              arr.push(item2.codeName)
+            }
+          })
+        })
+        return arr.join(',')
+      } else {
+        return ''
+      }
+    },
+    // 查看
+    seeInfo(scope) {
+      this.$router.push({
+        name: 'conjointAnalysis_detail',
+        query: {
+          analyseId: scope.analyseId,
+          status: scope.status
+        }
+      })
+    },
+
+    updateInfo(scope) {
+      this.$router.push({
+        name: 'sendTaskInfo_add',
+        query: {
+          analyseId: scope.analyseId,
+          status: '1'
+        }
+      })
+    },
+    deleteInfo(scope) {
+      if (this.id !== scope.createUsr) {
+        this.$message({
+          type: 'error',
+          message: '仅创建人可删除',
+          showClose: true,
+          duration: 6000
+        })
+      } else {
+        this.$confirm('确定删除选中的记录?', '提示', {
+          distinguishCancelAndClose: true,
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          deleteInfoById(scope.analyseId).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: '删除成功',
+                showClose: true,
+                duration: 6000
+              })
+              this.initList(this.searchParams)
+            }
+          })
+        }).catch(() => {
+          this.$message({
+            type: 'success',
+            message: '已取消删除',
+            showClose: true,
+            duration: 6000
+          })
+        })
+      }
+    },
+    // 判断是中心用户还是涉及分支机构用户
+    judge() {
+      canEdit1().then(response => {
+        if (response.code === 200) {
+          this.statusList = !response.data
+        }
+      })
+    },
+    // 反洗钱局没有新建联合分析权限
+    isFxqj() {
+      canEdit4().then(res => {
+        if (res.code === 200) {
+          if (res.data === true) {
+            this.isFxqjRole = false
+          }
+        }
+      })
+    },
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    delDataValidInput(rule, value, callback) {
+      if (commonPattern.specialDataName.test(value) || commonPattern.specialEngDataName.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else if (commonPattern.headerAndFooter.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else {
+        callback()
+      }
+    },
+    validateAgentNum(rule, value, callback) {
+      if (value !== '') {
+        if (this.formInline.certificateType === '110001' || this.formInline.certificateType === '110003') {
+          if (value.length !== 15 && value.length !== 18) {
+            callback(new Error('身份证件格式标准为15及18位'))
+          } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+            callback(new Error('禁止输入特殊字符'))
+          } else if (this.blankSpace.test(value)) {
+            callback(new Error('禁止输入空格'))
+          } else if (this.chinaNull.test(value)) {
+            callback(new Error('禁止输入中文'))
+          } else {
+            callback()
+          }
+        } else {
+          if (value.length <= 5 || value.length >= 129) {
+            callback(new Error('内容应在6-128位之间'))
+          } else if (commonPattern.headerAndFooter.test(value)) {
+            callback(new Error('首尾不能有空格'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    onlyNumberValidate1(rule, value, callback) {
+      if (value !== '' && value !== null) {
+        if (value.length > 30) {
+          callback(new Error('内容应在30字符以内'))
+        } else if (commonPattern.headerAndFooter.test(value)) {
+          callback(new Error('首尾不能有空格'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    NumberValidate(rule, value, callback) {
+      if (value !== null && value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else if (value !== '') {
+          if (commonPattern.number.test(value)) {
+            callback(new Error('不能输入数字'))
+          }
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    NumberValidate1(rule, value, callback) {
+      if (value !== null) {
+        if (!commonPattern.spaceBar.test(value)) {
+          callback(new Error('内容不能含有空格'))
+        } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+          callback(new Error('内容不能填写特殊字符'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    // 获取证件类型
+    getSort() {
+      branch({ typeId: 'SFZJ' }).then(res => {
+        if (res.code === 200) {
+          this.sort = res.data.list
+        }
+      })
+    },
+    // 获取涉罪类型
+    getDictionary(params) {
+      dictionary(params).then(res => {
+        if (res.code === 200) {
+          switch (params) {
+            case 'TOSC':
+              this.dialogJudgmentData = res.data
+              break
+
+            default:
+              break
+          }
+        }
+      })
+    },
+    // 获取涉及分支机构
+    getBranch() {
+      branch({ typeId: 'FZJGD' }).then(res => {
+        if (res.code === 200) {
+          this.branchData = res.data.list
+        }
+      })
+    },
+    // 获取证件类型
+    getTypeId() {
+      branch({ typeId: 'SFZJ' }).then(res => {
+        if (res.code === 200) {
+          this.typeId = res.data.list
+        }
+      })
+    },
+    // 判断涉罪类型是否显示补充
+    replenish() {
+      if (this.formInline.preJudmentDoList.indexOf('1402') !== -1) {
+        this.isReplenishTwo = true
+      } else {
+        this.isReplenishTwo = false
+      }
+      if (this.formInline.preJudmentDoList.indexOf('1401') !== -1) {
+        this.isReplenishOne = true
+      } else {
+        this.isReplenishOne = false
+      }
+    },
+    // 涉罪类型数据类型转换拼接
+    getPreliminaryJudgmeStr() {
+      const arr = []
+      this.formInline.preJudmentDoList.forEach(el => {
+        if (el === '1401') {
+          el = '1401-' + this.formInline.supplementOne
+          arr.push(el)
+        } else if (el === '1402') {
+          el = '1402-' + this.formInline.supplementTwo
+          arr.push(el)
+        } else {
+          arr.push(el)
+        }
+      })
+      this.formInline.preliminaryJudgmeStr = arr.join()
+    },
+    // 获取列表数据方法
+    initList(params) {
+      this.loading = true
+      getList(params).then(res => {
+        if (res.code === 200) {
+          this.pageInfo.total = res.data.total
+          if (res.data.list !== null) {
+            const arry = res.data.list // 获取的数据
+            arry.forEach(item => {
+              item.isGu = '反洗钱中心'
+              if (item.startTime === null || item.startTime === '') {
+                item.startTime = ''
+              } else {
+                item.startTime = item.startTime + '~' + item.endTime
+              }
+            })
+            this.tableData = arry
+          } else {
+            this.tableData = []
+          }
+          this.loading = false
+        } else {
+          this.loading = false
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    onSubmit(form) {
+      this.$refs[form].validate(valid => {
+        if (valid) {
+          this.loading = true
+          this.searchParams.pageNum = 1
+          this.pageInfo.pageNum = 1
+          getList(this.searchParams)
+            .then(res => {
+              if (res.code === 200) {
+                this.loading = false
+                this.pageInfo.total = res.data.total
+                if (res.data.list !== null) {
+                  const arry = res.data.list // 获取的数据
+                  arry.forEach(item => {
+                    item.isGu = '反洗钱中心'
+                    item.startTime = item.startTime + '~' + item.endTime
+                  })
+                  this.tableData = arry
+                } else {
+                  this.tableData = []
+                }
+              } else {
+                this.loading = false
+              }
+            })
+            .catch(() => {
+              this.loading = false
+            })
+        } else {
+          return false
+        }
+      })
+    },
+    cleanUp() {
+      this.formInline = {
+        jointAnalysisName: '',
+        createUser: '',
+        state: '',
+        rangeDate: [],
+        organId: []
+      }
+      this.$refs.searchForm.resetFields()
+      this.isReplenishOne = false
+      this.isReplenishTwo = false
+    },
+    // 切换分页条数
+    handleSizeChange(size) {
+      this.pageInfo.pageSize = size
+      this.initList(this.searchParams)
+    },
+    // 点击切换分页
+    handleCurrentChange(pageNum) {
+      this.pageInfo.pageNum = pageNum
+      this.initList(this.searchParams)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.conjointAnalysisList {
+  .el-select {
+    width: 100%;
+  }
+  .rangeData {
+    .el-date-editor--daterange {
+      min-width: 100%;
+    }
+  }
+}
+</style>

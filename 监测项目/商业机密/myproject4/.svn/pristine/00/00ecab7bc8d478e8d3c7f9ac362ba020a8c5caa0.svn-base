@@ -1,0 +1,585 @@
+<template>
+  <div class="evaluationorgan" ref="evaluationorgan">
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>评价机构模板</span>
+        <el-button type="text" style="float:right;" icon="el-icon-plus" @click="addTemplate">新建评价机构模板</el-button>
+      </div>
+      <el-row>
+        <el-form :model="form" ref="form" :rules="searchRules" label-width="140px">
+          <el-col :span="12">
+            <el-form-item label="评价机构模板名称：" prop="name" >
+              <el-input v-model="form.name" maxlength="50" placeholder="请输入评价机构模板名称，最多可输入50位"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="创建时间：" prop="createDate" :rules="[{ required: false, trigger: 'change'}]">
+              <el-date-picker
+                v-model="form.createDate"
+                style="width: 100% !important;"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="yyyy-MM-dd">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24" style="text-align: right;">
+            <el-button type="primary" :loading="queryLoading" @click="query">查 询</el-button>
+            <el-button type="primary" plain @click="clearForm">清 空</el-button>
+          </el-col>
+        </el-form>
+      </el-row>
+      <div style="margin-bottom: 15px;">评价机构模板列表</div>
+      <el-table :data="tableData" v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <!-- <el-table-column type="selection"></el-table-column> -->
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="organizationTemplateName" label="评价机构模板名称" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <el-button type="text" @click="nameRouterFn(scope.row.organizationTemplateName)">{{scope.row.organizationTemplateName}}</el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createDate" label="创建时间" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="createPerson" label="创建人" show-overflow-tooltip></el-table-column>
+        <el-table-column label="操作">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleExit(scope)" :disabled="scope.row.createPerson !== name">修订</el-button>
+            <el-button type="text" @click="deleRow(scope)" :disabled="scope.row.createPerson !== name">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination v-if="total" :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" @size-change="handleSizeChange" @current-change="handleCurrentChange">
+      </el-pagination>
+
+      <el-dialog title="评价机构模板" :visible.sync="dialogVisible">
+        <div>
+          <el-form :model="dialogForm" ref="dialogForm" :rules="dialogRules" label-width="150px">
+            <el-col :span="24">
+              <el-form-item label="评价机构模板名称：" prop="name">
+                <el-input v-model="dialogForm.name" :disabled="disabled" maxlength="50" placeholder="最多可输入50位"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-col :span="12">
+                <el-form-item label="评价机构：" prop="levelType">
+                  <el-select clearable v-model="dialogForm.levelType" @change="clearCustStr" placeholder="请选择" style="width:100% !important;">
+                    <el-option v-for="(item,index) in options" :key="index" :label="item.text" :value="item.value" :disabled="item.flag === '0'">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label-width="0" prop="Cust">
+                  <el-select clearable v-model="dialogForm.Cust" multiple @focus="custFocus" placeholder="请选择" style="width:100% !important;" @change="typeChange" >
+                    <el-option v-for="(item,index) in typeDate" :key="index" :label="item.text" :value="item.value" :disabled="item.disabled || item.flag === '0'">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label-width="0" class="change_length">
+                    <el-select clearable v-model="dialogForm.str" multiple filterable remote reserve-keyword placeholder="请输入关键词" :remote-method="remoteMethod" :loading="optionLoading" @visible-change="setTagTitle">
+                    <el-option
+                      v-for="item in rinmOptions"
+                      :key="item.value"
+                      :label="item.text"
+                      :value="item.value">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-col>
+          </el-form>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="dialogVisible = false">返回</el-button>
+          <el-button type="primary" @click="saveEdit('dialogForm')" :loading="saveEditLoading">保存</el-button>
+        </span>
+      </el-dialog>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from 'vuex'
+import TreeSelect from '@/components/TreeSelect'
+import { ValidQueryInput } from '@/utils/formValidate'
+import { listAll, del, listCategory, listFicp, getEntityOrganization, organizationAdd, updateOrganization, listRinm } from '@/api/sys-monitoringAnalysis/evaluate/mechanismTemplate.js'
+import {
+  getIndustryFrist,
+  getIndustrySecond
+  // getRinmList
+} from '@/api/sys-monitoringAnalysis/dataGovernance/common/tradeDetailLarge.js'
+export default {
+  components: {
+    TreeSelect
+  },
+  data() {
+    const generateData = _ => {
+      const data = []
+      for (let i = 1; i <= 15; i++) {
+        data.push({
+          key: i,
+          label: `备选项 ${i}`,
+          disabled: i % 4 === 0
+        })
+      }
+      return data
+    }
+    return {
+      tableDataLoading: false,
+      saveEditLoading: false,
+      allSelect: [],
+      newOrganizationId: '',
+      newCreatePerson: '',
+      newCreatePersonId: '',
+      optionLoading: false,
+      options: [],
+      queryLoading: false,
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      blankSpace: /[ ]/im, // 校验空格
+      datas: generateData(),
+      idx: 0, // 索引
+      disabled: false, // 是否只读
+      currentPage: 1,
+      dialogVisible: false, // 弹框
+      form: {
+        name: '',
+        createDate: []
+      },
+      newForm: {
+        name: '',
+        createDate: []
+      },
+      pageNum: 1,
+      pageSize: 10,
+      total: 0,
+      dialogForm: { // 弹框表单数据
+        name: '', // 弹框评价名称
+        organ: '', // 弹框机构名称
+        levelType: '',
+        Cust: [],
+        str: []
+      },
+      typeDate: [],
+      rinmOptions: [],
+      dialogRules: {
+        name: [
+          { required: true, message: '评价机构模板名称不能为空', trigger: 'blur' }
+        ],
+        levelType: [{ required: true, message: '请选择', trigger: 'change' }],
+        Cust: [{ required: true, message: '请选择', trigger: 'change' }]
+      },
+      isShowSelect: false, // 下拉是否显示树状选择器
+      tableData: [],
+      value: [],
+      titleName: '',
+      searchRules: {
+        name: [{ required: false, validator: ValidQueryInput, trigger: 'blur' }]
+      }
+    }
+  },
+  computed: {
+    ...mapGetters(['name'])
+  },
+  mounted() {
+    this.returnMemory()
+    this.listAllFn()
+    this.getIndustryFristFn()
+  },
+  // activated() {
+
+  // },
+  methods: {
+    returnMemory() {
+      if (sessionStorage.getItem('returnMemoryJyl') && JSON.parse(sessionStorage.getItem('returnMemoryJyl')).returnBtn === 'Y') {
+        const obj = JSON.parse(sessionStorage.getItem('returnMemoryJyl'))
+        this.form = obj.form
+        this.newForm = obj.form
+        this.pageNum = obj.pageNum
+        this.pageSize = obj.pageSize
+        sessionStorage.removeItem('returnMemoryJyl')
+      }
+    },
+    setTagTitle() {
+      var tagTextList = this.$refs.evaluationorgan.querySelectorAll('.el-select__tags-text')
+      tagTextList.forEach((item) => {
+        item.setAttribute('title', item.innerText)
+      })
+    },
+    nameRouterFn(organizationTemplateName) {
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_queryName',
+        query: {
+          organizationTemplateName: organizationTemplateName
+        }
+      })
+      const returnMemory = {
+        form: this.newForm,
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      sessionStorage.setItem('returnMemoryJyl', JSON.stringify(returnMemory))
+    },
+    typeChange(val) {
+      this.rinmOptions = []
+      this.allSelect = []
+      for (const item of this.typeDate) {
+        if (item.value !== 'ALL') {
+          this.allSelect.push(item.value)
+        }
+      }
+      if (val.includes('ALL')) {
+        this.typeDate.map(item => {
+          if (item.value === 'ALL') {
+            this.dialogForm.Cust = ['ALL']
+            item.disabled = false
+          } else {
+            item.disabled = true
+          }
+        })
+      } else {
+        this.typeDate.map(item => {
+          item.disabled = false
+        })
+      }
+    },
+    clearForm() {
+      this.form = {
+        name: '',
+        createDate: []
+      }
+      this.newForm = {
+        name: '',
+        createDate: []
+      }
+      this.pageNum = 1
+      // this.listAllFn()
+      setTimeout(() => {
+        this.$refs.form.clearValidate()
+      }, 0)
+    },
+    clearCustStr() {
+      this.dialogForm.Cust = []
+    },
+    closeDialog() {
+      this.$refs.dialogForm.resetField()
+      this.$refs.dialogForm.clearValidate()
+    },
+    remoteMethod(query) {
+      if (this.dialogForm.Cust.length > 0 || this.dialogForm.levelType !== '') {
+        if (query !== '') {
+          this.optionLoading = true
+          let category = ''
+          let keyword = ''
+          category = this.dialogForm.Cust.includes('ALL') ? this.allSelect.join() : this.dialogForm.Cust.join()
+          keyword = query
+          setTimeout(() => {
+            listRinm(category, keyword)
+              .then(res => {
+                if (res.code === 200) {
+                  this.optionLoading = false
+                  this.rinmOptions = res.data.filter(item => {
+                    return item.text.toLowerCase()
+                      .indexOf(query.toLowerCase()) > -1
+                  })
+                }
+              })
+              .catch()
+          }, 200)
+        } else {
+          this.rinmOptions = []
+        }
+      }
+    },
+    custFocus() {
+      this.typeDate = []
+      if (this.dialogForm.levelType === '') {
+        this.typeDate = []
+        this.dialogForm.Cust = []
+      } else {
+        getIndustrySecond({ type: this.dialogForm.levelType }).then(res => {
+          if (res.code === 200) {
+            listCategory(res.data).then(response => {
+              this.typeDate = response.data
+              this.typeDate.unshift({
+                text: '所有选项',
+                value: 'ALL'
+              })
+              this.typeChange(this.dialogForm.Cust)
+            })
+          }
+        })
+      }
+    },
+    strFoces() {
+      if (this.dialogForm.levelType === '') {
+        this.typeDate = []
+        this.dialogForm.Cust = []
+      }
+    },
+    getIndustryFristFn() {
+      getIndustryFrist().then(res => {
+        if (res.code === 200) {
+          listFicp(res.data).then(response => {
+            this.options = response.data
+          })
+        }
+      })
+    },
+    // 新建模板
+    addTemplate() {
+      this.titleName = 'add'
+      this.dialogVisible = true
+      this.dialogForm = {
+        name: '',
+        organ: '',
+        levelType: '',
+        Cust: [],
+        str: []
+      }
+      setTimeout(() => {
+        this.$refs.dialogForm.clearValidate()
+      }, 0)
+    },
+    getParamter() {
+      const obj = Object.assign({}, this.newForm)
+      const map = {
+        organizationTemplateName: obj.name,
+        startDate: obj.createDate ? obj.createDate[0] : '',
+        endDate: obj.createDate ? obj.createDate[1] : '',
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      return map
+    },
+    listAllFn() {
+      this.tableDataLoading = true
+      listAll(this.getParamter()).then(res => {
+        if (res.code === 200) {
+          this.queryLoading = false
+          this.tableData = res.data.list
+          this.total = res.data.total
+        } else {
+          this.queryLoading = false
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.queryLoading = false
+        this.tableDataLoading = false
+      })
+    },
+    query() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.queryLoading = true
+          this.newForm = Object.assign({}, this.form)
+          this.listAllFn()
+        } else {
+          return false
+        }
+      })
+    },
+    handleExit(scope) { // 修订操作
+      this.titleName = 'update'
+      this.newCreatePerson = scope.row.createPerson
+      this.newCreatePersonId = scope.row.createPersionId
+      this.newOrganizationId = scope.row.organizationId
+      setTimeout(() => {
+        this.$refs.dialogForm.clearValidate()
+      }, 0)
+      getEntityOrganization(scope.row.organizationId).then(res => {
+        if (res.code === 200) {
+          this.dialogForm.name = res.data.organizationTemplateName
+          this.dialogForm.levelType = res.data.oneLevel
+          const selectData = res.data.twoLevel
+          getIndustrySecond({ type: this.dialogForm.levelType }).then(res => {
+            if (res.code === 200) {
+              this.typeDate = res.data
+              this.typeDate.unshift({
+                text: '所有选项',
+                value: 'ALL'
+              })
+              if (selectData.length === this.typeDate.length - 1) {
+                this.dialogForm.Cust = ['ALL']
+              } else {
+                this.dialogForm.Cust = selectData
+              }
+              // if (this.dialogForm.Cust.includes('ALL')) {
+              //   this.typeDate.map(item => {
+              //     if (item.value === 'ALL') {
+              //       this.dialogForm.Cust = ['ALL']
+              //       item.disabled = false
+              //     } else {
+              //       item.disabled = true
+              //     }
+              //   })
+              // } else {
+              //   this.typeDate.map(item => {
+              //     item.disabled = false
+              //   })
+              // }
+            }
+          })
+          this.rinmOptions = []
+          const _arr = []
+          if (res.data.checkAll !== '0') {
+            res.data.threeLevel.map(item => {
+              this.rinmOptions.push(item)
+              _arr.push(item.value)
+            })
+          }
+          this.dialogForm.str = _arr
+          // this.dialogForm.str = res.data.threeLevel
+        }
+      })
+      this.dialogVisible = true
+    },
+    // 确定删除
+    deleRow(scope) {
+      this.$confirm('确定要删除？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          del(scope.row.organizationId).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: '删除成功!',
+                duration: 6000,
+                showClose: true
+              })
+              this.listAllFn()
+            }
+          })
+        })
+        .catch(() => {})
+    },
+    saveEdit(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          this.saveEditLoading = true
+          if (this.titleName === 'add') {
+            const map = {
+              organizationTemplateName: this.dialogForm.name,
+              oneLevel: this.dialogForm.levelType,
+              twoLevel: this.dialogForm.Cust.includes('ALL') ? this.allSelect.join() : this.dialogForm.Cust.join(),
+              threeLevel: this.dialogForm.str.join()
+            }
+            organizationAdd(map).then(res => {
+              if (res.code === 200) {
+                this.saveEditLoading = false
+                this.$message({
+                  type: 'success',
+                  message: '添加成功!',
+                  duration: 6000,
+                  showClose: true
+                })
+                this.dialogVisible = false
+                this.pageNum = 1
+                this.listAllFn()
+              } else {
+                this.$message({
+                  type: 'warning',
+                  message: res.message,
+                  duration: 6000,
+                  showClose: true,
+                  onClose: function() {
+                    this.saveEditLoading = false
+                  }.bind(this)
+                })
+              }
+            })
+          } else {
+            const map = {
+              organizationId: this.newOrganizationId,
+              createPersonId: this.newCreatePersonId,
+              organizationTemplateName: this.dialogForm.name,
+              oneLevel: this.dialogForm.levelType,
+              twoLevel: this.dialogForm.Cust.includes('ALL') ? this.allSelect.join() : this.dialogForm.Cust.join(),
+              threeLevel: this.dialogForm.str.join(),
+              createPerson: this.newCreatePerson
+            }
+            updateOrganization(map).then(res => {
+              if (res.code === 200) {
+                this.saveEditLoading = false
+                this.$message({
+                  type: 'success',
+                  message: '修订成功!',
+                  duration: 6000,
+                  showClose: true
+                })
+                this.dialogVisible = false
+                this.listAllFn()
+              } else {
+                this.$message({
+                  type: 'warning',
+                  message: res.message,
+                  duration: 6000,
+                  showClose: true,
+                  onClose: function() {
+                    this.saveEditLoading = false
+                  }.bind(this)
+                })
+              }
+            })
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.pageNum = 1
+      this.listAllFn()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.listAllFn()
+    }
+  },
+  watch: {
+    'dialogForm.levelType': function(val, oval) {
+      if (val === '') {
+        this.dialogForm.Cust = []
+        this.dialogForm.str = []
+      }
+    },
+    'dialogForm.Cust': function(val) {
+      if (val.length === 0) {
+        this.dialogForm.str = []
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.evaluationorgan {
+  .btnalign {
+    text-align: right;
+  }
+  .objectTree {
+    position: absolute;
+    overflow: auto;
+    z-index: 100;
+    width: 100%;
+    height: 300px;
+  }
+  .change_length {
+    .el-select__tags >span {
+      display: block!important;
+      width: 100%;
+    }
+    .el-form-item__content {
+      margin-left: 0!important;
+    } 
+  }
+}
+
+</style>

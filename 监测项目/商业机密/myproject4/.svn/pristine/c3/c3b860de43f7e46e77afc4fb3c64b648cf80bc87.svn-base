@@ -1,0 +1,2008 @@
+<template>
+  <div class="cueManage_administration_form">
+    <el-card>
+      <a v-if="this.jingWaiXtf.mailId === undefined"
+        @click="routerBack"
+        class="back"
+        :style="backImg"
+      ></a>
+      <div slot="header">
+        <span>{{$route.query.title}}</span>
+      </div>
+      <div style="marginBottom:18px">
+        <el-row>
+          <el-col
+            :span="24"
+            v-if="this.$route.query.theme!=='后端数据录入'"
+          >
+            <span style="marginRight:20px">流程操作：</span>
+            <el-button
+              v-if="this.$route.query.pageFlag==='goflow'"
+              type="warning"
+              plain
+              @click="handleSave"
+              :disabled="disable"
+            > 保 存</el-button>
+            <el-button
+              v-if="this.$route.query.pageFlag==='goflow'"
+              type="primary"
+              plain
+              @click="handleSaveflow"
+              :disabled="disable"
+            >提 交</el-button>
+            <el-button
+              :disabled="this.flag"
+              @click="handlePrint"
+            >打 印</el-button>
+          </el-col>
+        </el-row>
+      </div>
+      <monitor-workflow></monitor-workflow>
+      <div>
+        <el-tabs
+          v-model="activeName"
+          @tab-click="handleClick"
+        >
+          <el-tab-pane
+            label="文件处理单"
+            name="tabFiles"
+            v-if="this.$route.query.theme!=='后端数据录入'"
+          >
+            <el-form
+              ref="form"
+              :model="form"
+              class="table processTable"
+              id="processTable"
+              :disabled='this.$route.query.pageFlag==="lookFlow" || this.jingWaiXtf.pageFlag ==="lookFlow"'
+            >
+              <el-row :gutter="20">
+                <el-col
+                  :span="9"
+                  :offset="4"
+                >
+                  <el-form-item
+                    label="密级："
+                    label-width="130px"
+                  >
+                    <el-select
+                      clearable
+                      v-model="form.secret"
+                      v-if="printFlag"
+                    >
+                      <el-option
+                        value="0"
+                        label="机密"
+                      ></el-option>
+                      <el-option
+                        value="1"
+                        label="秘密"
+                      ></el-option>
+                      <el-option
+                        value="2"
+                        label="内部"
+                      ></el-option>
+                    </el-select>
+                    <div v-if="!printFlag">
+                      <span>{{form.secret | filterSecret}}</span>
+                    </div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="10">
+                  <el-form-item
+                    label="缓急："
+                    label-width="130px"
+                  >
+                    <el-select
+                      clearable
+                      v-model="form.degreeOfUrgency"
+                      v-if="printFlag"
+                    >
+                      <el-option
+                        value="0"
+                        label="紧急"
+                      ></el-option>
+                      <el-option
+                        value="1"
+                        label="一般"
+                      ></el-option>
+                    </el-select>
+                    <div v-if="!printFlag">
+                      <span>{{form.degreeOfUrgency | filterDegreeOfUrgency}}</span>
+                    </div>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <!-- startprint -->
+              <el-row>
+                <p>反洗钱中心文件处理单</p>
+                <table
+                  border="1"
+                  style="border-collapse: collapse;"
+                >
+                  <tr>
+                    <td
+                      width="200"
+                      height="70;"
+                      align="center"
+                    >主办处室</td>
+                    <td
+                      width="200"
+                      colspan="2"
+                    >
+                      <el-form-item
+                        prop="sponsor"
+                        :rules="[ { validator: isValidInput, trigger: 'blur' },]"
+                        class="noBorder"
+                      >
+                        <el-input
+                          type="textarea"
+                          :autosize="{ minRows: 2, maxRows: 4}"
+                          v-if="printFlag"
+                          v-model="form.sponsor"
+                          maxlength="30"
+                          placeholder="请输入,最长30字符"
+                        ></el-input>
+                        <el-input
+                          type="textarea"
+                          :autosize="{ minRows: 2, maxRows: 4}"
+                          v-if="!printFlag"
+                          v-text="form.sponsor"
+                          maxlength="30"
+                          placeholder="请输入,最长30字符"
+                        ></el-input>
+                      </el-form-item>
+                      <!-- <el-input v-if="printFlag"  v-model="form.sponsor" maxlength="50"  placeholder="请输入,最长50字符"></el-input>
+                      <el-input v-if="!printFlag" v-text="form.sponsor" maxlength="50"  placeholder="请输入,最长50字符"></el-input> -->
+                    </td>
+                    <td
+                      width="200"
+                      colspan="2"
+                      align="center"
+                    >经办人及电话</td>
+                    <td
+                      width="200"
+                      colspan="2"
+                    >
+                      <el-form-item
+                        prop="responsiblePhone"
+                        :rules="[ { validator: NullAndTs, trigger: 'blur' },]"
+                        class="noBorder"
+                      >
+                        <!-- <el-form-item prop="responsiblePhone" :rules="[ { validator: PhoneNum, trigger: 'blur' },]"  class="noBorder"> -->
+                        <el-input
+                          type="textarea"
+                          :autosize="{ minRows: 2, maxRows: 4}"
+                          v-if="printFlag"
+                          v-model="form.responsiblePhone"
+                          maxlength="30"
+                          placeholder="请输入,最长30字符"
+                        ></el-input>
+                        <el-input
+                          type="textarea"
+                          :autosize="{ minRows: 2, maxRows: 4}"
+                          v-if="!printFlag"
+                          v-text="form.responsiblePhone"
+                          maxlength="30"
+                          placeholder="请输入,最长30字符"
+                        ></el-input>
+                      </el-form-item>
+
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      height="200"
+                      align="center"
+                    >请 示</td>
+                    <td
+                      height="200"
+                      colspan="6"
+                    >
+                      <el-form-item
+                        class="noBorderTwo"
+                        prop="fileContent"
+                      >
+                        <el-input
+                          :autosize="{ minRows: 2, maxRows: 4}"
+                          v-if="printFlag"
+                          v-model="form.fileContent"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入xxx的提示,最长100字符"
+                        ></el-input>
+                        <el-input
+                          :autosize="{ minRows: 2, maxRows: 4}"
+                          v-if="!printFlag"
+                          v-text="form.fileContent"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入xxx的提示,最长100字符"
+                        ></el-input>
+                      </el-form-item>
+
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      height="200"
+                      align="center"
+                    >行领导批示</td>
+                    <td colspan="6">
+                      <el-form-item
+                        class="noBorder"
+                        prop="examineOpin"
+                      >
+                        <el-input
+                          
+                          v-if="printFlag"
+                          v-model="form.examineOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入行领导批示,最长100字符"
+                        ></el-input>
+                        <el-input
+                          
+                          v-if="!printFlag"
+                          v-text="form.examineOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入行领导批示,最长100字符"
+                        ></el-input>
+                      </el-form-item>
+
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      height="200"
+                      align="center"
+                    >中心领导意见</td>
+                    <td colspan="6">
+                      <el-form-item
+                        class="noBorder"
+                        prop="centreLeadOpin"
+                      >
+                        <el-input
+                          
+                          v-if="printFlag"
+                          v-model="form.centreLeadOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入中心领导意见,最长100字符"
+                        ></el-input>
+                        <el-input
+                          
+                          v-if="!printFlag"
+                          v-text="form.centreLeadOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入中心领导意见,最长100字符"
+                        ></el-input>
+                      </el-form-item>
+
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      width="200"
+                      height="200"
+                      align="center"
+                    >内部意见</td>
+                    <td
+                      width="200"
+                      colspan="2"
+                    >
+                      <el-form-item
+                        class="noBorder"
+                        prop="interOpin"
+                      >
+                        <el-input
+                          
+                          v-if="printFlag"
+                          v-model="form.interOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入内部意见,最长100字符"
+                        ></el-input>
+                        <el-input
+                          
+                          v-if="!printFlag"
+                          v-text="form.interOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入内部意见,最长100字符"
+                        ></el-input>
+                      </el-form-item>
+
+                    </td>
+                    <td
+                      width="200"
+                      colspan="2"
+                      align="center"
+                    >会签意见</td>
+                    <td
+                      width="200"
+                      colspan="2"
+                    >
+                      <el-form-item
+                        class="noBorder"
+                        prop="countOpin"
+                      >
+                        <el-input
+                          
+                          v-if="printFlag"
+                          v-model="form.countOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入会签意见,最长100字符"
+                        ></el-input>
+                        <el-input
+                          
+                          v-if="!printFlag"
+                          v-text="form.countOpin"
+                          type="textarea"
+                          maxlength="100"
+                          placeholder="请输入会签意见,最长100字符"
+                        ></el-input>
+                      </el-form-item>
+
+                    </td>
+                  </tr>
+                </table>
+              </el-row>
+              <!-- endprint -->
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane
+            label="业务表单"
+            name="tabForm"
+          >
+            <span>表单：</span>
+            <!-- {{this.$route.query.fileType }}   {{this.$route.query.updateFlag }} -->
+            <el-radio-group v-model="fileType">
+              <el-radio
+                v-if="this.jingWaiXtf.fileType === '0'||this.$route.query.fileType === '0'|| this.$route.query.fileType === '4'"
+                :label="0"
+              >协查请求函</el-radio>
+              <el-radio
+                v-if="this.$route.query.fileType === '1'|| this.$route.query.fileType === '4'"
+                :label="1"
+              >价值反馈表</el-radio>
+              <el-radio
+                v-if="this.$route.query.fileType === '2'|| this.$route.query.fileType === '4'"
+                :label="2"
+              > 协查反馈函</el-radio>
+              <el-radio
+                v-if="this.jingWaiXtf.fileType === '3'|| this.$route.query.fileType === '3'|| this.$route.query.fileType === '4'"
+                :label="3"
+              >通报</el-radio>
+            </el-radio-group>
+            <div class="divider divider-dashed"></div>
+            <businessForm
+              v-show="this.jingWaiXtf.fileType === '0' || this.fileType+'' === '0'"
+              :businessFormData="businessFormData"
+              :myarr="businessFormArr"
+              ref="refBusiness"
+              :disableds='this.$route.query.pageFlag==="lookFlow" || this.jingWaiXtf.pageFlag ==="lookFlow"'
+            ></businessForm>
+            <CollaborativeForm
+              v-show="this.fileType+'' === '1'"
+              :collaborativeFormData="collaborativeFormData"
+              ref="refCollaborativeForm"
+              :disableds='this.$route.query.pageFlag==="lookFlow" || this.jingWaiXtf.pageFlag ==="lookFlow"'
+            ></CollaborativeForm>
+            <feedbackForm
+              v-show="this.fileType+'' === '2'"
+              :feedbackFormData="feedbackFormData"
+              ref="refFeedbackForm"
+              :disableds='this.$route.query.pageFlag==="lookFlow" || this.jingWaiXtf.pageFlag ==="lookFlow"'
+            ></feedbackForm>
+            <noticeForm
+             :myarr="noticeFormArr"
+              v-show="this.fileType+'' === '3' || this.jingWaiXtf.fileType === '3' "
+              :noticeFormData="noticeForm"
+              ref="refNoticeForm"
+              :disableds='this.$route.query.pageFlag==="lookFlow" || this.jingWaiXtf.pageFlag ==="lookFlow"'
+            ></noticeForm>
+          </el-tab-pane>
+           <el-tab-pane label="录入协查反馈函"   v-if="$route.query.fileType !== '4' && fileType===0&&JSON.stringify(this.feedbackFormData)!=='{}'"  name="inputForm">
+          <feedbackForm  :feedbackFormData="feedbackFormData"  ref="inputForm"></feedbackForm>
+        </el-tab-pane>
+         <el-tab-pane
+            label="价值反馈表"
+            name="valueBack"
+            class="classFiles"
+            v-if="this.$route.query.fileType === '2'||this.$route.query.fileType === '3'"
+          >
+          <CollaborativeForm
+              :collaborativeFormData="collaborativeFormData"
+              ref="refCollaborativeForm"
+              :disableds='this.$route.query.pageFlag==="lookFlow" || this.jingWaiXtf.pageFlag ==="lookFlow"'
+            ></CollaborativeForm>
+            </el-tab-pane>
+          <el-tab-pane
+            label="相关附件"
+            name="tabAbout"
+            class="classFiles"
+            v-if="this.$route.query.theme!=='后端数据录入'"
+          >
+            <!-- <Correlation></Correlation> -->
+            <el-upload
+              v-if="$route.query.pageFlag=== 'goflow'"
+              :before-upload="beforeAvatarUpload"
+              class="upload-demo"
+              drag
+              :on-success="onSuccess"
+              :action="actionUrlother"
+              multiple
+            >
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+              <!-- <div class="el-upload__tip" slot="tip">只能上传jpg/png文件，且不超过500kb</div> -->
+            </el-upload>
+            <el-table :data="tablefileData">
+              <el-table-column
+                label="序号"
+                type="index"
+              ></el-table-column>
+              <el-table-column
+                label="附件名称"
+                prop="attachName"
+              ></el-table-column>
+              <el-table-column
+                label="操作"
+                width="140"
+              >
+                <template slot-scope="scope">
+                  <el-button
+                    type="text"
+                    @click="download(scope)"
+                  >下载</el-button>
+                  <el-button
+                    v-if="!disable"
+                    type="text"
+                    @click="delRow(scope)"
+                  >删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane
+            label="办理信息"
+            name="tabInfor"
+            v-if="this.$route.query.theme!=='后端数据录入'&&false"
+          >
+            <div
+              class="information"
+              style="margin-top:20px"
+            >
+              <div class="list-block">
+                <el-row>
+                  <el-col
+                    :span="12"
+                    style="margin-bottom:10px"
+                  >
+                    <span>流程信息：</span>
+                  </el-col>
+                </el-row>
+                <el-table :data="tableData">
+                  <el-table-column
+                    label="序号"
+                    type="index"
+                  ></el-table-column>
+                  <el-table-column
+                    label="节点名称"
+                    prop="actName"
+                  ></el-table-column>
+                  <el-table-column
+                    label="执行用户"
+                    prop="approverName"
+                  ></el-table-column>
+                  <el-table-column
+                    label="办理时间"
+                    prop="time"
+                  ></el-table-column>
+                  <el-table-column
+                    label="办理意见"
+                    prop="opinion"
+                  ></el-table-column>
+                  <!-- <el-table-column label="备注" prop="remark"></el-table-column> -->
+                </el-table>
+                <el-pagination
+                  @size-change="handleSizeChange"
+                  @current-change="handleCurrentChange"
+                  background
+                  :current-page="currentPage"
+                  :page-size="pagesize"
+                  :page-sizes="[10, 20, 30, 40,50]"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  :total="tableData.length"
+                >
+                </el-pagination>
+
+              </div>
+              <div class="map-block">
+                <el-row style="marginBottom:20px">
+                  <el-col :span="12">
+                    <span>流程监控图：</span>
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="24">
+                    <el-steps
+                      :active="stepActive"
+                      align-center
+                    >
+                      <!-- <el-step  title="国际处业务人员起草处理单" description=""></el-step> -->
+                      <el-step
+                        v-for="(item,idx) in tableFlow"
+                        :title="item"
+                        :key="idx"
+                        description=""
+                      ></el-step>
+                      <el-step
+                        v-if="endFlag === '7' || endFlag === '8'"
+                        title="结束"
+                        description=""
+                      ></el-step>
+                    </el-steps>
+                  </el-col>
+                </el-row>
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script>
+// import {
+//   getApprovalapi,
+//   getFormapi,
+//   deleteFileApi,
+//   getFilelistApi,
+//   sendList,
+//   sendListflow
+// } from '@/api/sys-monitoringAnalysis/cueManage/interIntelligence.js'
+import {
+  getFormapi,
+  deleteFileApi,
+  getFilelistApi,
+  sendList,
+  sendListflow
+} from '@/api/sys-monitoringAnalysis/cueManage/interIntelligence.js'
+import Correlation from '@/views/sys-monitoringAnalysis/cueManage/investigation/correlation'
+import businessForm from '@/views/sys-monitoringAnalysis/cueManage/interIntelligence/businessForm'
+import noticeForm from '@/views/sys-monitoringAnalysis/cueManage/interIntelligence/noticeForm'
+import feedbackForm from '@/views/sys-monitoringAnalysis/cueManage/interIntelligence/feedbackForm'
+import CollaborativeForm from '@/views/sys-monitoringAnalysis/cueManage/interIntelligence/CollaborativeForm'
+import { mapGetters } from 'vuex'
+import { commonPattern } from '@/utils/formValidate'
+export default {
+  components: {
+    Correlation,
+    businessForm,
+    noticeForm,
+    feedbackForm,
+    CollaborativeForm
+  },
+  props: {
+    jingWaiXtf: {
+      type: Object,
+      default: function() {
+        return {}
+      }
+    }
+  },
+  filters: {
+    filterSecret(val) {
+      switch (val) {
+        case '0':
+          return '机密'
+        case '1':
+          return '秘密'
+        case '2':
+          return '内部'
+        default:
+          break
+      }
+    },
+    filterDegreeOfUrgency(val) {
+      switch (val) {
+        case '0':
+          return '紧急'
+        case '1':
+          return '一般'
+        default:
+          break
+      }
+    }
+  },
+  data() {
+    return {
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      isShow: false,
+      noticeFormArr: [], // 通报的主体信息组
+      businessFormArr: [], // 协查请求函的主体信息组
+      flag: false,
+      printFlag: true,
+      subCount: 0, // 防重复提交
+      activeName: 'tabFiles', // tab 切换
+      UUID: '',
+      disable: false, // 按钮是否显示
+      stepActive: null, // 步骤条活跃状态
+      endFlag: '', // 流程结束标志
+      fileType: 0,
+      formId: '', // 文件上传表单Id
+      form: {
+        secret: '',
+        degreeOfUrgency: '',
+        sponsor: '',
+        responsiblePhone: '',
+        fileContent: '',
+        examineOpin: '',
+        centreLeadOpin: '',
+        interOpin: '',
+        countOpin: ''
+      },
+      tablefileData: [],
+      currentPage: 1,
+      pagesize: 10,
+      tableData: [],
+      tableFlow: [],
+      flags: false,
+
+      // 子组件值
+      businessFormData: {},
+      collaborativeFormData: null,
+      feedbackFormData: {},
+      noticeForm: {}
+    }
+  },
+  computed: {
+    actionUrlother: function() {
+      return `/monitor/international/upload-allAttachGj1?mailId=${
+        this.$route.query.mailId
+      }&fileType=${this.fileType.toString()}`
+    },
+    ...mapGetters(['businessFlag', 'workFlow2business', 'institution', 'permissions_routers'])
+  },
+  watch: {
+    businessFlag(val) {
+      if (val) this.nextStep()
+      this.$store.dispatch('changeFlag', false)
+    }
+  },
+  mounted() {
+    if (this.jingWaiXtf.mailId !== undefined) {
+      this.showTab1()
+      this.getData()
+      this.getFilelist1()
+    } else {
+      this.isShow = this.$route.query.pageFlag !== 'lookFlow'
+      this.showTab()
+      this.getData()
+      this.getFilelist()
+    }
+  },
+  updated() {
+    // console.log(11111)
+  },
+  methods: {
+    // 打印
+    handlePrint() {
+      if (this.$route.query.pageFlag === 'goflow') {
+        sessionStorage.setItem('guoji', JSON.stringify(this.form))
+      }
+      this.printFlag = false
+      this.$nextTick(function() {
+        document.getElementsByClassName('processTable')[0].style.display = 'block'
+        var newHtml = document.getElementsByClassName('processTable')[0].innerHTML
+        document.body.innerHTML = newHtml
+        window.print()
+        window.location.reload()
+      })
+    },
+
+    // 表单显示-tab
+    showTab() {
+      switch (this.$route.query.fileType) {
+        case '0':
+          this.fileType = 0
+          break
+        case '1':
+          this.fileType = 1
+          break
+        case '2':
+          this.fileType = 2
+          break
+        case '3':
+          this.fileType = 3
+          break
+        case '4':
+          this.fileType = 4
+          break
+        default:
+          break
+      }
+    },
+    showTab1() {
+      switch (this.jingWaiXtf.fileType) {
+        case '0':
+          this.fileType = 0
+          break
+        case '1':
+          this.fileType = 1
+          break
+        case '2':
+          this.fileType = 2
+          break
+        case '3':
+          this.fileType = 3
+          break
+        case '4':
+          this.fileType = 4
+          break
+        default:
+          break
+      }
+    },
+
+    // 切换tabs
+    handleClick(tab, event) {
+      console.log(tab.name)
+      if (tab.name === 'tabFiles') {
+        this.flag = false
+      } else {
+        this.flag = true
+      }
+    },
+
+    // 提交 - 下一步
+    nextStep() {
+      sendListflow(this.newSubParams()).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '提交成功'
+          })
+          // this.$router.go(-1)
+          this.$router.push({
+            name: 'cueManage_interFileManage',
+            params: { activeName: 'first' }
+          })
+        } else {
+          this.$confirm(res.message, '提示', {
+            confirmButtonText: '确定',
+            showCancelButton: false,
+            type: 'warning'
+          })
+        }
+      })
+    },
+    PhoneNum(rule, value, callback) {
+      // var phone = /^((1[0-9]{10})|((\d{3,4}-)?\d{7,8}))$/
+      var phone = /^\d+(-)?(\d+)?$/
+      if (value !== null) {
+        if (value === '' || value === undefined) {
+          callback()
+        } else {
+          if (!phone.test(value)) {
+            callback(new Error('请输入电话号'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    // 可输入空的input校验
+    NullAndTs(rule, value, callback) {
+      var spcae = /(^\s)|(\s$)/
+      if (spcae.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // input校验
+    isValidInput(rule, value, callback) {
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    // 提交
+    handleSaveflow() {
+      //   行领导1 interHangQingbao
+      //     中心领导0 gjzhongxin
+      if (this.$refs['refBusiness']) {
+        this.flags = this.$refs['refBusiness'].validateForm()
+      } else if (this.$refs['refCollaborativeForm']) {
+        this.flags = this.$refs['refCollaborativeForm'].validateForm()
+      } else if (this.$refs['refFeedbackForm']) {
+        this.flags = this.$refs['refFeedbackForm'].validateForm()
+      } else if (this.$refs['refNoticeForm']) {
+        this.flags = this.$refs['refNoticeForm'].validateForm()
+      }
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          if (this.flags) {
+            if (this.$route.query.flowexId === '0') {
+              this.$store.dispatch('workFlow', { configCode: 'gjzhongxin' })
+            } else if (this.$route.query.flowexId === '1') {
+              this.$store.dispatch('workFlow', { configCode: 'interHangQingbao' })
+            } else {
+              this.$store.dispatch('workFlow', { configCode: 'gjxcfqqb' })
+            }
+            this.$store.dispatch('openWorkFlow', true)
+          } else {
+            this.successOrError('error', '请检查所填内容需符合检验规则')
+          }
+        } else {
+          this.successOrError('error', '请检查所填内容需符合检验规则')
+        }
+      })
+    },
+
+    // 保存
+    handleSave() {
+      if (this.$route.query.fileType === '4') {
+        console.log('--------------------')
+        console.log(this.$refs['refBusiness'])
+        console.log(this.$refs['refCollaborativeForm'])
+        console.log(this.$refs['refFeedbackForm'])
+        console.log(this.$refs['refNoticeForm'])
+      }
+      if (this.$refs['refBusiness']) {
+        this.flags = this.$refs['refBusiness'].validateForm()
+      } else if (this.$refs['refCollaborativeForm']) {
+        this.flags = this.$refs['refCollaborativeForm'].validateForm()
+      } else if (this.$refs['refFeedbackForm']) {
+        this.flags = this.$refs['refFeedbackForm'].validateForm()
+      } else if (this.$refs['refNoticeForm']) {
+        this.flags = this.$refs['refNoticeForm'].validateForm()
+      }
+
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          if (this.flags) {
+            this.subCount++
+            if (this.subCount === 1) {
+              if (this.$route.query.updateFlag === '2') {
+                sendList(this.newparams()).then(res => {
+                  if (res.code === 200) {
+                    this.$message({
+                      message: '保存成功',
+                      type: 'success'
+                    })
+                  }
+                })
+              } else if (this.$route.query.updateFlag === '0') {
+                // editeList(this.newparams()).then(res => {
+                sendList(this.newparams()).then(res => {
+                  if (res.code === 200) {
+                    this.$message({
+                      message: '修改成功',
+                      type: 'success'
+                    })
+                  }
+                })
+              } else if (this.$route.query.updateFlag === null) {
+                sendList(this.newparams()).then(res => {
+                  if (res.code === 200) {
+                    this.$message({
+                      message: '保存成功',
+                      type: 'success'
+                    })
+                  }
+                })
+                // return false
+              }
+              setTimeout(() => {
+                if (this.$route.query.title === '国际发送情报流程') {
+                  this.$router.push({
+                    name: 'cueManage_interFileManage',
+                    params: { activeName: 'second' }
+                  })
+                } else {
+                  // this.$router.go(-1) // 返回上一层
+                  this.$router.push({
+                    name: 'cueManage_interFileManage',
+                    params: { activeName: 'first' }
+                  })
+                }
+              }, 1000)
+            } else {
+              return false
+            }
+          } else {
+            this.successOrError('error', '请完善业务表单校验')
+          }
+        } else {
+          this.successOrError('error', '请完善文件处理单校验规则')
+        }
+      })
+    },
+
+    // 回显信息
+    getData() {
+      if (this.$route.query.theme === '后端数据录入') {
+        this.activeName = 'tabForm'
+      }
+      if (this.$route.query.pageFlag === 'goflow') {
+        if (sessionStorage.getItem('guoji') && this.$route.query.pageFlag === 'goflow') {
+          const searchData = JSON.parse(sessionStorage.getItem('guoji'))
+          this.form = searchData
+          setTimeout(() => {
+            sessionStorage.removeItem('guoji')
+          }, 5000)
+        }
+      }
+      if (this.$route.query.updateFlag !== '2' && this.jingWaiXtf.mailId === undefined) {
+        if (this.$route.query.id) {
+          var arr1 = JSON.parse(this.$route.query.id)
+          const titleCode = arr1.intelBusinessType === '0' ? '国际情报文件报中心领导流程' : '国际协查反馈函报中心领导流程'
+          this.$route.query.mailId = arr1.mailId
+          this.$route.query.title = titleCode
+          this.$route.query.intelBusinessType = arr1.intelBusinessType
+          this.$route.query.fileType = arr1.fileType
+          this.$route.query.pageFlag = 'lookFlow'
+          this.$route.query.updateFlag = arr1.updateFlag
+          this.$route.query.theme = arr1.subject
+        }
+        getFormapi(this.$route.query.mailId).then(res => {
+          if (res.code === 200) {
+            if (res.data.TongBao && res.data.InvRequest && res.data.FeedBackGJ && res.data.XcFeedBack) {
+              // 通报
+              var TongBaoData2 = Object.assign({}, res.data.TongBao, res.data.TongBao.subjectList[0])
+              TongBaoData2.subjectList.shift()
+              this.noticeFormArr = TongBaoData2.subjectList
+              this.noticeForm = TongBaoData2
+              // this.noticeForm = res.data.TongBao
+              // this.fileType = 3
+
+              // 协查请求函
+              var InvRequestData2 = Object.assign({}, res.data.InvRequest, res.data.InvRequest.subjectList[0])
+              InvRequestData2.subjectList.shift()
+              this.businessFormArr = InvRequestData2.subjectList
+              this.businessFormData = InvRequestData2
+              // this.fileType = 0
+
+              // 协查反馈函
+              this.feedbackFormData = res.data.FeedBackGJ
+              // this.fileType = 2
+
+              // 价值反馈表
+              this.collaborativeFormData = res.data.XcFeedBack
+
+              // 显示第一个选项
+              this.fileType = 0
+            } else {
+              if (res.data.TongBao) {
+                var TongBaoData = Object.assign({}, res.data.TongBao, res.data.TongBao.subjectList[0])
+                TongBaoData.subjectList.shift()
+                this.noticeFormArr = TongBaoData.subjectList
+                this.noticeForm = TongBaoData
+                // this.noticeForm = res.data.TongBao
+                this.fileType = 3
+                if (res.data.XcFeedBack) {
+                  this.collaborativeFormData = res.data.XcFeedBack
+                }
+              } else if (res.data.InvRequest) {
+                var InvRequestData = Object.assign({}, res.data.InvRequest, res.data.InvRequest.subjectList[0])
+                InvRequestData.subjectList.shift()
+                this.businessFormArr = InvRequestData.subjectList
+                this.businessFormData = InvRequestData
+                this.fileType = 0
+                if (res.data.FeedBackGJ) {
+                  this.feedbackFormData = res.data.FeedBackGJ
+                  this.feedbackFormData.noWrite = true
+                }
+                console.log(this.feedbackFormData, 22222222222)
+              } else if (res.data.FeedBackGJ) {
+                this.feedbackFormData = res.data.FeedBackGJ
+                this.fileType = 2
+                if (res.data.XcFeedBack) {
+                  this.collaborativeFormData = res.data.XcFeedBack
+                }
+              } else if (res.data.XcFeedBack) {
+                this.collaborativeFormData = res.data.XcFeedBack
+                this.fileType = 1
+              } else {
+                return
+              }
+            }
+            if (res.data.fileHand) {
+              this.form = res.data.fileHand
+            } else {
+              this.form = {}
+            }
+          }
+        })
+        this.getFilelist()
+      }
+      if (this.jingWaiXtf.updateFlag !== '2' && this.jingWaiXtf.mailId) {
+        getFormapi(this.jingWaiXtf.mailId).then(res => {
+          if (res.code === 200) {
+            if (res.data.TongBao) {
+              var TongBaoData = Object.assign({}, res.data.TongBao, res.data.TongBao.subjectList[0])
+              TongBaoData.subjectList.shift()
+              this.noticeFormArr = TongBaoData.subjectList
+              this.noticeForm = TongBaoData
+              // this.noticeForm = res.data.TongBao
+              this.fileType = 3
+              if (res.data.XcFeedBack) {
+                this.collaborativeFormData = res.data.XcFeedBack
+              }
+            } else if (res.data.InvRequest) {
+              var InvRequestData = Object.assign({}, res.data.InvRequest, res.data.InvRequest.subjectList[0])
+              InvRequestData.subjectList.shift()
+              this.businessFormArr = InvRequestData.subjectList
+              this.businessFormData = InvRequestData
+              this.fileType = 0
+              if (res.data.FeedBackGJ) {
+                this.feedbackFormData = res.data.FeedBackGJ
+                this.feedbackFormData.noWrite = true
+              }
+            } else if (res.data.FeedBackGJ) {
+              this.feedbackFormData = res.data.FeedBackGJ
+              this.fileType = 2
+              if (res.data.XcFeedBack) {
+                this.collaborativeFormData = res.data.XcFeedBack
+              }
+            } else if (res.data.XcFeedBack) {
+              this.collaborativeFormData = res.data.XcFeedBack
+              this.fileType = 1
+            } else {
+              return
+            }
+            if (res.data.fileHand) {
+              this.form = res.data.fileHand
+            } else {
+              this.form = {}
+            }
+          }
+        })
+        this.getFilelist1()
+      }
+      if (this.$route.query.updateFlag === '1') {
+        this.activeName = 'tabFiles'
+        this.disable = true
+        // getApprovalapi(this.$route.query.mailId).then(res => {
+        //   if (res.code === 200) {
+        //     this.tableData = res.data.result
+
+        //     this.tableFlow = res.data.status
+        //     this.tableFlow.unshift('国际处业务人员起草处理单')
+        //     if (res.data.approvalStatus === '7' || res.data.approvalStatus === '8') {
+        //       this.stepActive = this.tableFlow.length + 1
+        //     } else {
+        //       this.stepActive = this.tableFlow.length - 1
+        //     }
+        //     this.endFlag = res.data.approvalStatus
+        //   }
+        // })
+        this.getFilelist()
+      }
+      if (this.jingWaiXtf.updateFlag === '1') {
+        this.activeName = 'tabFiles'
+        this.disable = true
+        // getApprovalapi(this.$route.query.mailId).then(res => {
+        //   if (res.code === 200) {
+        //     this.tableData = res.data.result
+
+        //     this.tableFlow = res.data.status
+        //     this.tableFlow.unshift('国际处业务人员起草处理单')
+        //     if (res.data.approvalStatus === '7' || res.data.approvalStatus === '8') {
+        //       this.stepActive = this.tableFlow.length + 1
+        //     } else {
+        //       this.stepActive = this.tableFlow.length - 1
+        //     }
+        //     this.endFlag = res.data.approvalStatus
+        //   }
+        // })
+        this.getFilelist1()
+      }
+    },
+
+    // 上传成功 - 回调
+    onSuccess(res) {
+      if (res.code === 200) {
+        this.getFilelist()
+      }
+    },
+    // 相关附件 - 获取附件列表
+    getFilelist() {
+      // const obj = {}
+      // switch (this.fileType) {
+      //   case 0: // 协查请求函
+      getFilelistApi(this.$route.query.mailId).then(res => {
+        this.tablefileData = res.data
+      })
+      //     break
+      //   case 1: // 价值反馈表
+      //     getFilelistApi({ xcfeedbackId: this.$route.query.mailId }).then(res => {
+      //       this.tablefileData = res.data
+      //     })
+      //     break
+      //   case 2: //  协查反馈函
+      //     getFilelistApi({ fbId: this.$route.query.mailId }).then(res => {
+      //       this.tablefileData = res.data
+      //     })
+      //     break
+      //   case 3: // 通报
+      //     getFilelistApi({ tongbaoId: this.$route.query.mailId }).then(res => {
+      //       this.tablefileData = res.data
+      //     })
+      //     break
+      //   default:
+      //     break
+      // }
+      // const objparamKeys = Object.keys(obj)
+      // var paramKey = objparamKeys[0]
+      // getFilelistApi({ paramKey: this.$route.query.mailId }).then()
+    },
+    getFilelist1() {
+      // const obj = {}
+      switch (this.fileType) {
+        case 0: // 协查请求函
+          getFilelistApi({ gjSurveyid: this.jingWaiXtf.mailId }).then(res => {
+            this.tablefileData = res.data
+          })
+          break
+        case 1: // 价值反馈表
+          getFilelistApi({ xcfeedbackId: this.jingWaiXtf.mailId }).then(res => {
+            this.tablefileData = res.data
+          })
+          break
+        case 2: //  协查反馈函
+          getFilelistApi({ fbId: this.jingWaiXtf.mailId }).then(res => {
+            this.tablefileData = res.data
+          })
+          break
+        case 3: // 通报
+          getFilelistApi({ tongbaoId: this.jingWaiXtf.mailId }).then(res => {
+            this.tablefileData = res.data
+          })
+          break
+        default:
+          break
+      }
+      // const objparamKeys = Object.keys(obj)
+      // var paramKey = objparamKeys[0]
+      // getFilelistApi({ paramKey: this.$route.query.mailId }).then()
+    },
+
+    // 相关附件 - 下载
+    download(scope) {
+      location.href = `/file-service/upload/download/${scope.row.attachId}?moduleName=` + encodeURI('线索管理')
+    },
+    successOrError(type, message, time) {
+      this.$message({
+        message: message || '操作成功',
+        type: type || 'info',
+        duration: time || 6000
+      })
+    },
+    //  删除
+    delRow(scope) {
+      deleteFileApi(scope.row.attachId).then(res => {
+        if (res.code === 200) {
+          this.$message({
+            message: '删除成功',
+            type: 'success'
+          })
+          this.getFilelist()
+        }
+      })
+    },
+    // 保存的params
+    newparams() {
+      var childForm = {}
+      const objForm = this.form
+      // 主体+交易对手信息
+      var ztObj = {}
+      const obj = {
+        FileHand: objForm,
+        intelBusinessType: this.$route.query.flowexId
+          ? this.$route.query.flowexId
+          : this.$route.query.intelBusinessType, // 工作流
+        fileType: this.$route.query.fileType,
+        mailId: this.$route.query.mailId,
+        updateFlag: '0'
+      }
+      switch (this.$route.query.fileType) {
+        case '0': // 协查请求函
+          childForm = this.$refs.refBusiness.form
+          obj.InvRequest = childForm
+          ztObj = {
+            ztName: obj.InvRequest.ztName ? obj.InvRequest.ztName : '',
+            ztBname: obj.InvRequest.ztBname ? obj.InvRequest.ztBname : '',
+            ztAddress: obj.InvRequest.ztAddress ? obj.InvRequest.ztAddress : '',
+            ztGuanxi: obj.InvRequest.ztGuanxi ? obj.InvRequest.ztGuanxi : '',
+            ztActivity: obj.InvRequest.ztActivity ? obj.InvRequest.ztActivity : '',
+            ztIdnum: obj.InvRequest.ztIdnum ? obj.InvRequest.ztIdnum : '',
+            ztPassport: obj.InvRequest.ztPassport ? obj.InvRequest.ztPassport : '',
+            ztIdnumorg: obj.InvRequest.ztIdnumorg ? obj.InvRequest.ztIdnumorg : '',
+            ztOtheridnum: obj.InvRequest.ztOtheridnum ? obj.InvRequest.ztOtheridnum : '',
+            ztOtheridnumorg: obj.InvRequest.ztOtheridnumorg ? obj.InvRequest.ztOtheridnumorg : '',
+            ztPhone: obj.InvRequest.ztPhone ? obj.InvRequest.ztPhone : '',
+            ztOther: obj.InvRequest.ztOther ? obj.InvRequest.ztOther : '',
+            ztNationlity: obj.InvRequest.ztNationlity ? obj.InvRequest.ztNationlity : '',
+            ztSex: obj.InvRequest.ztSex ? obj.InvRequest.ztSex : '',
+            ztBirthday: obj.InvRequest.ztBirthday ? obj.InvRequest.ztBirthday : '',
+            ztCity: obj.InvRequest.ztCity ? obj.InvRequest.ztCity : '',
+            ztProvinces: obj.InvRequest.ztProvinces ? obj.InvRequest.ztProvinces : '',
+            ztBirthplace: obj.InvRequest.ztBirthplace ? obj.InvRequest.ztBirthplace : '',
+            rivlName: obj.InvRequest.rivlName ? obj.InvRequest.rivlName : '',
+            rivlIdnum: obj.InvRequest.rivlIdnum ? obj.InvRequest.rivlIdnum : '',
+            rivlPassportnum: obj.InvRequest.rivlPassportnum ? obj.InvRequest.rivlPassportnum : '',
+            rivlBankname: obj.InvRequest.rivlBankname ? obj.InvRequest.rivlBankname : '',
+            rivlBankaccount: obj.InvRequest.rivlBankaccount ? obj.InvRequest.rivlBankaccount : '',
+            rivlTradedate: obj.InvRequest.rivlTradedate ? obj.InvRequest.rivlTradedate : '',
+            rivlTradeamount: obj.InvRequest.rivlTradeamount ? obj.InvRequest.rivlTradeamount : '',
+            rivlTradedirection: obj.InvRequest.rivlTradedirection ? obj.InvRequest.rivlTradedirection : ''
+          }
+          if (this.$refs.refBusiness.myarr.length > 0) {
+            obj.InvRequest.subjectList = this.$refs.refBusiness.myarr
+            obj.InvRequest.subjectList.unshift(ztObj)
+          } else {
+            var arr = []
+            arr.push(ztObj)
+            obj.InvRequest.subjectList = arr
+          }
+          delete obj.InvRequest.ztName
+          delete obj.InvRequest.ztBname
+          delete obj.InvRequest.ztAddress
+          delete obj.InvRequest.ztGuanxi
+          delete obj.InvRequest.ztActivity
+          delete obj.InvRequest.ztIdnum
+          delete obj.InvRequest.ztPassport
+          delete obj.InvRequest.ztIdnumorg
+          delete obj.InvRequest.ztOtheridnum
+          delete obj.InvRequest.ztOtheridnumorg
+          delete obj.InvRequest.ztPhone
+          delete obj.InvRequest.ztOther
+          delete obj.InvRequest.ztNationlity
+          delete obj.InvRequest.ztSex
+          delete obj.InvRequest.ztBirthday
+          delete obj.InvRequest.ztCity
+          delete obj.InvRequest.ztProvinces
+          delete obj.InvRequest.ztBirthplace
+          delete obj.InvRequest.rivlName
+          delete obj.InvRequest.rivlIdnum
+          delete obj.InvRequest.rivlPassportnum
+          delete obj.InvRequest.rivlBankname
+          delete obj.InvRequest.rivlBankaccount
+          delete obj.InvRequest.rivlTradedate
+          delete obj.InvRequest.rivlTradeamount
+          delete obj.InvRequest.rivlTradedirection
+          break
+        case '1': // 价值反馈表
+          childForm = this.$refs.refCollaborativeForm.collaborativeForm
+          childForm.help = childForm.help.join()
+          obj.XcFeedBack = childForm
+          break
+        case '2': //  协查反馈函
+          childForm = this.$refs.refFeedbackForm.feedbackForm
+          obj.FeedBackGJ = childForm
+          var str = ''
+          if (this.$refs.refCollaborativeForm) {
+            str = this.$refs.refCollaborativeForm.collaborativeForm
+            str.help = str.help.join()
+            obj.XcFeedBack = str
+          }
+          break
+        case '3': // 通报
+          childForm = this.$refs.refNoticeForm.noticeForm
+          obj.TongBao = childForm
+          var str2 = ''
+          if (this.$refs.refCollaborativeForm) {
+            str2 = this.$refs.refCollaborativeForm.collaborativeForm
+            str2.help = str2.help.join()
+            obj.XcFeedBack = str2
+          }
+          ztObj = {
+            ztName: obj.TongBao.ztName ? obj.TongBao.ztName : '',
+            ztBname: obj.TongBao.ztBname ? obj.TongBao.ztBname : '',
+            ztAddress: obj.TongBao.ztAddress ? obj.TongBao.ztAddress : '',
+            ztGuanxi: obj.TongBao.ztGuanxi ? obj.TongBao.ztGuanxi : '',
+            ztActivity: obj.TongBao.ztActivity ? obj.TongBao.ztActivity : '',
+            ztIdnum: obj.TongBao.ztIdnum ? obj.TongBao.ztIdnum : '',
+            ztPassport: obj.TongBao.ztPassport ? obj.TongBao.ztPassport : '',
+            ztIdnumorg: obj.TongBao.ztIdnumorg ? obj.TongBao.ztIdnumorg : '',
+            ztOtheridnum: obj.TongBao.ztOtheridnum ? obj.TongBao.ztOtheridnum : '',
+            ztOtheridnumorg: obj.TongBao.ztOtheridnumorg ? obj.TongBao.ztOtheridnumorg : '',
+            ztPhone: obj.TongBao.ztPhone ? obj.TongBao.ztPhone : '',
+            ztOther: obj.TongBao.ztOther ? obj.TongBao.ztOther : '',
+            ztNationlity: obj.TongBao.ztNationlity ? obj.TongBao.ztNationlity : '',
+            ztSex: obj.TongBao.ztSex ? obj.TongBao.ztSex : '',
+            ztBirthday: obj.TongBao.ztBirthday ? obj.TongBao.ztBirthday : '',
+            ztCity: obj.TongBao.ztCity ? obj.TongBao.ztCity : '',
+            ztProvinces: obj.TongBao.ztProvinces ? obj.TongBao.ztProvinces : '',
+            ztBirthplace: obj.TongBao.ztBirthplace ? obj.TongBao.ztBirthplace : '',
+            rivlName: obj.TongBao.rivlName ? obj.TongBao.rivlName : '',
+            rivlIdnum: obj.TongBao.rivlIdnum ? obj.TongBao.rivlIdnum : '',
+            rivlPassportnum: obj.TongBao.rivlPassportnum ? obj.TongBao.rivlPassportnum : '',
+            rivlBankname: obj.TongBao.rivlBankname ? obj.TongBao.rivlBankname : '',
+            rivlBankaccount: obj.TongBao.rivlBankaccount ? obj.TongBao.rivlBankaccount : '',
+            rivlTradedate: obj.TongBao.rivlTradedate ? obj.TongBao.rivlTradedate : '',
+            rivlTradeamount: obj.TongBao.rivlTradeamount ? obj.TongBao.rivlTradeamount : '',
+            rivlTradedirection: obj.TongBao.rivlTradedirection ? obj.TongBao.rivlTradedirection : ''
+          }
+          if (this.$refs.refNoticeForm.myarr.length > 0) {
+            obj.TongBao.subjectList = this.$refs.refNoticeForm.myarr
+            obj.TongBao.subjectList.unshift(ztObj)
+          } else {
+            var tongbaoArr = []
+            tongbaoArr.push(ztObj)
+            obj.TongBao.subjectList = tongbaoArr
+          }
+          delete obj.TongBao.ztName
+          delete obj.TongBao.ztBname
+          delete obj.TongBao.ztAddress
+          delete obj.TongBao.ztGuanxi
+          delete obj.TongBao.ztActivity
+          delete obj.TongBao.ztIdnum
+          delete obj.TongBao.ztPassport
+          delete obj.TongBao.ztIdnumorg
+          delete obj.TongBao.ztOtheridnum
+          delete obj.TongBao.ztOtheridnumorg
+          delete obj.TongBao.ztPhone
+          delete obj.TongBao.ztOther
+          delete obj.TongBao.ztNationlity
+          delete obj.TongBao.ztSex
+          delete obj.TongBao.ztBirthday
+          delete obj.TongBao.ztCity
+          delete obj.TongBao.ztProvinces
+          delete obj.TongBao.ztBirthplace
+          delete obj.TongBao.rivlName
+          delete obj.TongBao.rivlIdnum
+          delete obj.TongBao.rivlPassportnum
+          delete obj.TongBao.rivlBankname
+          delete obj.TongBao.rivlBankaccount
+          delete obj.TongBao.rivlTradedate
+          delete obj.TongBao.rivlTradeamount
+          delete obj.TongBao.rivlTradedirection
+          break
+        case '4':
+          // 协查请求函
+          childForm = this.$refs.refBusiness.form
+          obj.InvRequest = childForm
+          ztObj = {
+            ztName: obj.InvRequest.ztName ? obj.InvRequest.ztName : '',
+            ztBname: obj.InvRequest.ztBname ? obj.InvRequest.ztBname : '',
+            ztAddress: obj.InvRequest.ztAddress ? obj.InvRequest.ztAddress : '',
+            ztGuanxi: obj.InvRequest.ztGuanxi ? obj.InvRequest.ztGuanxi : '',
+            ztActivity: obj.InvRequest.ztActivity ? obj.InvRequest.ztActivity : '',
+            ztIdnum: obj.InvRequest.ztIdnum ? obj.InvRequest.ztIdnum : '',
+            ztPassport: obj.InvRequest.ztPassport ? obj.InvRequest.ztPassport : '',
+            ztIdnumorg: obj.InvRequest.ztIdnumorg ? obj.InvRequest.ztIdnumorg : '',
+            ztOtheridnum: obj.InvRequest.ztOtheridnum ? obj.InvRequest.ztOtheridnum : '',
+            ztOtheridnumorg: obj.InvRequest.ztOtheridnumorg ? obj.InvRequest.ztOtheridnumorg : '',
+            ztPhone: obj.InvRequest.ztPhone ? obj.InvRequest.ztPhone : '',
+            ztOther: obj.InvRequest.ztOther ? obj.InvRequest.ztOther : '',
+            ztNationlity: obj.InvRequest.ztNationlity ? obj.InvRequest.ztNationlity : '',
+            ztSex: obj.InvRequest.ztSex ? obj.InvRequest.ztSex : '',
+            ztBirthday: obj.InvRequest.ztBirthday ? obj.InvRequest.ztBirthday : '',
+            ztCity: obj.InvRequest.ztCity ? obj.InvRequest.ztCity : '',
+            ztProvinces: obj.InvRequest.ztProvinces ? obj.InvRequest.ztProvinces : '',
+            ztBirthplace: obj.InvRequest.ztBirthplace ? obj.InvRequest.ztBirthplace : '',
+            rivlName: obj.InvRequest.rivlName ? obj.InvRequest.rivlName : '',
+            rivlIdnum: obj.InvRequest.rivlIdnum ? obj.InvRequest.rivlIdnum : '',
+            rivlPassportnum: obj.InvRequest.rivlPassportnum ? obj.InvRequest.rivlPassportnum : '',
+            rivlBankname: obj.InvRequest.rivlBankname ? obj.InvRequest.rivlBankname : '',
+            rivlBankaccount: obj.InvRequest.rivlBankaccount ? obj.InvRequest.rivlBankaccount : '',
+            rivlTradedate: obj.InvRequest.rivlTradedate ? obj.InvRequest.rivlTradedate : '',
+            rivlTradeamount: obj.InvRequest.rivlTradeamount ? obj.InvRequest.rivlTradeamount : '',
+            rivlTradedirection: obj.InvRequest.rivlTradedirection ? obj.InvRequest.rivlTradedirection : ''
+          }
+          if (this.$refs.refBusiness.myarr.length > 0) {
+            obj.InvRequest.subjectList = this.$refs.refBusiness.myarr
+            obj.InvRequest.subjectList.unshift(ztObj)
+          } else {
+            var arr2 = []
+            arr2.push(ztObj)
+            obj.InvRequest.subjectList = arr2
+          }
+          delete obj.InvRequest.ztName
+          delete obj.InvRequest.ztBname
+          delete obj.InvRequest.ztAddress
+          delete obj.InvRequest.ztGuanxi
+          delete obj.InvRequest.ztActivity
+          delete obj.InvRequest.ztIdnum
+          delete obj.InvRequest.ztPassport
+          delete obj.InvRequest.ztIdnumorg
+          delete obj.InvRequest.ztOtheridnum
+          delete obj.InvRequest.ztOtheridnumorg
+          delete obj.InvRequest.ztPhone
+          delete obj.InvRequest.ztOther
+          delete obj.InvRequest.ztNationlity
+          delete obj.InvRequest.ztSex
+          delete obj.InvRequest.ztBirthday
+          delete obj.InvRequest.ztCity
+          delete obj.InvRequest.ztProvinces
+          delete obj.InvRequest.ztBirthplace
+          delete obj.InvRequest.rivlName
+          delete obj.InvRequest.rivlIdnum
+          delete obj.InvRequest.rivlPassportnum
+          delete obj.InvRequest.rivlBankname
+          delete obj.InvRequest.rivlBankaccount
+          delete obj.InvRequest.rivlTradedate
+          delete obj.InvRequest.rivlTradeamount
+          delete obj.InvRequest.rivlTradedirection
+
+          // 价值反馈表
+          childForm = this.$refs.refCollaborativeForm.collaborativeForm
+          if (childForm.help !== '') {
+            childForm.help = childForm.help.join()
+          }
+          obj.XcFeedBack = childForm
+
+          //  协查反馈函
+          childForm = this.$refs.refFeedbackForm.feedbackForm
+          obj.FeedBackGJ = childForm
+          var str3 = ''
+          if (this.$refs.refCollaborativeForm) {
+            str3 = this.$refs.refCollaborativeForm.collaborativeForm
+            if (str3.help !== '') {
+              str3.help = str3.help.join()
+            }
+            obj.XcFeedBack = str3
+          }
+
+          // 通报
+          childForm = this.$refs.refNoticeForm.noticeForm
+          obj.TongBao = childForm
+          var str4 = ''
+          if (this.$refs.refCollaborativeForm) {
+            str4 = this.$refs.refCollaborativeForm.collaborativeForm
+            if (str4.help !== '') {
+              str4.help = str4.help.join()
+            }
+            obj.XcFeedBack = str4
+          }
+          ztObj = {
+            ztName: obj.TongBao.ztName ? obj.TongBao.ztName : '',
+            ztBname: obj.TongBao.ztBname ? obj.TongBao.ztBname : '',
+            ztAddress: obj.TongBao.ztAddress ? obj.TongBao.ztAddress : '',
+            ztGuanxi: obj.TongBao.ztGuanxi ? obj.TongBao.ztGuanxi : '',
+            ztActivity: obj.TongBao.ztActivity ? obj.TongBao.ztActivity : '',
+            ztIdnum: obj.TongBao.ztIdnum ? obj.TongBao.ztIdnum : '',
+            ztPassport: obj.TongBao.ztPassport ? obj.TongBao.ztPassport : '',
+            ztIdnumorg: obj.TongBao.ztIdnumorg ? obj.TongBao.ztIdnumorg : '',
+            ztOtheridnum: obj.TongBao.ztOtheridnum ? obj.TongBao.ztOtheridnum : '',
+            ztOtheridnumorg: obj.TongBao.ztOtheridnumorg ? obj.TongBao.ztOtheridnumorg : '',
+            ztPhone: obj.TongBao.ztPhone ? obj.TongBao.ztPhone : '',
+            ztOther: obj.TongBao.ztOther ? obj.TongBao.ztOther : '',
+            ztNationlity: obj.TongBao.ztNationlity ? obj.TongBao.ztNationlity : '',
+            ztSex: obj.TongBao.ztSex ? obj.TongBao.ztSex : '',
+            ztBirthday: obj.TongBao.ztBirthday ? obj.TongBao.ztBirthday : '',
+            ztCity: obj.TongBao.ztCity ? obj.TongBao.ztCity : '',
+            ztProvinces: obj.TongBao.ztProvinces ? obj.TongBao.ztProvinces : '',
+            ztBirthplace: obj.TongBao.ztBirthplace ? obj.TongBao.ztBirthplace : '',
+            rivlName: obj.TongBao.rivlName ? obj.TongBao.rivlName : '',
+            rivlIdnum: obj.TongBao.rivlIdnum ? obj.TongBao.rivlIdnum : '',
+            rivlPassportnum: obj.TongBao.rivlPassportnum ? obj.TongBao.rivlPassportnum : '',
+            rivlBankname: obj.TongBao.rivlBankname ? obj.TongBao.rivlBankname : '',
+            rivlBankaccount: obj.TongBao.rivlBankaccount ? obj.TongBao.rivlBankaccount : '',
+            rivlTradedate: obj.TongBao.rivlTradedate ? obj.TongBao.rivlTradedate : '',
+            rivlTradeamount: obj.TongBao.rivlTradeamount ? obj.TongBao.rivlTradeamount : '',
+            rivlTradedirection: obj.TongBao.rivlTradedirection ? obj.TongBao.rivlTradedirection : ''
+          }
+          if (this.$refs.refNoticeForm.myarr.length > 0) {
+            obj.TongBao.subjectList = this.$refs.refNoticeForm.myarr
+            obj.TongBao.subjectList.unshift(ztObj)
+          } else {
+            var tongbaoArr2 = []
+            tongbaoArr2.push(ztObj)
+            obj.TongBao.subjectList = tongbaoArr2
+          }
+          delete obj.TongBao.ztName
+          delete obj.TongBao.ztBname
+          delete obj.TongBao.ztAddress
+          delete obj.TongBao.ztGuanxi
+          delete obj.TongBao.ztActivity
+          delete obj.TongBao.ztIdnum
+          delete obj.TongBao.ztPassport
+          delete obj.TongBao.ztIdnumorg
+          delete obj.TongBao.ztOtheridnum
+          delete obj.TongBao.ztOtheridnumorg
+          delete obj.TongBao.ztPhone
+          delete obj.TongBao.ztOther
+          delete obj.TongBao.ztNationlity
+          delete obj.TongBao.ztSex
+          delete obj.TongBao.ztBirthday
+          delete obj.TongBao.ztCity
+          delete obj.TongBao.ztProvinces
+          delete obj.TongBao.ztBirthplace
+          delete obj.TongBao.rivlName
+          delete obj.TongBao.rivlIdnum
+          delete obj.TongBao.rivlPassportnum
+          delete obj.TongBao.rivlBankname
+          delete obj.TongBao.rivlBankaccount
+          delete obj.TongBao.rivlTradedate
+          delete obj.TongBao.rivlTradeamount
+          delete obj.TongBao.rivlTradedirection
+          break
+        default:
+          break
+      }
+      console.log(obj, 9999999995555555)
+
+      return obj
+    },
+
+    // 提交的params
+    newSubParams() {
+      var childForm = {}
+      const objForm = this.form
+      // 主体+交易对手信息
+      var ztObj = {}
+      const obj = {
+        FileHand: objForm,
+        intelBusinessType: this.$route.query.flowexId
+          ? this.$route.query.flowexId
+          : this.$route.query.intelBusinessType, // 工作流
+        fileType: this.$route.query.fileType,
+        mailId: this.$route.query.mailId,
+        workflow: this.workFlow2business,
+        updateFlag: '1'
+      }
+      switch (this.$route.query.fileType) {
+        case '0': // 协查请求函
+          childForm = this.$refs.refBusiness.form
+          obj.InvRequest = childForm
+          ztObj = {
+            ztName: obj.InvRequest.ztName ? obj.InvRequest.ztName : '',
+            ztBname: obj.InvRequest.ztBname ? obj.InvRequest.ztBname : '',
+            ztAddress: obj.InvRequest.ztAddress ? obj.InvRequest.ztAddress : '',
+            ztGuanxi: obj.InvRequest.ztGuanxi ? obj.InvRequest.ztGuanxi : '',
+            ztActivity: obj.InvRequest.ztActivity ? obj.InvRequest.ztActivity : '',
+            ztIdnum: obj.InvRequest.ztIdnum ? obj.InvRequest.ztIdnum : '',
+            ztPassport: obj.InvRequest.ztPassport ? obj.InvRequest.ztPassport : '',
+            ztIdnumorg: obj.InvRequest.ztIdnumorg ? obj.InvRequest.ztIdnumorg : '',
+            ztOtheridnum: obj.InvRequest.ztOtheridnum ? obj.InvRequest.ztOtheridnum : '',
+            ztOtheridnumorg: obj.InvRequest.ztOtheridnumorg ? obj.InvRequest.ztOtheridnumorg : '',
+            ztPhone: obj.InvRequest.ztPhone ? obj.InvRequest.ztPhone : '',
+            ztOther: obj.InvRequest.ztOther ? obj.InvRequest.ztOther : '',
+            ztNationlity: obj.InvRequest.ztNationlity ? obj.InvRequest.ztNationlity : '',
+            ztSex: obj.InvRequest.ztSex ? obj.InvRequest.ztSex : '',
+            ztBirthday: obj.InvRequest.ztBirthday ? obj.InvRequest.ztBirthday : '',
+            ztCity: obj.InvRequest.ztCity ? obj.InvRequest.ztCity : '',
+            ztProvinces: obj.InvRequest.ztProvinces ? obj.InvRequest.ztProvinces : '',
+            ztBirthplace: obj.InvRequest.ztBirthplace ? obj.InvRequest.ztBirthplace : '',
+            rivlName: obj.InvRequest.rivlName ? obj.InvRequest.rivlName : '',
+            rivlIdnum: obj.InvRequest.rivlIdnum ? obj.InvRequest.rivlIdnum : '',
+            rivlPassportnum: obj.InvRequest.rivlPassportnum ? obj.InvRequest.rivlPassportnum : '',
+            rivlBankname: obj.InvRequest.rivlBankname ? obj.InvRequest.rivlBankname : '',
+            rivlBankaccount: obj.InvRequest.rivlBankaccount ? obj.InvRequest.rivlBankaccount : '',
+            rivlTradedate: obj.InvRequest.rivlTradedate ? obj.InvRequest.rivlTradedate : '',
+            rivlTradeamount: obj.InvRequest.rivlTradeamount ? obj.InvRequest.rivlTradeamount : '',
+            rivlTradedirection: obj.InvRequest.rivlTradedirection ? obj.InvRequest.rivlTradedirection : ''
+          }
+          if (this.$refs.refBusiness.myarr.length > 0) {
+            obj.InvRequest.subjectList = this.$refs.refBusiness.myarr
+            obj.InvRequest.subjectList.unshift(ztObj)
+          } else {
+            var arr = []
+            arr.push(ztObj)
+            obj.InvRequest.subjectList = arr
+          }
+          delete obj.InvRequest.ztName
+          delete obj.InvRequest.ztBname
+          delete obj.InvRequest.ztAddress
+          delete obj.InvRequest.ztGuanxi
+          delete obj.InvRequest.ztActivity
+          delete obj.InvRequest.ztIdnum
+          delete obj.InvRequest.ztPassport
+          delete obj.InvRequest.ztIdnumorg
+          delete obj.InvRequest.ztOtheridnum
+          delete obj.InvRequest.ztOtheridnumorg
+          delete obj.InvRequest.ztPhone
+          delete obj.InvRequest.ztOther
+          delete obj.InvRequest.ztNationlity
+          delete obj.InvRequest.ztSex
+          delete obj.InvRequest.ztBirthday
+          delete obj.InvRequest.ztCity
+          delete obj.InvRequest.ztProvinces
+          delete obj.InvRequest.ztBirthplace
+          delete obj.InvRequest.rivlName
+          delete obj.InvRequest.rivlIdnum
+          delete obj.InvRequest.rivlPassportnum
+          delete obj.InvRequest.rivlBankname
+          delete obj.InvRequest.rivlBankaccount
+          delete obj.InvRequest.rivlTradedate
+          delete obj.InvRequest.rivlTradeamount
+          delete obj.InvRequest.rivlTradedirection
+          break
+        case '1': // 价值反馈表
+          childForm = this.$refs.refCollaborativeForm.collaborativeForm
+          childForm.help = childForm.help.join()
+          obj.XcFeedBack = childForm
+          break
+        case '2': //  协查反馈函
+          childForm = this.$refs.refFeedbackForm.feedbackForm
+          obj.FeedBackGJ = childForm
+          var str = ''
+          if (this.$refs.refCollaborativeForm) {
+            str = this.$refs.refCollaborativeForm.collaborativeForm
+            str.help = str.help.join()
+            obj.XcFeedBack = str
+          }
+
+          break
+        case '3': // 通报
+          childForm = this.$refs.refNoticeForm.noticeForm
+          obj.TongBao = childForm
+          var str2 = ''
+          if (this.$refs.refCollaborativeForm) {
+            str2 = this.$refs.refCollaborativeForm.collaborativeForm
+            str2.help = str2.help.join()
+            obj.XcFeedBack = str2
+          }
+          ztObj = {
+            ztName: obj.TongBao.ztName ? obj.TongBao.ztName : '',
+            ztBname: obj.TongBao.ztBname ? obj.TongBao.ztBname : '',
+            ztAddress: obj.TongBao.ztAddress ? obj.TongBao.ztAddress : '',
+            ztGuanxi: obj.TongBao.ztGuanxi ? obj.TongBao.ztGuanxi : '',
+            ztActivity: obj.TongBao.ztActivity ? obj.TongBao.ztActivity : '',
+            ztIdnum: obj.TongBao.ztIdnum ? obj.TongBao.ztIdnum : '',
+            ztPassport: obj.TongBao.ztPassport ? obj.TongBao.ztPassport : '',
+            ztIdnumorg: obj.TongBao.ztIdnumorg ? obj.TongBao.ztIdnumorg : '',
+            ztOtheridnum: obj.TongBao.ztOtheridnum ? obj.TongBao.ztOtheridnum : '',
+            ztOtheridnumorg: obj.TongBao.ztOtheridnumorg ? obj.TongBao.ztOtheridnumorg : '',
+            ztPhone: obj.TongBao.ztPhone ? obj.TongBao.ztPhone : '',
+            ztOther: obj.TongBao.ztOther ? obj.TongBao.ztOther : '',
+            ztNationlity: obj.TongBao.ztNationlity ? obj.TongBao.ztNationlity : '',
+            ztSex: obj.TongBao.ztSex ? obj.TongBao.ztSex : '',
+            ztBirthday: obj.TongBao.ztBirthday ? obj.TongBao.ztBirthday : '',
+            ztCity: obj.TongBao.ztCity ? obj.TongBao.ztCity : '',
+            ztProvinces: obj.TongBao.ztProvinces ? obj.TongBao.ztProvinces : '',
+            ztBirthplace: obj.TongBao.ztBirthplace ? obj.TongBao.ztBirthplace : '',
+            rivlName: obj.TongBao.rivlName ? obj.TongBao.rivlName : '',
+            rivlIdnum: obj.TongBao.rivlIdnum ? obj.TongBao.rivlIdnum : '',
+            rivlPassportnum: obj.TongBao.rivlPassportnum ? obj.TongBao.rivlPassportnum : '',
+            rivlBankname: obj.TongBao.rivlBankname ? obj.TongBao.rivlBankname : '',
+            rivlBankaccount: obj.TongBao.rivlBankaccount ? obj.TongBao.rivlBankaccount : '',
+            rivlTradedate: obj.TongBao.rivlTradedate ? obj.TongBao.rivlTradedate : '',
+            rivlTradeamount: obj.TongBao.rivlTradeamount ? obj.TongBao.rivlTradeamount : '',
+            rivlTradedirection: obj.TongBao.rivlTradedirection ? obj.TongBao.rivlTradedirection : ''
+          }
+          if (this.$refs.refNoticeForm.myarr.length > 0) {
+            obj.TongBao.subjectList = this.$refs.refNoticeForm.myarr
+            obj.TongBao.subjectList.unshift(ztObj)
+          } else {
+            var tongbaoArr = []
+            tongbaoArr.push(ztObj)
+            obj.TongBao.subjectList = tongbaoArr
+          }
+          delete obj.TongBao.ztName
+          delete obj.TongBao.ztBname
+          delete obj.TongBao.ztAddress
+          delete obj.TongBao.ztGuanxi
+          delete obj.TongBao.ztActivity
+          delete obj.TongBao.ztIdnum
+          delete obj.TongBao.ztPassport
+          delete obj.TongBao.ztIdnumorg
+          delete obj.TongBao.ztOtheridnum
+          delete obj.TongBao.ztOtheridnumorg
+          delete obj.TongBao.ztPhone
+          delete obj.TongBao.ztOther
+          delete obj.TongBao.ztNationlity
+          delete obj.TongBao.ztSex
+          delete obj.TongBao.ztBirthday
+          delete obj.TongBao.ztCity
+          delete obj.TongBao.ztProvinces
+          delete obj.TongBao.ztBirthplace
+          delete obj.TongBao.rivlName
+          delete obj.TongBao.rivlIdnum
+          delete obj.TongBao.rivlPassportnum
+          delete obj.TongBao.rivlBankname
+          delete obj.TongBao.rivlBankaccount
+          delete obj.TongBao.rivlTradedate
+          delete obj.TongBao.rivlTradeamount
+          delete obj.TongBao.rivlTradedirection
+          break
+        case '4':
+          // 协查请求函
+
+          childForm = this.$refs.refBusiness.form
+          obj.InvRequest = childForm
+          ztObj = {
+            ztName: obj.InvRequest.ztName ? obj.InvRequest.ztName : '',
+            ztBname: obj.InvRequest.ztBname ? obj.InvRequest.ztBname : '',
+            ztAddress: obj.InvRequest.ztAddress ? obj.InvRequest.ztAddress : '',
+            ztGuanxi: obj.InvRequest.ztGuanxi ? obj.InvRequest.ztGuanxi : '',
+            ztActivity: obj.InvRequest.ztActivity ? obj.InvRequest.ztActivity : '',
+            ztIdnum: obj.InvRequest.ztIdnum ? obj.InvRequest.ztIdnum : '',
+            ztPassport: obj.InvRequest.ztPassport ? obj.InvRequest.ztPassport : '',
+            ztIdnumorg: obj.InvRequest.ztIdnumorg ? obj.InvRequest.ztIdnumorg : '',
+            ztOtheridnum: obj.InvRequest.ztOtheridnum ? obj.InvRequest.ztOtheridnum : '',
+            ztOtheridnumorg: obj.InvRequest.ztOtheridnumorg ? obj.InvRequest.ztOtheridnumorg : '',
+            ztPhone: obj.InvRequest.ztPhone ? obj.InvRequest.ztPhone : '',
+            ztOther: obj.InvRequest.ztOther ? obj.InvRequest.ztOther : '',
+            ztNationlity: obj.InvRequest.ztNationlity ? obj.InvRequest.ztNationlity : '',
+            ztSex: obj.InvRequest.ztSex ? obj.InvRequest.ztSex : '',
+            ztBirthday: obj.InvRequest.ztBirthday ? obj.InvRequest.ztBirthday : '',
+            ztCity: obj.InvRequest.ztCity ? obj.InvRequest.ztCity : '',
+            ztProvinces: obj.InvRequest.ztProvinces ? obj.InvRequest.ztProvinces : '',
+            ztBirthplace: obj.InvRequest.ztBirthplace ? obj.InvRequest.ztBirthplace : '',
+            rivlName: obj.InvRequest.rivlName ? obj.InvRequest.rivlName : '',
+            rivlIdnum: obj.InvRequest.rivlIdnum ? obj.InvRequest.rivlIdnum : '',
+            rivlPassportnum: obj.InvRequest.rivlPassportnum ? obj.InvRequest.rivlPassportnum : '',
+            rivlBankname: obj.InvRequest.rivlBankname ? obj.InvRequest.rivlBankname : '',
+            rivlBankaccount: obj.InvRequest.rivlBankaccount ? obj.InvRequest.rivlBankaccount : '',
+            rivlTradedate: obj.InvRequest.rivlTradedate ? obj.InvRequest.rivlTradedate : '',
+            rivlTradeamount: obj.InvRequest.rivlTradeamount ? obj.InvRequest.rivlTradeamount : '',
+            rivlTradedirection: obj.InvRequest.rivlTradedirection ? obj.InvRequest.rivlTradedirection : ''
+          }
+          if (this.$refs.refBusiness.myarr.length > 0) {
+            obj.InvRequest.subjectList = this.$refs.refBusiness.myarr
+            obj.InvRequest.subjectList.unshift(ztObj)
+          } else {
+            var arr2 = []
+            arr2.push(ztObj)
+            obj.InvRequest.subjectList = arr2
+          }
+          delete obj.InvRequest.ztName
+          delete obj.InvRequest.ztBname
+          delete obj.InvRequest.ztAddress
+          delete obj.InvRequest.ztGuanxi
+          delete obj.InvRequest.ztActivity
+          delete obj.InvRequest.ztIdnum
+          delete obj.InvRequest.ztPassport
+          delete obj.InvRequest.ztIdnumorg
+          delete obj.InvRequest.ztOtheridnum
+          delete obj.InvRequest.ztOtheridnumorg
+          delete obj.InvRequest.ztPhone
+          delete obj.InvRequest.ztOther
+          delete obj.InvRequest.ztNationlity
+          delete obj.InvRequest.ztSex
+          delete obj.InvRequest.ztBirthday
+          delete obj.InvRequest.ztCity
+          delete obj.InvRequest.ztProvinces
+          delete obj.InvRequest.ztBirthplace
+          delete obj.InvRequest.rivlName
+          delete obj.InvRequest.rivlIdnum
+          delete obj.InvRequest.rivlPassportnum
+          delete obj.InvRequest.rivlBankname
+          delete obj.InvRequest.rivlBankaccount
+          delete obj.InvRequest.rivlTradedate
+          delete obj.InvRequest.rivlTradeamount
+          delete obj.InvRequest.rivlTradedirection
+          // 价值反馈表
+
+          childForm = this.$refs.refCollaborativeForm.collaborativeForm
+          if (childForm.help !== '') {
+            childForm.help = childForm.help.join()
+          }
+          obj.XcFeedBack = childForm
+
+          //  协查反馈函
+
+          childForm = this.$refs.refFeedbackForm.feedbackForm
+          obj.FeedBackGJ = childForm
+          var str3 = ''
+          if (this.$refs.refCollaborativeForm) {
+            str3 = this.$refs.refCollaborativeForm.collaborativeForm
+            if (str3.help !== '') {
+              str3.help = str3.help.join()
+            }
+            obj.XcFeedBack = str3
+          }
+
+          // 通报
+
+          childForm = this.$refs.refNoticeForm.noticeForm
+          obj.TongBao = childForm
+          var str4 = ''
+          if (this.$refs.refCollaborativeForm) {
+            str4 = this.$refs.refCollaborativeForm.collaborativeForm
+            if (str4.help !== '') {
+              str4.help = str4.help.join()
+            }
+            obj.XcFeedBack = str4
+          }
+          ztObj = {
+            ztName: obj.TongBao.ztName ? obj.TongBao.ztName : '',
+            ztBname: obj.TongBao.ztBname ? obj.TongBao.ztBname : '',
+            ztAddress: obj.TongBao.ztAddress ? obj.TongBao.ztAddress : '',
+            ztGuanxi: obj.TongBao.ztGuanxi ? obj.TongBao.ztGuanxi : '',
+            ztActivity: obj.TongBao.ztActivity ? obj.TongBao.ztActivity : '',
+            ztIdnum: obj.TongBao.ztIdnum ? obj.TongBao.ztIdnum : '',
+            ztPassport: obj.TongBao.ztPassport ? obj.TongBao.ztPassport : '',
+            ztIdnumorg: obj.TongBao.ztIdnumorg ? obj.TongBao.ztIdnumorg : '',
+            ztOtheridnum: obj.TongBao.ztOtheridnum ? obj.TongBao.ztOtheridnum : '',
+            ztOtheridnumorg: obj.TongBao.ztOtheridnumorg ? obj.TongBao.ztOtheridnumorg : '',
+            ztPhone: obj.TongBao.ztPhone ? obj.TongBao.ztPhone : '',
+            ztOther: obj.TongBao.ztOther ? obj.TongBao.ztOther : '',
+            ztNationlity: obj.TongBao.ztNationlity ? obj.TongBao.ztNationlity : '',
+            ztSex: obj.TongBao.ztSex ? obj.TongBao.ztSex : '',
+            ztBirthday: obj.TongBao.ztBirthday ? obj.TongBao.ztBirthday : '',
+            ztCity: obj.TongBao.ztCity ? obj.TongBao.ztCity : '',
+            ztProvinces: obj.TongBao.ztProvinces ? obj.TongBao.ztProvinces : '',
+            ztBirthplace: obj.TongBao.ztBirthplace ? obj.TongBao.ztBirthplace : '',
+            rivlName: obj.TongBao.rivlName ? obj.TongBao.rivlName : '',
+            rivlIdnum: obj.TongBao.rivlIdnum ? obj.TongBao.rivlIdnum : '',
+            rivlPassportnum: obj.TongBao.rivlPassportnum ? obj.TongBao.rivlPassportnum : '',
+            rivlBankname: obj.TongBao.rivlBankname ? obj.TongBao.rivlBankname : '',
+            rivlBankaccount: obj.TongBao.rivlBankaccount ? obj.TongBao.rivlBankaccount : '',
+            rivlTradedate: obj.TongBao.rivlTradedate ? obj.TongBao.rivlTradedate : '',
+            rivlTradeamount: obj.TongBao.rivlTradeamount ? obj.TongBao.rivlTradeamount : '',
+            rivlTradedirection: obj.TongBao.rivlTradedirection ? obj.TongBao.rivlTradedirection : ''
+          }
+          if (this.$refs.refNoticeForm.myarr.length > 0) {
+            obj.TongBao.subjectList = this.$refs.refNoticeForm.myarr
+            obj.TongBao.subjectList.unshift(ztObj)
+          } else {
+            var tongbaoArr2 = []
+            tongbaoArr2.push(ztObj)
+            obj.TongBao.subjectList = tongbaoArr2
+          }
+          delete obj.TongBao.ztName
+          delete obj.TongBao.ztBname
+          delete obj.TongBao.ztAddress
+          delete obj.TongBao.ztGuanxi
+          delete obj.TongBao.ztActivity
+          delete obj.TongBao.ztIdnum
+          delete obj.TongBao.ztPassport
+          delete obj.TongBao.ztIdnumorg
+          delete obj.TongBao.ztOtheridnum
+          delete obj.TongBao.ztOtheridnumorg
+          delete obj.TongBao.ztPhone
+          delete obj.TongBao.ztOther
+          delete obj.TongBao.ztNationlity
+          delete obj.TongBao.ztSex
+          delete obj.TongBao.ztBirthday
+          delete obj.TongBao.ztCity
+          delete obj.TongBao.ztProvinces
+          delete obj.TongBao.ztBirthplace
+          delete obj.TongBao.rivlName
+          delete obj.TongBao.rivlIdnum
+          delete obj.TongBao.rivlPassportnum
+          delete obj.TongBao.rivlBankname
+          delete obj.TongBao.rivlBankaccount
+          delete obj.TongBao.rivlTradedate
+          delete obj.TongBao.rivlTradeamount
+          delete obj.TongBao.rivlTradedirection
+
+          break
+        default:
+          break
+      }
+
+      return obj
+    },
+
+    // 分页
+    handleSizeChange(val) {
+      console.log(`每页 ${val} 条`)
+    },
+    handleCurrentChange(val) {
+      console.log(`当前页: ${val}`)
+    },
+    beforeAvatarUpload(file) {
+      this.getFilelist()
+      const Arrs = []
+      this.tablefileData.forEach(el => {
+        Arrs.push(el.attachName)
+      })
+      const NoName = Arrs.indexOf(file.name) === -1 // 成功的样子
+      if (!NoName) {
+        this.$message({
+          message: '文件名不能相同',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      const isLt500M = file.size / 1024 / 1024 < 500
+      if (!isLt500M) {
+        this.$message({
+          message: '上传文件大小不能超过500MB',
+          type: 'error',
+          duration: 6000
+        })
+      }
+      return isLt500M && NoName
+    },
+    routerBack() {
+      if (JSON.parse(sessionStorage.getItem('searchData'))) {
+        const obj = JSON.parse(sessionStorage.getItem('searchData'))
+        obj.gjifReview = true
+        sessionStorage.setItem('searchData', JSON.stringify(obj))
+      }
+      if (this.$route.query.title === '国际发送情报流程') {
+        this.$router.push({
+          name: 'cueManage_interFileManage',
+          params: { activeName: 'second' }
+        })
+      } else {
+        if (this.$route.query.title === '国际发送情报流程') {
+          this.$router.push({
+            name: 'cueManage_interFileManage',
+            params: { activeName: 'second' }
+          })
+        } else {
+          // this.$router.go(-1) // 返回上一层
+          this.$router.push({
+            name: 'cueManage_interFileManage',
+            params: { activeName: 'first' }
+          })
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.cueManage_administration_form {
+  position: relative;
+  .list-block {
+    margin-bottom: 30px;
+  }
+  .noBorder {
+    height: 100%;
+  }
+  .noBorder .el-textarea__inner {
+    border: none;
+    resize: none;
+    height: 45px;
+  }
+  .noBorderTwo .el-textarea__inner {
+    border: none;
+    resize: none;
+  }
+  .classFiles {
+    .upload-demo {
+      .el-upload {
+        width: 100%;
+        .el-upload-dragger {
+          width: 100%;
+        }
+      }
+    }
+  }
+  .table {
+    p,
+    h3 {
+      margin: 10px auto;
+      text-align: center;
+    }
+    table {
+      border-collapse: collapse;
+      text-align: center;
+      margin: 0 auto;
+    }
+    table p {
+      margin-top: 83px;
+      text-align: right;
+    }
+    table span {
+      display: inline-block;
+      width: 100px;
+      text-align: right;
+    }
+    #time span {
+      width: 30px;
+    }
+  }
+
+  .el-step__title {
+    font-size: 12px;
+  }
+}
+</style>

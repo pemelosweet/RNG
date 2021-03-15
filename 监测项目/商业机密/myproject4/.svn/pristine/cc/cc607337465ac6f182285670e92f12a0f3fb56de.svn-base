@@ -1,0 +1,1084 @@
+<template>
+<div style='width:100%;height:100%;background-color:#fff;position: relative'>
+  <div class="sequencewrap" v-if='dataPermission && initPermission' v-loading="loading2" element-loading-text="首次加载较慢，请稍侯……" element-loading-background="rgba(0, 0, 0, 0.1)">
+    <el-card>
+      <div slot="header"
+        class="clearfix"><span>报告时序分析</span>
+        <el-popover placement="bottom-start" width="1000" trigger="hover">
+          <el-row>
+            <el-col style="margin-left:20px" :span="22">
+              <div v-for="(item,index) in title" :key="index">
+              <span>{{item}}</span>
+              <br/>
+              </div>
+            </el-col>
+          </el-row>
+          <el-button type="text" slot="reference" icon="el-icon-warning">口径说明</el-button>
+        </el-popover>
+      </div>
+      <el-row>
+        <el-form :model="form.dto" label-width="130px" ref="searchForm" :rules='formRules'>
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item label="统计类型：" prop="statisticsType">
+                <el-select v-model="form.dto.statisticsType" clearable placeholder="请选择查询方式" style="width:100%;" @change="queryChange">
+                  <el-option label="大额交易" value="0"></el-option>
+                  <el-option label="可疑交易报告" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="涉罪类型：">
+                <el-select v-model="form.dto.tosc" :disabled="form.dto.statisticsType === '0'" clearable placeholder="请选择标签" style="width:100%;">
+                  <span v-if="form.dto.statisticsType === '1'">
+                    <el-option v-for="(el, num) in optionsOne" :key="num" :label="el.codeName" :value="el.codeId"> </el-option>
+                  </span>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="分支行辖区：" prop="area">
+              <!-- <treeselect :multiple="true"
+                style="z-index:999 !important;"
+                v-if="citiesOptions.length>0"
+                :options="citiesOptions"
+                placeholder="请选择分支行辖区(必填)"
+                v-model="form.dto.area" /> -->
+              <el-cascader style="width:100%" :options="citiesOptions" :props="props" v-model="form.dto.area" collapse-tags clearable></el-cascader>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item label="落地日期：" prop="type">
+                <el-select v-model="form.dto.type" clearable placeholder="请选择查询方式" style="width:100% !important;" @change="dateChange">
+                  <el-option label="按年统计" value="0"></el-option>
+                  <el-option label="按季统计" value="1"></el-option>
+                  <el-option label="按月统计" value="2"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+
+            <div v-if="form.dto.type==='0'">
+              <el-col :span="6">
+                <el-form-item label-width="0px" prop="startDate" :rules="[{ required: true, message: '请选择开始日期', trigger: 'blur' }, { validator: timeCheckStart, trigger: 'change' }]">
+                  <el-date-picker style="width:100% !important;" placeholder="开始年份" v-model="form.dto.startDate" type="year" value-format="yyyy"></el-date-picker>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="6">
+                <el-form-item label-width="0px" prop="endDate" :rules="[{ required: true, message: '请选择结束日期', trigger: 'blur' }, {validator: timeCheck, trigger: 'change'}]">
+                  <el-date-picker style="width:100% !important;" placeholder="结束年份" v-model="form.dto.endDate" type="year" value-format="yyyy"></el-date-picker>
+                </el-form-item>
+              </el-col>
+            </div>
+
+            <div v-if="form.dto.type==='1'">
+              <el-col :span="3">
+                <el-form-item label-width="0px" prop="startDate" :rules="[{ required: true, message: '请选择开始日期', trigger: 'blur' }, { validator: timeCheckStart, trigger: 'change' }]">
+                  <el-date-picker style="width:100% !important;" placeholder="开始年份" v-model="form.dto.startDate" type="year" value-format="yyyy"> </el-date-picker>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="3">
+                <el-form-item label-width="0px" prop="startJdu" :rules="[{ required: true, message: '请选择开始季度', trigger: 'blur' }, { validator: quarterCheckStart, trigger: 'change' }]">
+                  <el-select v-model="form.dto.startJdu" placeholder="开始季度" clearable style="width:100%;">
+                    <el-option label="第一季度" value="-01"></el-option>
+                    <el-option label="第二季度" value="-04"></el-option>
+                    <el-option label="第三季度" value="-07"></el-option>
+                    <el-option label="第四季度" value="-10"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              
+              <el-col :span="3">
+                <el-form-item label-width="0px" prop="endDate" :rules="[{ required: true, message: '请选择结束日期', trigger: 'blur' }, {validator: timeCheck, trigger: 'change'}]">
+                  <el-date-picker style="width:100% !important;" placeholder="结束年份" v-model="form.dto.endDate" type="year" value-format="yyyy">
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="3">
+                <el-form-item label-width="0px" prop="endJdu" :rules="[{ required: true, message: '请选择结束季度', trigger: 'blur' }, { validator: quarterCheckEnd, trigger: 'change' }]">
+                  <el-select v-model="form.dto.endJdu" placeholder="结束季度" clearable style="width:100%;">
+                    <el-option label="第一季度" value="-03"></el-option>
+                    <el-option label="第二季度" value="-06"></el-option>
+                    <el-option label="第三季度" value="-09"></el-option>
+                    <el-option label="第四季度" value="-12"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </div>
+            <div v-if="form.dto.type==='2'">
+              <el-col :span="6">
+                <el-form-item label-width="0px" prop="startDate" :rules="[{ required: true, message: '请选择开始日期', trigger: 'blur' }, { validator: timeCheckStart, trigger: 'change' }]">
+                  <el-date-picker style="width:100% !important;" placeholder="开始月份" v-model="form.dto.startDate" type="month" value-format="yyyy-MM">
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label-width="0px" prop="endDate" :rules="[{ required: true, message: '请选择结束日期', trigger: 'blur' }, {validator: timeCheck, trigger: 'change'}]">
+                  <el-date-picker style="width:100% !important;" placeholder="结束月份" v-model="form.dto.endDate" type="month" value-format="yyyy-MM">
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+            </div>
+          </el-col>
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-col :span="15">
+                <el-form-item label="义务机构类型：" prop="levelType">
+                  <el-select v-model="form.dto.levelType" clearable placeholder="请选择" @change="isTypeShow" @clear='clearOptions' style="width:100%;">
+                    <el-option v-for="(item,index) in options" :key="index" :label="item.text" :value="item.value">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="9">
+                <el-form-item label="" label-width="0" prop="Cust">
+                  <el-select class='custOptions' multiple v-model="form.dto.Cust" placeholder="请选择" @focus="getIndustry" @change='changeOptions' style="width:100%;" >
+                    <el-option v-for="(item,index) in typeDate" :key="index" :label="item.text" :value="item.value" :disabled="item.disabled">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <!-- <el-form-item label="义务机构类型：" prop="Cust">
+                <treeselect :multiple="true" :options="options" v-if="options.length>0" placeholder="请选择义务机构类型(必填)" v-model="form.dto.Cust" />
+              </el-form-item> -->
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="义务机构名称：" class="multiple_select" prop="str">
+                <el-select style="width:100%;" v-model="form.str"  multiple filterable remote reserve-keyword placeholder="请输入关键词" :remote-method="remoteMethod" :loading="loading">
+                  <el-option
+                    v-for="item in rinmOptions"
+                    :key="item.ricd"
+                    :label="item.rinm"
+                    :value="item.ricd">
+                  </el-option>
+                </el-select>
+                <!-- <el-select style="width:100%;" v-model="form.str" multiple filterable allow-create default-first-option @focus="getDivision()" placeholder="请选择义务机构名称（非必选）">
+                  <el-option v-for="(element, index) in rinmOptions" :key="index" :label="element.rinm" :value="element.ricd"></el-option>
+                </el-select> -->
+              </el-form-item>
+            </el-col>
+          </el-col>
+        </el-form>
+      </el-row>
+      <div class="btnalign">
+        <el-button type="primary" @click="handleQury()">统计</el-button>
+        <el-button @click="clearForm" type="primary" plain>清空</el-button>
+      </div>
+      <div style="margin-bottom:10px;">按报告情况时序统计结果表：
+        <el-button type="primary" @click="exportStatistics" plain>导出全部</el-button>
+        <el-button type="primary" @click="exportStaTwo" plain>导出已选</el-button>
+        <el-button type="primary" @click="graphicalDisplay" style="margin-left:10px;">图形化展示</el-button>
+      </div>
+      <!-- 初始化统计结果 -->
+      <el-table v-if="!initType" :empty-text="tableClue" :data="returnData" style="width: 100%">
+        <el-table-column v-if='returnData.length > 0' type="selection" width="60"></el-table-column>
+        <el-table-column prop="index" label="序号" width="150"></el-table-column>
+        <el-table-column :label="statisticalType" >
+          <el-table-column prop="acceptMonth" :label="classDate">
+            <template v-if="scope.row.years" slot-scope="scope">
+              {{ scope.row.years }}-Q{{ scope.row.quarter }}{{ scope.row.acceptMonth }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="srn" label="数量" ></el-table-column>
+        </el-table-column>
+      </el-table>
+      <!-- 实际统计结果 -->
+      <el-table v-if="initType" :empty-text="tableClue" :data="returnData.length > 0 ? returnData.concat([sum]) : returnData" style="width: 100%" v-loading="loadingTab" element-loading-text="正在统计中，请稍候……" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="60"></el-table-column>
+        <el-table-column prop="index" label="序号" width="150"></el-table-column>
+        <el-table-column :label="statisticalType" >
+          <el-table-column prop="acceptMonth" :label="classDate" v-if="this.form.dto.type === '1'">
+            <template v-if="scope.row.years" slot-scope="scope">
+              {{ scope.row.years }}-Q{{ scope.row.quarter }}{{ scope.row.acceptMonth }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="acceptMonth" :label="classDate" v-else>
+            <template slot-scope="scope">
+              {{ scope.row.years }}{{ scope.row.acceptMonth }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="srn" label="数量"  ></el-table-column>
+        </el-table-column>
+      </el-table>
+      
+      <div class="block">
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="form.pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="form.pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+      </div>
+      <!-- <div v-if="!initType" style="width:100%;height:200px;"></div> -->
+
+      <graphical :id="id" :dialogTableVisible="dialogTableVisible" :S_TYPES="form.newStatisticalType" :S_NAMES="'报告时序分析 ' + S_NAME" :D_TYPES="form.newType" :tablist="returnData" @setDialog="setDialog"></graphical>
+    </el-card>
+  </div>
+  <div v-if='!dataPermission||!initPermission' style="height:656px;position: relative;">
+    <div style="position: absolute;left: 50%; top: 50%; transform: translateX(-50%) translateY(-50%);text-align: center">
+      <i v-if='!dataPermission' class="el-icon-warning" style="font-size:65px;color: #E6A23C;"></i>
+      <p v-if='!dataPermission' style="height:40px;font-size:18px;letter-spacing: 2px" >您还未申请数据权限，请到"数据权限管理模块"申请!</p>
+    </div>
+  </div>
+</div>
+</template>
+
+<script>
+  import { getToken } from '@/utils/auth'
+  import VeHistogram from 'v-charts/lib/histogram'
+  import Treeselect from '@riophae/vue-treeselect'
+  import { mapGetters } from 'vuex'
+  import {
+    getIndustryFrist,
+    getIndustrySecond,
+    getPermission
+  } from '@/api/sys-monitoringAnalysis/statisticForm/large'
+  import {
+    getRinmList1,
+    administrativeDivision
+  } from '@/api/sys-monitoringAnalysis/statisticForm/subject'
+  import UploadExcelComponent from '@/components/UploadExcel/index.vue'
+  import {
+    getStatistical,
+    getSum,
+    crimeApi
+  } from '@/api/sys-monitoringAnalysis/statisticForm/obligationSituation.js'
+  import graphical from '@/views/sys-monitoringAnalysis/statisticForm/antimoneyAuthority/graphical'
+  export default {
+    components: {
+      Treeselect,
+      VeHistogram,
+      UploadExcelComponent,
+      graphical
+    },
+    data() {
+      return {
+        allValues: [],
+        id: '6',
+        dialogTableVisible: false,
+        dataPermission: true,
+        initPermission: false,
+        S_NAME: '',
+        typeDate: [],
+        props: { multiple: true },
+        oldOptions: [],
+        typeShow: false,
+        loading: false,
+        initType: false,
+        loading2: false,
+        multipleSelection: [], // 表格选择项
+        classDate: '年份',
+        statisticalType: '统计类型：大额交易',
+        optionsOne: [],
+        returnData: [],
+        sum: [],
+        tableClue: ' ',
+        citiesOptions: [], //   地区
+        form: {
+          newType: '',
+          newStatisticalType: '',
+          names: '',
+          startEndData: '',
+          statisticalTime: '',
+          region: '',
+          str: '',
+          mechanismType: '',
+          CustomerType: [],
+          tsdr: '',
+          ids: '',
+          customerData: '',
+          sort: '',
+          dto: {
+            levelType: '',
+            statisticsType: '0',
+            tosc: '',
+            type: '0',
+            startDate: '' + (new Date().getFullYear() - 1),
+            endDate: '' + new Date().getFullYear(),
+            ricds: [],
+            area: [],
+            Cust: [],
+            startJdu: '-01',
+            endJdu: ''
+          },
+          daochu: {
+            statisticsType: '0',
+            tosc: '',
+            type: '',
+            startDate: '',
+            endDate: '',
+            ricds: '',
+            areas: '',
+            industrys: ''
+          },
+          pageInfo: {
+            pageNum: 1,
+            pageSize: 10
+          }
+        },
+        typeId: 'TOSC',
+        rinmOptions: [],
+        ficp_data: [],
+        options: [],
+        dataMec: [], //   交易发生地
+        tabData: [],
+        total: 0,
+        token: getToken(),
+        title: [
+          '分支行所统计的数据范围为：本分支行辖区的法人报告机构所报送的大额、可疑交易报告数据。',
+          '1、大额交易数量：按照选择的统计时间维度，统计通过一级校验的大额交易数量COUNT(TRADE_ID)',
+          '2、可疑交易报告数量：按照选择的统计时间维度，统计通过二级校验的可疑报告数量COUNT(xml_ID)'
+        ],
+        formRules: {
+          statisticsType: [{ required: true, message: '请选择统计类型', trigger: 'blur' }],
+          area: [{ required: true, message: '请选择分支行辖区', trigger: 'blur' }],
+          type: [{ required: true, message: '请选择统计时间', trigger: 'blur' }],
+          levelType: [{ required: true, message: '请选择义务机构类型', trigger: 'blur' }]
+          // Cust: [{ required: true, message: '请选择义务机构类型', trigger: 'change' }],
+        }
+      }
+    },
+    destroyed() {
+      this.$message.closeAll()
+    },
+    mounted() {
+      this.getData()
+      this.crimeInvolved()
+      this.getPermission()
+    },
+    computed: {
+      ...mapGetters(['roles']),
+      form_Cust: {
+        get: function() {
+          return this.form.dto.Cust
+        },
+        set: function(val) {
+          this.form.dto.Cust = val
+        }
+      },
+      form_area: {
+        get: function() {
+          return this.form.dto.area
+        },
+        set: function(val) {
+          this.form.dto.area = val
+        }
+      }
+    },
+    methods: {
+      setDialog(val) {
+        this.dialogTableVisible = val
+      },
+      getIndustry() {
+        if (this.form.dto.levelType !== '') {
+          var params = { type: this.form.dto.levelType }
+          getIndustrySecond(params)
+            .then(res => {
+              if (res.code === 200) {
+                this.typeDate = res.data
+                this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+                if (this.form.dto.Cust.includes('ALL_SELECT')) {
+                  this.typeDate.map(item => {
+                    if (item.value === 'ALL_SELECT') {
+                      this.form.dto.Cust = ['ALL_SELECT']
+                      item.disabled = false
+                    } else {
+                      item.disabled = true
+                    }
+                  })
+                } else {
+                  this.typeDate.map(item => {
+                    item.disabled = false
+                  })
+                }
+              }
+            })
+        } else {
+          this.typeDate = []
+          this.$message({
+            type: 'success',
+            showClose: true,
+            duration: 6000,
+            message: '请先选择义务机构类型'
+          })
+        }
+      },
+      isTypeShow() {
+        if (this.form.dto.levelType) {
+          this.form.dto.Cust = []
+          this.typeDate = []
+          getIndustrySecond({ type: this.form.dto.levelType })
+            .then(res => {
+              if (res.code === 200) {
+                this.typeDate = res.data
+                this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+                // const arr = []
+                // this.typeDate.forEach(res => {
+                //   arr.push(res.value)
+                // })
+                // this.form.dto.Cust = arr
+              }
+            })
+        }
+      },
+      remoteMethod(query) {
+        if ((this.form.dto.Cust.length || this.form.dto.levelType !== '') > 0 && this.form.dto.area.length > 0) {
+          if (query !== '') {
+            this.loading = true
+            setTimeout(() => {
+              getRinmList1(this.form.dto.Cust.join(',') || this.form.dto.levelType, this.form.dto.area.join(','), decodeURI(query))
+                .then(res => {
+                  if (res.code === 200) {
+                    this.loading = false
+                    this.rinmOptions = res.data.filter(item => {
+                      return item.rinm.toLowerCase()
+                        .indexOf(query.toLowerCase()) > -1
+                    })
+                  }
+                })
+                .catch()
+            }, 200)
+          } else {
+            this.rinmOptions = []
+          }
+        }
+      },
+      listSort(column, prop, order) {
+        console.log(column, 1)
+        console.log(prop, 2)
+        console.log(order, 3)
+      },
+      graphicalDisplay() {
+        if (this.returnData.length === 0) {
+          this.$message({
+            showClose: true,
+            duration: 6000,
+            message: '无可展示数据',
+            type: 'warning'
+          })
+        } else {
+          this.dialogTableVisible = true
+        }
+      },
+      handleSelectionChange(val) {
+        this.multipleSelection = val
+      },
+      queryChange(val) {
+        this.returnData = []
+        this.initType = false
+        this.total = 0
+        this.form.dto.tosc = ''
+        if (val === '0') {
+          this.statisticalType = '统计类型：大额交易'
+        } else {
+          this.statisticalType = '统计类型：可疑交易报告'
+        }
+        // area: [{ required: true, message: '请选择分支行辖区', trigger: 'change' }],
+        //   type: [{ required: true, message: '请选择统计时间', trigger: 'change' }],
+        //   startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
+        //   endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }],
+        //   levelType: [{ required: true, message: '请选择义务机构类型', trigger: 'change' }],
+        //   Cust: [{ required: true, message: '请选择义务机构类型', trigger: 'change' }],
+        //   startJdu: [{ required: true, message: '请选择开始季度', trigger: 'change' }],
+        //   endJdu: [{ required: true, message: '请选择结束季度', trigger: 'change' }]
+        setTimeout(() => {
+          this.$refs.searchForm.clearValidate(['area', 'type', 'startDate', 'endDate', 'levelType', 'Cust', 'startJdu', 'endJdu'])
+        }, 0)
+  
+        this.getData()
+      },
+      dateChange() {
+        this.form.dto.startDate = ''
+        this.form.dto.endDate = ''
+        this.form.dto.startJdu = ''
+        this.form.dto.endJdu = ''
+        if (this.form.dto.type === '0') {
+          this.classDate = '年份'
+        } else if (this.form.dto.type === '1') {
+          this.classDate = '季度'
+        } else if (this.form.dto.type === '2') {
+          this.classDate = '月份'
+        }
+        this.$refs.searchForm.clearValidate(['startDate', 'endDate', 'startJdu', 'endJdu'])
+      },
+      crimeInvolved() {
+        crimeApi(this.typeId).then(res => {
+          if (res.code === 200) {
+            this.optionsOne = res.data
+          }
+        })
+      },
+      copyParameter() {
+        const obj = Object.assign({}, this.form.dto)
+        const newObj = {
+          statisticsType: obj.statisticsType,
+          tosc: obj.tosc,
+          type: obj.type,
+          startDate: this.form.dto.type === '1' ? obj.startDate + this.form.dto.startJdu : obj.startDate,
+          endDate: this.form.dto.type === '1' ? obj.endDate + this.form.dto.endJdu : obj.endDate,
+          ricds: this.form.str.length === 0 ? this.ficp_data.join(',') : this.form.str.join(',')
+        }
+        const areaArr = []
+        if (this.form.dto.area.length > 0) {
+          if (this.citiesOptions[0].children && this.form.dto.area.length === this.citiesOptions[0].children.length) {
+            areaArr.push('all')
+          } else {
+            this.form.dto.area.forEach(res => {
+              for (let i = 0; i < res.length; i++) {
+                if (res[i] === 'all') {
+                  res.splice(i, 1)
+                }
+                areaArr.push(res[0])
+              }
+            })
+          }
+          newObj.areas = areaArr.join(',')
+        } else {
+          newObj.areas = ''
+        }
+        if (this.form.dto.Cust.length === 0) {
+          newObj.industrys = this.form.dto.levelType
+        } else {
+          if (this.form.dto.Cust.includes('ALL_SELECT')) {
+            newObj.industrys = this.allValues
+          } else {
+            newObj.industrys = this.form.dto.Cust
+          }
+          newObj.industrys = newObj.industrys.join(',')
+        }
+        return newObj
+      },
+      copyParameterT() {
+        const obj = Object.assign({}, this.form.pageInfo)
+        const newObj = {
+          pageNum: obj.pageNum,
+          pageSize: obj.pageSize
+        }
+        return newObj
+      },
+      getStatisticalFn() {
+        this.returnData = []
+        this.tableClue = ' '
+        getStatistical(this.copyParameter(), this.copyParameterT()).then(res => {
+          this.initType = false
+          if (res) {
+            if (res.code === 200) {
+              this.loading2 = false
+              this.loadingTab = false
+              this.returnData = res.data.list
+              if (this.returnData.length > 0) {
+                this.initType = true
+              } else {
+                this.tableClue = '暂无数据'
+              }
+              for (var i = 0; i < this.returnData.length; i++) {
+                this.returnData[i].index = i + 1
+              }
+              this.total = res.data.total
+            } else {
+              this.$message({
+                showClose: true,
+                duration: 6000,
+                message: res.message,
+                type: 'error'
+              })
+              this.loading2 = false
+              this.loadingTab = false
+            }
+          } else {
+            this.$message({
+              showClose: true,
+              duration: 6000,
+              message: '网络异常请稍候尝试请求',
+              type: 'error'
+            })
+            this.loading2 = false
+            this.loadingTab = false
+          }
+        })
+          .catch(function(error) {
+            this.loading2 = false
+            this.loadingTab = false
+            console.log(error)
+          })
+      },
+      getSum() {
+        this.sum = ''
+        getSum(this.copyParameter()).then(res => {
+          if (res.code === 200) {
+            this.sum = res.data
+          }
+        })
+      },
+      getData() {
+        // getIndustry()
+        //   .then(res => {
+        //     if (res.code === 200) {
+        //       this.options = res.data
+        //     }
+        //   })
+        //   .catch(() => {})
+        getIndustryFrist()
+          .then(res => {
+            if (res.code === 200) {
+              this.options = res.data
+              this.form.dto.levelType = 'B'
+              var params = { type: this.form.dto.levelType }
+              getIndustrySecond(params)
+                .then(res => {
+                  if (res.code === 200) {
+                    this.typeDate = res.data
+                    this.typeDate.unshift({ text: '所有选项', value: 'ALL_SELECT' })
+                    // const arr = []
+                    // this.typeDate.forEach(res => {
+                    //   arr.push(res.value)
+                    // })
+                    // this.form.dto.Cust = arr
+                  }
+                })
+            }
+          })
+          .catch(() => {})
+        administrativeDivision({ type: 'YWJGBGQKSJXLFX' })
+          .then(res => {
+            if (res.code === 200) {
+              this.citiesOptions = res.data
+              const arr = []
+              this.citiesOptions.forEach(res => {
+                if (res.id) {
+                  res.value = res.id
+                  delete res.id
+                }
+                if (res.children) {
+                  for (let i = 0; i < res.children.length; i++) {
+                    if (res.children[i].id) {
+                      res.children[i].value = res.children[i].id
+                      delete res.children[i].id
+                    }
+                    arr.push([res.value, res.children[i].value])
+                  }
+                }
+                if (!res.children) {
+                  arr.push([res.value])
+                }
+              })
+              this.form.dto.area = arr
+            }
+          })
+          .catch()
+      },
+      // 统计按钮
+      handleQury() {
+        this.$refs.searchForm.validate((valid) => {
+          if (valid) {
+            this.loading2 = true
+            this.form.newType = this.form.dto.type
+            this.form.newStatisticalType = this.form.dto.statisticsType
+            if (this.form.dto.statisticsType === '0') {
+              this.S_NAME = '按大额交易统计的'
+            } else if (this.form.dto.statisticsType === '1') {
+              this.S_NAME = '按可疑交易报告统计的'
+            }
+            this.daochu = Object.assign({}, this.copyParameter())
+            this.form.sort = ''
+            this.form.order = ''
+            this.getStatisticalFn()
+            this.getSum()
+            this.ficp_data = []
+          } else {
+            return false
+          }
+        })
+      },
+      // 批量导出
+      exportStatistics() {
+        if (this.returnData.length === 0) {
+          this.$message({
+            message: '无可导出数据',
+            showClose: true,
+            duration: 6000,
+            type: 'warning'
+          })
+        } else {
+          this.$confirm('此操作将导出此统计条件下的所有数据, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            location.href =
+            '/monitor/count/sequence/excel/?statisticsType=' +
+            this.daochu.statisticsType +
+            '&tosc=' +
+            this.daochu.tosc +
+            '&type=' +
+            this.daochu.type +
+            '&startDate=' +
+            this.daochu.startDate +
+            '&endDate=' +
+            this.daochu.endDate +
+            '&ricds=' +
+            this.daochu.ricds +
+            '&areas=' +
+            this.daochu.areas +
+            '&industrys=' +
+            this.daochu.industrys +
+            '&token=' +
+            this.token
+          }).catch()
+        }
+      },
+      exportStaTwo() {
+        if (this.multipleSelection.length === 0) {
+          this.$message({
+            message: '请至少选择一条数据',
+            showClose: true,
+            duration: 6000,
+            type: 'warning'
+          })
+        } else {
+          const rowNums = []
+          this.multipleSelection.forEach(el => {
+            rowNums.push(el.rowNum)
+          })
+          location.href =
+            '/monitor/count/sequence/excel/?statisticsType=' +
+            this.daochu.statisticsType +
+            '&tosc=' +
+            this.daochu.tosc +
+            '&type=' +
+            this.daochu.type +
+            '&startDate=' +
+            this.daochu.startDate +
+            '&endDate=' +
+            this.daochu.endDate +
+            '&ricds=' +
+            this.daochu.ricds +
+            '&areas=' +
+            this.daochu.areas +
+            '&industrys=' +
+            this.daochu.industrys +
+            '&rowNums=' +
+            rowNums +
+            '&token=' +
+            this.token
+        }
+      },
+      // 如果没有选地区 和 行业的时候 提醒
+      // getDivision() {
+      //   if (this.form.dto.area.length === 0 && this.form.dto.Cust.length !== 0) {
+      //     this.$message({
+      //       message: '请选择分支行辖区',
+      //       type: 'success'
+      //     })
+      //   }
+      //   if (this.form.dto.Cust.length === 0 && this.form.dto.area.length !== 0) {
+      //     this.$message({
+      //       message: '请选择机构类型',
+      //       type: 'success'
+      //     })
+      //   }
+      //   if (this.form.dto.Cust.length === 0 && this.form.dto.area.length === 0) {
+      //     this.$message({
+      //       message: '请选择分支行辖区和机构类型',
+      //       type: 'success'
+      //     })
+      //   }
+      // },
+      //   查询条件清空
+      clearForm() {
+        this.returnData = []
+        this.initType = false
+        this.total = 0
+        this.typeShow = false
+        this.form.dto.startJdu = ''
+        this.form.dto.endJdu = ''
+        this.form.dto.startDate = ''
+        this.form.dto.endDate = ''
+        this.form.dto.levelType = ''
+        this.form.dto.type = ''
+        this.form.str = []
+        this.form.dto.Cust = []
+        this.form.dto.area = []
+        this.form.dto.ricds = []
+        this.form.dto.statisticsType = ''
+        setTimeout(() => {
+          this.$refs.searchForm.clearValidate()
+        }, 0)
+      },
+      handleRegionChange(val) {
+        console.log(val)
+      },
+      handleSizeChange(val) {
+        this.form.pageInfo.pageSize = val
+        this.loadingTab = true
+        getStatistical(this.daochu, this.copyParameterT()).then(res => {
+          if (res) {
+            if (res.code === 200) {
+              this.loading2 = false
+              this.loadingTab = false
+              this.returnData = res.data.list
+              if (this.returnData.length > 0) {
+                this.initType = true
+              } else {
+                this.tableClue = '暂无数据'
+              }
+              for (var i = 0; i < this.returnData.length; i++) {
+                this.returnData[i].index = i + 1
+              }
+              this.total = res.data.total
+            } else {
+              this.$message({
+                showClose: true,
+                duration: 6000,
+                message: res.message,
+                type: 'error'
+              })
+              this.loading2 = false
+              this.loadingTab = false
+            }
+          } else {
+            this.$message({
+              showClose: true,
+              duration: 6000,
+              message: '网络异常请稍候尝试请求',
+              type: 'error'
+            })
+            this.loading2 = false
+            this.loadingTab = false
+          }
+        })
+      },
+      handleCurrentChange(val) {
+        this.form.pageInfo.pageNum = val
+        this.loadingTab = true
+        getStatistical(this.daochu, this.copyParameterT()).then(res => {
+          if (res) {
+            if (res.code === 200) {
+              this.loading2 = false
+              this.loadingTab = false
+              this.returnData = res.data.list
+              if (this.returnData.length > 0) {
+                this.initType = true
+              } else {
+                this.tableClue = '暂无数据'
+              }
+              for (var i = 0; i < this.returnData.length; i++) {
+                this.returnData[i].index = i + 1
+              }
+              this.total = res.data.total
+            } else {
+              this.$message({
+                showClose: true,
+                duration: 6000,
+                message: res.message,
+                type: 'error'
+              })
+              this.loading2 = false
+              this.loadingTab = false
+            }
+          } else {
+            this.$message({
+              showClose: true,
+              duration: 6000,
+              message: '网络异常请稍候尝试请求',
+              type: 'error'
+            })
+            this.loading2 = false
+            this.loadingTab = false
+          }
+        })
+      },
+      timeCheckStart(rule, value, callback) {
+        if (this.form.dto.endDate) {
+          const time1 = new Date(this.form.dto.endDate)
+          const time2 = new Date(value)
+          if (time1 < time2) {
+            callback(new Error('开始时间必须小于结束时间'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      timeCheck(rule, value, callback) {
+        if (this.form.dto.startDate) {
+          const time1 = new Date(this.form.dto.startDate)
+          const time2 = new Date(value)
+          if (time1 > time2) {
+            callback(new Error('结束时间必须大于开始时间'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      quarterCheckStart(rule, value, callback) {
+        if (this.form.dto.startDate === this.form.dto.endDate && this.form.dto.endJdu) {
+          const arr1 = this.form.dto.endJdu.split('-')
+          const time1 = Number(arr1[1])
+          const arr2 = value.split('-')
+          const time2 = Number(arr2[1])
+          if (time1 < time2) {
+            callback(new Error('开始季度必须小于结束季度'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      quarterCheckEnd(rule, value, callback) {
+        if (this.form.dto.startDate === this.form.dto.endDate && this.form.dto.startJdu) {
+          const arr1 = this.form.dto.startJdu.split('-')
+          const time1 = Number(arr1[1])
+          const arr2 = value.split('-')
+          const time2 = Number(arr2[1])
+          if (time1 > time2) {
+            callback(new Error('结束季度必须大于开始季度'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      changeOptions(val) {
+        this.allValues = []
+        // 保留所有值
+        for (const item of this.typeDate) {
+          this.allValues.push(item.value)
+        }
+        if (this.form.dto.Cust.includes('ALL_SELECT')) {
+          this.typeDate.map(item => {
+            if (item.value === 'ALL_SELECT') {
+              this.form.dto.Cust = ['ALL_SELECT']
+              item.disabled = false
+            } else {
+              item.disabled = true
+            }
+          })
+        } else {
+          this.typeDate.map(item => {
+            item.disabled = false
+          })
+        }
+        // 用来储存上一次的值，可以进行对比
+        // const oldVal = this.oldOptions.length === 1 ? this.oldOptions[0] : []
+
+        // 若是全部选择
+        // if (val.includes('ALL_SELECT')) this.form.dto.Cust = allValues
+
+        // 取消全部选中 上次有 当前没有 表示取消全选
+        // if (oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) this.form.dto.Cust = []
+
+        // 点击非全部选中 需要排除全部选中 以及 当前点击的选项
+        // 新老数据都有全部选中
+        // if (oldVal.includes('ALL_SELECT') && val.includes('ALL_SELECT')) {
+        //   const index = val.indexOf('ALL_SELECT')
+        //   val.splice(index, 1) // 排除全选选项
+        //   this.form.dto.Cust = val
+        // }
+
+        // 全选未选 但是其他选项全部选上 则全选选上 上次和当前 都没有全选
+        // if (!oldVal.includes('ALL_SELECT') && !val.includes('ALL_SELECT')) {
+        //   if (val.length === allValues.length - 1) this.form.dto.Cust = ['ALL_SELECT'].concat(val)
+        // }
+
+        // 储存当前最后的结果 作为下次的老数据
+        // this.oldOptions[0] = this.form.dto.Cust
+      },
+      clearOptions() {
+        this.typeDate = []
+        this.form.dto.Cust = []
+      },
+      getPermission() {
+        getPermission().then(res => {
+          if (this.roles === 'branch' && !res.data.includes('YWJGBGQKSJXLFX')) {
+            this.dataPermission = false
+          }
+          this.initPermission = true
+        })
+      }
+    },
+    watch: {
+      'form.dto.levelType': function(val) {
+        if (val === '') {
+          this.typeShow = false
+        }
+      },
+      'form.dto.statisticsType': function(ol, nl) {
+        if (nl !== ol) {
+          this.form.dto.tosc = ''
+          this.form.dto.area = []
+          this.form.dto.type = ''
+          this.form.dto.Cust = []
+          this.form.dto.levelType = ''
+          this.typeShow = false
+          this.$refs.searchForm.clearValidate()
+        }
+      },
+      'form.dto.type': function(ol, nl) {
+        if (nl !== ol) {
+          this.$refs.searchForm.clearValidate(['startDate', 'endDate'])
+        }
+      },
+      form_Cust: function(ol) {
+        this.form.str = []
+        this.rinmOptions = []
+      },
+      form_area: function(ol) {
+        this.form.str = []
+        this.rinmOptions = []
+      }
+    }
+  }
+</script>
+
+<style src="@riophae/vue-treeselect/dist/vue-treeselect.min.css"></style>
+<style lang="scss">
+  
+.el-cascader-menu{
+min-width: 270px !important;
+}
+
+.sequencewrap {
+  .fl {
+    float: left;
+    text-align: center;
+  }
+  .title {
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .addtype {
+    .el-form-item__label {
+      padding-right: 0;
+    }
+  }
+  .btnalign {
+    text-align: right;
+    margin-bottom: 15px;
+  }
+  .el-cascader__tags .el-tag > span{
+    -webkit-box-flex:1;
+    -ms-flex:none;
+    flex:none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .custOptions > div{
+    word-break:normal;
+    display:block;
+    white-space:pre-wrap;
+    overflow:hidden;
+  }
+  .el-select__input.is-small{
+  width: 100% !important;
+  }
+  .el-table thead tr th>.cell{
+    white-space:normal !important;
+  } 
+
+}
+</style>

@@ -1,0 +1,285 @@
+<template>
+  <div class="cueManage_interIntelligence_collaborativeForm">
+    <el-form :model="collaborativeForm" label-position="top" :disabled="disableds" :rules="rules" ref="collaborativeForm">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="日期">
+            <el-date-picker :disabled="disabled"  value-format="yyyy-MM-dd" v-model="collaborativeForm.feedbackDate" type="date" placeholder="选择日期">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="资料接收方/国家">
+            <el-select :disabled="disabled" clearable  v-model="collaborativeForm.state" filterable placeholder="请选择" class="w100">
+              <el-option v-for="(item,idx) in  countryOption" :label="item.chSName" :value="item.numCode" :key="idx"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+      
+      </el-row>
+<el-row :gutter="20">
+  <el-col :span="12">
+          <el-form-item label="CAMLMAC档案号" prop="fileNum" >
+            <el-input :disabled="disabled"   v-model="collaborativeForm.fileNum" maxlength="20"  placeholder="请输入CAMLMAC档案号,最长20字符"></el-input>
+          </el-form-item>
+        </el-col>
+</el-row>
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="中国反洗钱监测分析中心欢迎您提供宝贵意见，以帮助我们改进相关工作：">
+            <el-input :disabled="disabled"    :autosize="{ minRows: 2, maxRows: 14}"  v-model="collaborativeForm.feedbackOpinion" type="textarea" maxlength="500"  placeholder="中国反洗钱监测分析中心欢迎您提供宝贵意见，以帮助我们改进相关工作,最长500字符"></el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="所提供的资料在哪些方面对您的工作有所帮助？">
+            <el-checkbox-group :disabled="disabled" v-model="collaborativeForm.help">
+              <el-checkbox v-for="city in helpOption" :label="city" :key="city">{{city}}</el-checkbox>
+            </el-checkbox-group>
+            <!-- <el-checkbox-group v-model="collaborativeForm.help" @change="changehelp">
+              <el-checkbox v-for="item in helpOption" :label="item" :key="item">{{item}}</el-checkbox>
+            </el-checkbox-group> -->
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="其他">
+            <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"   v-model="collaborativeForm.otherAssessOne" maxlength="500"  placeholder="请输入其他,最长500字符" type="textarea"></el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="是否要征得中国反洗钱监测分析中心同意将资料披露给其他相关部门？">
+            <!-- <el-radio :disabled="disabled"-group v-model="collaborativeForm.inforDisclosure"> -->
+            <el-radio :disabled="disabled" v-model="collaborativeForm.inforDisclosure" label="1">是</el-radio>
+            <el-radio :disabled="disabled" v-model="collaborativeForm.inforDisclosure" label="2">否</el-radio>
+            <!-- </el-radio-group> -->
+          </el-form-item>
+        </el-col>
+
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="如果同意披露，信息使用部门有任何关于中国反洗钱监测分析中心所提供资料的使用价值信息，烦请提供：">
+            <el-input :disabled="disabled"  :autosize="{ minRows: 2, maxRows: 14}"    v-model="collaborativeForm.inforValue" maxlength="500"  placeholder="如果同意披露，信息使用部门有任何关于中国反洗钱监测分析中心所提供资料的使用价值信息，烦请提供,最长500字符" type="textarea"></el-input>
+          </el-form-item>
+        </el-col>
+
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="从整体上看，中国反洗钱监测分析中心所提供的资料是否有帮助？">
+            <!-- <el-radio :disabled="disabled"-group v-model="collaborativeForm.inforHelp"> -->
+            <el-radio :disabled="disabled" v-model="collaborativeForm.inforHelp" label="1">是</el-radio>
+            <el-radio :disabled="disabled" v-model="collaborativeForm.inforHelp" label="2">否</el-radio>
+            <!-- </el-radio-group> -->
+          </el-form-item>
+        </el-col>
+
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="其他意见/建议">
+            <el-input :disabled="disabled"   :autosize="{ minRows: 2, maxRows: 14}"   v-model="collaborativeForm.otherAssessTwo" maxlength="500"  placeholder="其他意见/建议,最长500字符" type="textarea"></el-input>
+          </el-form-item>
+        </el-col>
+
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="姓名/职位"  prop="name">
+            <el-input :disabled="disabled"   v-model="collaborativeForm.name" maxlength="30"  placeholder="请输入姓名/职位,最长30字符"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="电邮/电话" prop="phone">
+            <el-input :disabled="disabled"   v-model="collaborativeForm.phone" maxlength="30"  placeholder="请输入电邮/电话,最长30字符"></el-input>
+          </el-form-item>
+        </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+          <el-form-item label="签署" prop="signature">
+            <el-input :disabled="disabled"   v-model="collaborativeForm.signature" maxlength="30"  placeholder="请输入签署,最长30字符"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="日期">
+            <el-date-picker   value-format="yyyy-MM-dd" :disabled="disabled" v-model="collaborativeForm.sigDate" type="date" placeholder="选择日期">
+            </el-date-picker>
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+  </div>
+</template>
+
+<script>
+import { country } from '@/api/common/citys.js'
+import { commonPattern } from '@/utils/formValidate.js'
+export default {
+  props: {
+    collaborativeFormData: {
+      type: Object,
+      default: function() {
+        return this.collaborativeForm
+      }
+    },
+    disableds: Boolean
+  },
+  data() {
+    return {
+      pickerOptions: {
+        disabledDate(time) {
+          return time.getTime() < Date.now() - 8.64e7
+        }
+      },
+      disabled: false,
+      collaborativeForm: {
+        feedbackDate: '',
+        state: '',
+        fileNum: '',
+        feedbackOpinion: '',
+        help: [],
+        otherAssessOne: '',
+        inforDisclosure: '',
+        inforValue: '',
+        inforHelp: '',
+        otherAssessTwo: '',
+        name: '',
+        phone: '',
+        signature: '',
+        sigDate: ''
+      },
+      countryOption: [],
+      helpOption: [
+        '目前还无法评估',
+        '提供新的信息',
+        '验证现有的信息',
+        '找出新的线索/事宜'
+      ],
+      rules: {
+        fileNum: [{ validator: this.NullAndTs, trigger: 'blur' }],
+        name: [{ validator: this.NullAndTsxiegan, trigger: 'blur' }],
+        signature: [{ validator: this.NullAndTs, trigger: 'blur' }]
+      }
+    }
+  },
+  watch: {
+    collaborativeFormData: {
+      handler(val) {
+        if (val) {
+          debugger
+          // this.collaborativeFormData.help = JSON.parse(this.collaborativeFormData.help)
+          if (this.collaborativeFormData.help) {
+            this.collaborativeFormData.help = this.collaborativeFormData.help.split(',')
+          } else {
+            this.collaborativeFormData.help = []
+          }
+          this.collaborativeForm = this.collaborativeFormData
+          this.disabled = this.collaborativeFormData.noWrite
+
+        //   this.collaborativeForm.help = this.collaborativeForm.help.split(',')
+        }
+      },
+      deep: true,
+      immediate: true
+    }
+  },
+  mounted() {
+    this.getCountryList()
+    // this.propsData()
+  },
+  methods: {
+    PhoneNum(rule, value, callback) {
+      // var phone = /^((1[0-9]{10})|((\d{3,4}-)?\d{7,8}))$/
+      var phone = /^\d+(-)?(\d+)?$/
+      if (value !== null) {
+        if (value === '' || value === undefined) {
+          callback()
+        } else {
+          if (!phone.test(value)) {
+            callback(new Error('请输入电话，如：1234567或0354-1234567或13位手机号'))
+          } else {
+            callback()
+          }
+        }
+      } else {
+        callback()
+      }
+    },
+    NullAndTsxiegan(rule, value, callback) {
+      var spcae = /(^\s)|(\s$)/
+      var specialChar = /[！#￥：；“”‘’、，|《。》？、【】[\]]/im
+      var specialEng = /[`~!@#$%^&*+<>?:"{},.\;'[\]]/im
+      if (spcae.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else if (specialChar.test(value) || specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    NullAndTs(rule, value, callback) {
+      var spcae = /(^\s)|(\s$)/
+      if (spcae.test(value)) {
+        callback(new Error('首尾不能有空格'))
+      } else if (commonPattern.specialChar.test(value) || commonPattern.specialEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    isChinaNull(rule, value, callback) {
+      var commonPatterns = { specialSignEng: /[`~!#$%^&*_+<>?:"{},.\/;'[\]]/im }
+      if (!commonPattern.spaceBar.test(value)) {
+        callback(new Error('内容不能含有空格'))
+      } else if (commonPattern.chinaNull.test(value)) {
+        callback(new Error('内容不能含中文'))
+      } else if (commonPattern.specialSignChar.test(value) || commonPatterns.specialSignEng.test(value)) {
+        callback(new Error('内容不能填写特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    validateForm() {
+      let flag = false
+      this.$refs['collaborativeForm'].validate((valid) => {
+        flag = valid
+      })
+      return flag
+    },
+
+    // 国家名
+    getCountryList() {
+      country().then(res => {
+        this.countryOption = res.data.list
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.cueManage_interIntelligence_collaborativeForm {
+  .el-form-item__label {
+    padding: 0px;
+  }
+  .el-date-editor--date {
+    width: 100% !important;
+  }
+  .el-date-editor {
+    width: 100%;
+  }
+  .el-select {
+    width: 100%;
+  }
+  .title {
+    margin-bottom: 20px;
+  }
+}
+</style>

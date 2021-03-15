@@ -1,0 +1,245 @@
+<template>
+  <div class="evaluationresult">
+    <el-card>
+      <div slot="header">
+        <span>查看评价结果</span>
+         <!-- <router-link :to="{ name: 'dataGovernance_qualityEvaluation_create_add'}"><el-button type="text" style="float:right;">创建评价任务</el-button></router-link> -->
+      </div>
+      <el-row>
+        <el-form ref="form" :model="form" :rules="searchRules" label-width="120px">
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item label="评价任务名称：" prop="name">
+                <el-select v-model="form.name" style="width:100%;" filterable clearable>
+                  <el-option v-for="(item, index) in optionData" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="生成时间：" prop="dateValue">
+                <el-date-picker v-model="form.dateValue" type="daterange" start-placeholder="开始日期" range-separator="至" end-placeholder="结束日期" value-format="yyyy-MM-dd" style="width:100% !important;">
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+          </el-col>
+          <el-col :span="24">
+            <el-col :span="12">
+              <el-form-item label="版本：" prop="version">
+                <el-input v-model="form.version" placeholder="请输入"></el-input>
+              </el-form-item>
+            </el-col>
+            <!-- <el-col :span="12">
+              <el-form-item label="反馈状态：" prop="state" :rules="[{required: false, trigger: 'change'}]">
+                <el-select v-model="form.state" style="width:100%;">
+                  <el-option label="全部反馈" value="all"></el-option>
+                  <el-option label="部分反馈" value="1"></el-option>
+                  <el-option label="未反馈" value="2"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col> -->
+            <el-col :span="24" class="btnalign">
+			  <el-button type="primary" :loading="loading" @click="query">查 询</el-button>
+              <el-button type="primary" plain @click="resetForm('form')">清 空</el-button>
+            </el-col>
+          </el-col>
+        </el-form>
+      </el-row>
+
+      <div style="margin-top: 10px;margin-bottom: 15px;">
+        <span>评价方案列表</span>
+        <!-- <el-button type="primary" plain>任务生效</el-button> -->
+      </div>
+      <el-table :data="tableData" v-loading="tableDataLoading" element-loading-text="拼命加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <!-- <el-table-column type="selection"></el-table-column> -->
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="evaluationTaskName" label="评价任务名称" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="version" label="版本" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="releaseDate" label="生成时间" show-overflow-tooltip></el-table-column>
+        <!-- <el-table-column prop="feedbackState" label="反馈状态"> -->
+          <!-- <template slot-scope="scope">
+            <span v-if="scope.row.feedbackState === ''"></span>
+          </template> -->
+        <!-- </el-table-column> -->
+        <el-table-column label="操作">
+          <template slot-scope="scope">
+            <el-button style="margin-right: 10px;" type="text" @click="viewEvaluationCriteria(scope)">查看评价标准</el-button>
+            <el-button type="text" @click="viewSummary(scope)">生成/查看汇总表</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination v-if="paginationType" background :current-page="pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" @size-change="handleSizeChange" @current-change="handleCurrentChange">
+      </el-pagination>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { ValidQueryInput } from '@/utils/formValidate'
+import { queryEvaluationTaskName, listinfo } from '@/api/sys-monitoringAnalysis/evaluate/queryEvaluationResult.js'
+export default {
+  data() {
+    return {
+      paginationType: false,
+      tableDataLoading: false,
+      loading: false,
+      optionData: [],
+      pageNum: 1,
+      pageSize: 10,
+      total: 0,
+      form: {
+        name: '',
+        version: '',
+        dateValue: '',
+        state: ''
+      },
+      newForm: {
+        name: '',
+        version: '',
+        dateValue: '',
+        state: ''
+      },
+      tableData: [],
+      searchRules: {
+        version: [{ required: false, validator: ValidQueryInput, trigger: 'blur' }]
+      },
+      specialEnglish: /[`~!@#$%^&*()_+<>?:"{},.\/;'[\]]/im, // 校验英文特殊符号
+      sprcialChina: /[·！#￥（——）：；“”‘、，|《。》？、【】[\]]/im, // 校验中文特殊符号
+      blankSpace: /[ ]/im // 校验空格
+
+    }
+  },
+  mounted() {
+    this.returnMemory()
+    this.bottomData()
+    this.queryData()
+  },
+  methods: {
+    returnMemory() {
+      if (sessionStorage.getItem('returnMemoryJyl') && JSON.parse(sessionStorage.getItem('returnMemoryJyl')).returnBtn === 'Y') {
+        const obj = JSON.parse(sessionStorage.getItem('returnMemoryJyl'))
+        this.form = obj.form
+        this.newForm = obj.form
+        this.pageNum = obj.pageNum
+        this.pageSize = obj.pageSize
+        sessionStorage.removeItem('returnMemoryJyl')
+      }
+    },
+    sessionFn() {
+      const obj = {
+        form: this.newForm,
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      sessionStorage.setItem('returnMemoryJyl', JSON.stringify(obj))
+    },
+    viewSummary(scope) {
+      this.sessionFn()
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_result_summary',
+        query: {
+          name: scope.row.evaluationTaskName
+        }
+      })
+    },
+    viewEvaluationCriteria(scope) {
+      this.sessionFn()
+      this.$router.push({
+        name: 'dataGovernance_qualityEvaluation_standard_indicatorWay',
+        query: {
+          name: scope.row.evaluationTaskName,
+          type: '1'
+        }
+      })
+    },
+    // 定义查询参数
+    getParamter() {
+      const map = {
+        evaluationTaskName: this.newForm.name,
+        version: this.newForm.version,
+        startDate: this.newForm.dateValue ? this.newForm.dateValue[0] : '',
+        endDate: this.newForm.dateValue ? this.newForm.dateValue[1] : '',
+        // feedbackState: this.form.state,
+        pageNum: this.pageNum,
+        pageSize: this.pageSize
+      }
+      return map
+    },
+    // 查询数据
+    queryData() {
+      this.paginationType = true
+      this.tableDataLoading = true
+      listinfo(this.getParamter()).then(res => {
+        if (res.code === 200) {
+          this.loading = false
+          this.total = res.data.total
+          this.tableData = res.data.list
+        } else {
+          this.loading = false
+        }
+        this.tableDataLoading = false
+      }).catch(() => {
+        this.loading = false
+        this.tableDataLoading = false
+      })
+    },
+    // 下拉数据
+    bottomData() {
+      queryEvaluationTaskName().then(res => {
+        if (res.code === 200) {
+          this.optionData = res.data
+        }
+      })
+    },
+    // 校验空格特殊字符
+    characterSpaceChecking(rule, value, callback) {
+      if (this.blankSpace.test(value)) {
+        callback(new Error('禁止输入空格'))
+      } else if (this.specialEnglish.test(value) || this.sprcialChina.test(value)) {
+        callback(new Error('禁止输入特殊字符'))
+      } else {
+        callback()
+      }
+    },
+    query() {
+      this.$refs.form.validate((valid) => {
+        if (valid) {
+          this.newForm = Object.assign({}, this.form)
+          this.loading = true
+          this.queryData()
+        } else {
+          return false
+        }
+      })
+    },
+    resetForm(formName) { // 重置清空操作
+      this.$refs[formName].resetFields()
+      this.newForm = {
+        name: '',
+        version: '',
+        dateValue: '',
+        state: ''
+      }
+      this.pageNum = 1
+      // this.queryData()
+    },
+    // 分页
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.pageNum = 1
+      this.queryData()
+    },
+    handleCurrentChange(val) {
+      this.pageNum = val
+      this.queryData()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.evaluationresult {
+  .btnalign {
+    text-align: right;
+  }
+}
+</style>

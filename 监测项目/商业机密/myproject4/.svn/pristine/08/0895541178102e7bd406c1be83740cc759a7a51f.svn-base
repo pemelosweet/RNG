@@ -1,0 +1,432 @@
+<template>
+  <div class="ds-dealist-wrap"> 
+    <el-card>  
+      <a @click="routerBack" class="back" :style="backImg"></a>
+      <div slot="header">抽取数据列表：</div>
+      <div style="margin-bottom: 10px">
+        
+        <el-button type="primary" plain @click="handelCorrection" v-if="this.isShow">人工补正</el-button>
+        <!-- <el-button type="primary" plain @click="autoClean" v-if="this.isShow">自动清理</el-button> -->
+        <el-button type="primary" plain @click="handleAllExport">批量导出</el-button>
+      </div>
+      <el-table :data="list" style="width: 100%" @selection-change="handleSelectionChange" v-loading="listLoading" element-loading-text="正在查询，请稍候……" element-loading-background="rgba(0, 0, 0, 0.1)">
+        <el-table-column type="selection"></el-table-column>
+        <el-table-column type="index" label="序号"></el-table-column>
+        <el-table-column prop="tradeId" label="交易ID" min-width="150"></el-table-column>
+        <el-table-column prop="ctnm" label="主体名称" min-width="200" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="ctid" label="证件号码" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="tstm" label="交易发生日期" min-width="120px"></el-table-column>
+        <el-table-column prop="type" label="交易类型">
+          <template slot-scope="scope">{{scope.row.type === 'BH' || scope.row.type === 'IH' || scope.row.type === 'SH' || scope.row.type === 'PC' || scope.row.type === 'UC' || scope.row.type === 'ZC'? '大额' : '可疑'}}</template>
+        </el-table-column>
+        <el-table-column prop="rinm" label="报告机构"></el-table-column>
+        <!-- <el-table-column prop="manageState" label="自动清理" v-if="this.toggle"></el-table-column> -->
+        <el-table-column prop="artificialCorrection" label="人工补正" v-if="this.toggle"></el-table-column>
+        <el-table-column prop="redt" label="落地日期"></el-table-column>
+        <el-table-column label="操作" width="100">
+          <template slot-scope="scope">
+            <router-link :to="{name:'dataGovernance_tradeDetail_tradeDetail', query: {tradeId: scope.row.tradeId, type: scope.row.type }}">
+              <el-button type="text">查看</el-button>
+            </router-link>
+          </template>
+        </el-table-column> 
+      </el-table>
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="pageInfo.pageNum" :page-sizes="[10, 20, 30, 40]" :page-size="pageInfo.pageSize" layout="total, sizes, prev, pager, next, jumper" :total="total" background></el-pagination>
+
+      <!-- 自动清理弹框内容 -->
+      <el-dialog :visible.sync="cleandialogVisible" width="30%">
+        <plan-approval @setCleanVisible="getCleanVisible" :cleanParams="cleanParams" :cleanMulList="cleanMulList" :cleandialogVisible="cleandialogVisible"></plan-approval>
+      </el-dialog>
+
+      <!-- 大额/信息更正通知弹框 -->
+      <el-dialog :title="correctionDialogTitle" :visible.sync="dialogVisible" width="90%">
+        <component :is="correctionComName" :correctParams="correctParams" @dialogState="closeDialog" :dialogVisible="dialogVisible"></component>
+      </el-dialog>
+
+      <monitor-workflow></monitor-workflow>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { getToken } from '@/utils/auth'
+import { getRinmList } from '@/api/sys-monitoringAnalysis/statisticForm/large.js'
+import { getSampleList } from '@/api/sys-monitoringAnalysis/dataGovernance/dataSampling/index'
+import { cleanCheck } from '@/api/sys-monitoringAnalysis/dataGovernance/dataClean/program.js'
+import { correctCheck, correctCheckError } from '@/api/sys-monitoringAnalysis/dataGovernance/artificialCorrection/launch.js'
+import { getUUIDTo } from '@/utils/index.js'
+import Large from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/large'
+import Suspicious from '@/views/sys-monitoringAnalysis/dataGovernance/common/correction/suspicious'
+import PlanApproval from '@/views/sys-monitoringAnalysis/dataGovernance/dataClean/components/planApproval.vue'
+
+export default {
+  components: {
+    Large,
+    Suspicious,
+    PlanApproval
+  },
+  data() {
+    return {
+      backImg: {
+        backgroundImage: 'url(' + require('@/assets/back/back.png') + ')',
+        backgroundRepeat: 'no-repeat'
+      },
+      // tempFicp: '', // 人工补正记录行业字段
+      correctionComName: null,
+      correctionDialogTitle: null,
+      cleandialogVisible: false, // 自动清理弹框参数
+      dialogVisible: false, // 弹框
+      list: [],
+      listLoading: false,
+      pageInfo: {
+        // 默认开始页码
+        pageNum: 1,
+        // 每页显示条数
+        pageSize: 10
+      },
+      total: 0,
+      multipleSelection: [], // 选择表格项
+      correctParams: {}, // 人工补正弹框传值
+      cleanParams: {}, // 自动清理弹框传值
+      cleanMulList: [],
+      stId: this.$route.query.stId,
+      toggle: false,
+      isShow: false,
+      autoList: [],
+      tempFicp: '',
+      token: getToken(),
+      UUID: ''
+    }
+  },
+  mounted() {
+    this.getData()
+    this.UUID = getUUIDTo()
+  },
+  watch: {
+    stId(val) {
+      if (val) this.getData()
+    }
+  },
+  methods: {
+    callWorkFlow(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.cleandialogVisible = false
+          setTimeout(() => {
+            this.$store.dispatch('workFlow', { configCode: 'planApproval' })
+            this.$store.dispatch('openWorkFlow', true)
+          }, 500)
+        } else {
+          return false
+        }
+      })
+    },
+    closeDialog(val) {
+      // 人工补正组件接收子组件弹框dialogVisible传值
+      this.dialogVisible = val
+    },
+    getCleanVisible(val) {
+      this.cleandialogVisible = val
+    },
+    getData() {
+      this.isShow = this.$route.query.isShow
+      this.toggle = this.$route.query.toggle
+      this.stId = this.$route.query.stId
+      this.listLoading = true
+      getSampleList(this.stId, this.pageInfo).then(res => {
+        if (res.code === 200) {
+          this.listLoading = false
+          this.list = res.data.list
+          this.total = res.data.total
+          res.data.list.forEach(item => {
+            if (item.manageState !== null) {
+              switch (item.manageState) {
+                case 0:
+                  item.manageState = '未治理'
+                  break
+                case 1:
+                  item.manageState = '已治理'
+                  break
+                default:
+                  break
+              }
+            }
+            if (item.artificialCorrection !== null) {
+              switch (item.artificialCorrection) {
+                case 0:
+                  item.artificialCorrection = '未补正'
+                  break
+                case 1:
+                  item.artificialCorrection = '已补正'
+                  break
+                default:
+                  break
+              }
+            }
+          })
+        } else {
+          this.listLoading = false
+        }
+      }).catch(() => {
+        this.listLoading = false
+      })
+    },
+    handleSizeChange(val) {
+      this.pageInfo.pageSize = val
+      if (this.stId) {
+        this.getData()
+      }
+    },
+    handleCurrentChange(val) {
+      this.pageInfo.pageNum = val
+      if (this.stId) {
+        this.getData()
+      }
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val
+    },
+    handleAllExport() {
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        const arr = []
+        const typeArr = []
+        this.multipleSelection
+          .map(function(item) {
+            arr.push(item.tradeId)
+            typeArr.push(item.type)
+          })
+        const ids = arr.toString()
+        const types = typeArr.toString()
+        if (ids && types) {
+          location.href = 'monitor/governance/sampale/task/history/export/' + ids + '/' + types + '?token=' + this.token
+        } else {
+          this.$message.error('批量导出失败！')
+        }
+      }
+    },
+    // 返回
+    routerBack() {
+      this.$router.go(-1)
+    },
+    autoClean() {
+      // 自动清理
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else {
+        this.autoList = []
+        this.cleanMulList = []
+        this.cleanParams = {
+          origin: '1'
+        }
+        const typeArr = []
+        this.multipleSelection.forEach(item => {
+          const type = (item.type === 'BH' || item.type === 'IH' || item.type === 'SH' || item.type === 'PC' || item.type === 'UC' || item.type === 'ZC') ? '0' : '1'
+          typeArr.push(type)
+        })
+        if (this.isAllEqual(typeArr) === true && this.isAllRinmEqual(this.multipleSelection) === false) {
+          this.$confirm('属于不同机构不同交易类型的交易，不可一起发起自动清理', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else if (this.isAllEqual(typeArr) === false && this.isAllRinmEqual(this.multipleSelection) === false) {
+          this.$confirm('属于不同机构不同交易类型的交易，不可一起发起自动清理', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else if (this.isAllEqual(typeArr) === false && this.isAllRinmEqual(this.multipleSelection)) {
+          this.$confirm('属于不同机构不同交易类型的交易，不可一起发起自动清理', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else {
+          this.multipleSelection.map(item => {
+            const obj = {
+              tradeId: item.tradeId,
+              tradeType: item.type === 'BH' || item.type === 'IH' || item.type === 'SH' || item.type === 'PC' || item.type === 'UC' || item.type === 'ZC' ? '0' : '1',
+              reportCode: item.ricd
+            }
+            this.cleanMulList.push(obj)
+            this.autoList.push(item.tradeId)
+          })
+          cleanCheck(this.autoList.join(',')).then(res => {
+            if (res.code === 200) {
+              this.cleandialogVisible = true
+            } else {
+              this.$message.error(res.message)
+            }
+          }).catch()
+        }
+      }
+    },
+    handelCorrection() {
+      // 人工补正
+      const length = this.multipleSelection.length
+      if (length === 0) {
+        this.$confirm('请至少选择一条数据', '提示', { showCancelButton: false, type: 'warning' })
+          .then(() => {
+            // 向请求服务端删除
+          })
+          .catch(() => {})
+      } else if (length === 1) {
+        this.validateRinmType()
+      } else {
+        const typeArr = []
+        this.multipleSelection.forEach(item => {
+          const type = (item.type === 'BH' || item.type === 'IH' || item.type === 'SH' || item.type === 'PC' || item.type === 'UC' || item.type === 'ZC') ? '0' : '1'
+          typeArr.push(type)
+        })
+
+        if (this.isAllEqual(typeArr) === true && this.isAllRinmEqual(this.multipleSelection) === false) {
+          this.$confirm('属于不同机构不同交易类型的交易，不可一起发起人工补正', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else if (this.isAllEqual(typeArr) === false && this.isAllRinmEqual(this.multipleSelection) === false) {
+          this.$confirm('属于不同机构的交易，不可一起发起人工补正', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else if (this.isAllEqual(typeArr) === false && this.isAllRinmEqual(this.multipleSelection)) {
+          this.$confirm('属于不同交易类型的交易，不可一起发起人工补正', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+        } else {
+          this.validateRinmType()
+        }
+      }
+    },
+    validateRinmType() { // 校验列表有无报告机构和交易类型
+      for (let i = 0; i < this.multipleSelection.length; i++) {
+        if (this.multipleSelection[i].rinm === '' || this.multipleSelection[i].rinm === null) {
+          this.$confirm('所选交易的报告机构不能为空！', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+          return false
+        } else if (this.multipleSelection[i].type === '' || this.multipleSelection[i].type === null) {
+          this.$confirm('所选交易的交易类型不能为空！', '提示', {
+            showCancelButton: false,
+            type: 'warning'
+          })
+          return false
+        } else {
+          this.getCorrectionData()
+          return
+        }
+      }
+    },
+    isAllEqual(array) { // type
+      if (array.length > 0) {
+        return !array.some(function(value, index) {
+          return value !== array[0]
+        })
+      } else {
+        return true
+      }
+    },
+    isAllRinmEqual(array) { // ricdName
+      if (array.length > 0) {
+        return !array.some(function(value, index) {
+          return value.ricd !== array[0].ricd
+        })
+      } else {
+        return true
+      }
+    },
+    getCorrectionData() { // 获取人工补正传参
+      this.tempFicp = ''
+      const paramsObj = {
+        region: 'all',
+        ricd: this.multipleSelection[0].ricd
+      }
+      getRinmList(paramsObj).then(res => {
+        if (res.code === 200) {
+          this.tempFicp = res.data[0].ficp
+          const arr = []
+          const dateArr = []
+          const mulType = this.multipleSelection.map(item => {
+            if (new Date(item.redt).getTime() < new Date('2009-01-01 00:00:00').getTime()) {
+              dateArr.push(item.tradeId)
+            }
+            if (item) {
+              arr.push(item.tradeId)
+              let type = item.type
+              if (item.type === 'BH' || item.type === 'IH' || item.type === 'SH') {
+                type = '0'
+              } else {
+                type = '1'
+              }
+              return type
+            }
+          })
+          if (dateArr.length > 0) {
+            this.$message({
+              type: 'error',
+              message: '暂不支持对落地时间为09年1月1日以前的交易发起人工补正，如需补正，请通过信息补充发起。不符合条件的交易ID为：' + dateArr.join(','),
+              showClose: true,
+              duration: 6000
+            })
+            return false
+          }
+          const type = mulType[0].toString()
+          const obj = {
+            tradeId: arr.toString(),
+            correctType: type,
+            industry: this.tempFicp
+          }
+          // correctCheck(arr.toString(), type, this.tempFicp).then(res => {
+          correctCheck(obj, this.UUID).then(res => {
+            if (res.code === 200) {
+              correctCheckError(this.UUID).then(response => {
+                if (response.code === 200) {
+                  this.dialogVisible = true
+                  if (type === '0') {
+                    this.correctionComName = 'Large'
+                    this.correctionDialogTitle = '大额信息更正通知'
+                    this.correctParams = {
+                      tradeId: arr.toString(),
+                      correctType: '0',
+                      organ: '1',
+                      industry: this.tempFicp
+                    }
+                  } else {
+                    this.correctionComName = 'Suspicious'
+                    this.correctionDialogTitle = '可疑信息更正通知'
+                    this.correctParams = {
+                      tradeId: arr.toString(),
+                      correctType: '1',
+                      organ: '1',
+                      industry: this.tempFicp
+                    }
+                  }
+                }
+              }).catct(() => {})
+            } else {
+              this.$message.error(res.message)
+            }
+          }).catch()
+        }
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.ds-dealist-wrap {
+  position: relative;
+}
+</style>
