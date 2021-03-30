@@ -1,0 +1,4 @@
+1 node_modules/react-scripts/config/webpack.config.js
+2找到alias
+3添加下面的代码
+'@': path.resolve('src'),

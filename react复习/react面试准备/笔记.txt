@@ -37,4 +37,81 @@ getSnapshotBeforeUpdate() 此生命周期的任何返回值将作为参数传递给 componentDidUpd
  rfc（react function component）  函数组件构成
 11. defaultChecked  表示复选框默认选中
 12.生成唯一的id   uuid （nanoid）
-13.不对啊
+13.react脚手架配置
+
+代理：如果只有一个跨域接口   直接在package.json中添加json字符串    "proxy":"http://8.131.245.98:8888"
+如果是多个跨域接口，
+1.先下载代理包，npm i  http-proxy-middleware -d
+2.在src中新建文件夹，命名为setupProxy.js
+3.导入包：const { createProxyMiddleware } = require('http-proxy-middleware')
+下面加代码：
+module.exports = function (app) {
+    // app.use("/api",
+    //     createProxyMiddleware({
+    //         target: 'http://127.0.0.1:8888',
+    //         changeOrigin: true,
+    //         pathRewrite: {
+    //             "^/api": ""
+    //         }
+    //     })
+    // )
+}
+14.路由写法
+编写路由配置表
+ <Link className='ggg' to='/home'>首页</Link>
+ <Link  className='ggg' to='/list'>列表</Link>
+路由跳转表
+<Route path='/home' component={Home}></Route>
+<Route path='/list' component={List}></Route>
+App的最外层要包一个BrowserRouter
+15  navlink的高亮
+  通过给<NavLink  activeClassName='xxx'>一个 activeClassName属性来控制样式(例如高亮)
+16   <MyNavList to='/list'>列表</MyNavList>
+react会将这个插槽（列表）映射到props中的children中
+
+17 解决样式丢失<link herf='./css/ bootstrop.css'>
+ 
+ %PUBLIC_URL% 代表决定路径public， 这个可以避免多级路由的时候，静态资源加载不出来的，（path:'/a/c' 静态资源会默认/a
+也是路径，导致静态资源加载不出来）
+（解决方法， 1去掉引用样式前面的./  2使用 %PUBLIC_URL%   3 在根文件中用hashrouter代替browserrouter）
+18 exact 开启严格匹配   <Route exact path='/home' component={Home}></Route>
+19   <Redirect to='/home'/>  一般放到路由表的最下面
+20  导航路由传参
+    1 第一种params传参，通过：/id
+	配置：<Link to={`/home/bg2/${el.id}/${el.name}`}>{el.title}</Link>
+ 	传值：<Route path='/home/bg2/:id/:name'  component={Item}/>
+   	取值：const {id,name} =this.props.match.params
+    2 第二种search传参，通过：/?id 
+	配置：<Link to={`/home/bg2/?id=${el.id}&name=${el.name}`}>{el.title}</Link>
+	传值不需要处理： <Route path='/home/bg2' component={Item2} />
+	取值：import qs from 'querystring'   var result = qs.parse(this.props.location.search.slice(1))    const {id,name} =result
+    3 第三种state传参*
+  	配置：<Link to={{pathname:'/home/bg2/',state:{...el}}}>{el.title}</Link>
+	传值不需要处理：<Route path='/home/bg2/'  component={Item3}/> 
+	取值：var {id,name} =this.props.location.state||{}
+总结  第一种跟第二种 会把参数拼接到地址栏中，第三个用户看不到数据， params传参需要传值的时候加/:id,剩余2种不要处理
+21 withrouter可以加工一般组件，让一般组件具有路由组件特有的api
+22暴露react配置  npm run eject
+23 配置@根目录 （config-overrides的创建 参考antd中的在 create-react-app 中使用配置 ，
+需安装
+	1 yarn add react-app-rewired customize-cra
+	2 yarn add babel-plugin-import
+	3 yarn add  --save react-scripts	
+）
+在config-overrides目录下追加  
+addWebpackAlias({
+    '@': path.resolve(__dirname, 'src'),
+  })
+24 全局配置window.baseUrl
+1.在public中写入一个js  
+window.baseUrl = {
+    admin: '/ADMIN-SERVICE',
+    user: '/USER-SERVICE',
+    order: '/ORDER-SERVICE',
+    product: '/PRODUCT-SERVICE',
+  }
+2.在public中的index.html 将这个引入  方便以后的配置环境
+25 ant的按需引入和主题配置的一些坑
+	按需引入1  Cannot find module 'react-scripts/package.json'           			 yarn add  --save react-scripts
+	主题配置2  this.getOptions is not a function   （less版本太高了）                        npm install less-loader@5.0.0  
+	主题配置3  options has an unknow modifyVars   （less高版本不支持直接写modifyVars）	 lessOptions：{文档上面写的}（包一层）

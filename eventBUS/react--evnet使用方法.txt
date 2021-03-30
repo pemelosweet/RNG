@@ -1,0 +1,25 @@
+1.首先先安装events插件
+npm install events --save
+2.新建一个文件，然后引入events,相当于Vue里的Bus，例如eventBus
+import {EventEmitter} from 'events';
+export default new EventEmitter();
+3.发送参数
+import Bus from '../../../../../../eventBus'
+ bus(){
+        Bus.emit('changeSiblingsData', 'hhhhh');
+    }
+4接收参数（类组件）
+    state={
+        mess:''
+    }
+    componentDidMount(){
+       this.Bus= Bus.addListener('changeSiblingsData', (msg) => {
+            this.setState({
+              mess: msg,
+            });
+          });
+        
+    }
+    componentWillUnmount(){
+        Bus.removeAllListeners(this.Bus)
+    }
