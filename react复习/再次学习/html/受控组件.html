@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <script src="./node_modules/prop-types/prop-types.js"></script>
+    <style>
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        class Doms extends React.Component{
+        constructor(props){
+            super(props)
+            console.log('Dom constructor');
+            this.state={
+                username:'',
+                password:''
+            }
+        }
+        componentDidMount(){
+            console.log(' Dom挂载完成 componentDidMount');
+        }
+        componentWillUnmount(){
+            console.log(' Dom 卸载钱componentWillUnmount');
+        }
+        componentDidUpdate(){
+            console.log('状态componentDidUpdate变化');
+        }
+        formData(v1,e){
+        this.setState({[v1]:e.target.value})
+        }
+        fn(){
+            event.preventDefault()
+            console.log(this.state);
+        }
+        del(){
+            ReactDOM.unmountComponentAtNode(document.getElementById('root'))
+        }
+        //受控组件，通过onchang来时时监控 每次值发生变化都会记录
+        render(){
+            console.log('render');
+            return (
+                <div>
+            <form action="https://www.baidu.com/" onSubmit={()=>{this.fn()}} method="get">
+               账号： <input onChange={this.formData.bind(this,'username')} name='username' type="text"/>    
+               密码： <input onChange={this.formData.bind(this,'password')} name='password'  type="text"/>  
+               <div>
+                <input type="submit" value="Submit" />
+                </div>  
+            </form>
+            <button onClick={()=>{this.del()}}>删除</button>
+            </div>
+            )
+        }
+        }  
+    function render() {
+        ReactDOM.render(<Doms />, root)  
+    }
+        render()
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+   class  Hboys extends React.Component{
+       constructor(props){
+           super(props)
+           this.state={
+               name:'黄斌小弟弟'
+           }
+       }
+      change= ()=> {
+        this.setState({name:'黄斌上梁山'},()=>{
+            console.log(this.state.name,'回调触发') 
+        })
+        console.log(this.state.name,'setState是异步的');
+     }  
+   
+        render(){
+            return (
+                <div>
+                    <button onClick={this.change}></button>
+                    {this.state.name}
+                    </div>
+            )
+        }
+   }
+         function render(){
+        ReactDOM.render(<Hboys/>,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

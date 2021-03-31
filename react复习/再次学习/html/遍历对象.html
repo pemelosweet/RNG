@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        let obj ={name:'黄斌',age:'18',sex:'未知'}
+        let dx =-1
+        function fun() {
+            console.log( Object.keys(obj));
+            console.log( Object.values(obj));
+            let myDom = Object.keys(obj).map((it, index) => {
+            return <p style={{color:dx===index?'red':''}} onClick={()=>{dx=index;render();}} key={index}>
+                遍历的属性名是{it}-------，遍历的内容是---------------{obj[it]}
+                
+                </p>
+        }) 
+        return  myDom
+        }
+       function render() {
+        ReactDOM.render(fun(), root)  
+       }
+        render()
+    </script>
+</body>
+
+</html>

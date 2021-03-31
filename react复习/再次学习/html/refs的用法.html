@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body> 
+    <div id="root"></div>
+    <script type="text/babel">
+    // 第一种ref的用法 是通过ref字符串
+    // 第二种ref的用法 是通过在dom节点上或者组件上挂载函数，函数的参数就是dom 的ref值
+    // 第三种ref的用法 是react.createRef() recat16.3的一种方式
+    // 官方不建议使用大量使用ref
+   class  Hboys extends React.Component{
+       constructor(props){
+           super(props)
+           this.myRef =React.createRef()
+       }
+      change= ()=> {
+    //    console.log(this.refs.text.value); // 字符串方法
+    // console.log(this.inputText.value);  //函数方法
+      console.log(this.myRef.current.value);  //recat16.3的一种方式
+     }  
+        render(){
+            return (
+                <div>
+                    <input type="text" ref={this.myRef}></input>
+                    {/*
+                    <input type="text" ref='text'></input>
+                      <input type="text" ref={(input)=>{this.inputText =input}}></input>
+                    */}
+                  
+                    <button onClick={this.change}></button>
+                    </div>
+            )
+        }
+   }
+         function render(){
+        ReactDOM.render(<Hboys/>,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

@@ -1,0 +1,21 @@
+body{
+    height: 100%;
+}
+.bg{
+    display:relative
+}
+.box{
+    background: skyblue;
+    width: 600px;
+    height: 800px;
+    transform: translate(-50%,-50%);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+}
+.seachBox{
+    background: goldenrod;
+}
+.xx2{
+    height: 60px;
+}

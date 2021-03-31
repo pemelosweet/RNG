@@ -1,0 +1,38 @@
+.rtbox{
+    background: honeydew;
+}
+.heads{
+    text-align: center;
+    font-size: 14px;
+    color:slategrey;
+}
+.mainbox{
+    /* display: flex; */
+    height: 200px;
+}
+.left{
+    float: left;
+    width: 80px;
+    text-align: center;
+    /* display: flex; */
+    /* justify-content: center; */
+    /* flex: 1; */
+    height: 100%;
+    /* flex-wrap: wrap  */
+}
+.ggg{
+   margin-bottom: 12px;
+    display: block;
+   
+}
+.right{
+    float: left;
+    /* flex:5; */
+    height: 100%;
+}
+.x1{
+    background: cyan;
+}
+.x2{
+    background: greenyellow;
+}

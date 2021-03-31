@@ -1,0 +1,9 @@
+.picbody{
+  width:600px
+}
+.picbox{
+width: 200px;
+ float: left;
+  text-align: center;
+  background: cornsilk;
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <script src="./node_modules/prop-types/prop-types.js"></script>
+    <style>
+     .box{
+         width: 200px;
+         height: 150px;
+         background: greenyellow;
+         overflow: auto;
+     }
+     .news{
+         height: 30px;
+         background: hotpink;
+     }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        class Doms extends React.Component{
+        constructor(props){
+            super(props)
+            this.state={
+                newArr:[] 
+            }
+            this.ref1 =React.createRef()
+        }
+        componentDidMount(){
+        this.timer= setInterval(() => {
+             const {newArr } =this.state
+             const  news ='新闻'+(newArr.length+1)
+             this.setState({newArr:[news,...newArr]})
+         }, 1000);
+         
+        }
+        getSnapshotBeforeUpdate(){
+           return    this.ref1.current.scrollHeight
+        }
+        componentDidUpdate(oldV,newV,updateV){
+           this.ref1.current.scrollTop +=this.ref1.current.scrollHeight-updateV
+        }
+        render(){
+            return (
+                <div>
+                    <div className='box' ref={this.ref1}>
+               {
+                this.state.newArr.map((el,ix)=>{
+                return  <div className='news' key={ix}>{el}</div>
+            })
+               }
+             </div>
+                    <div onClick={()=>{clearInterval(this.timer)}}>停止</div>
+                </div>
+            
+            )
+        }
+        }  
+       function render() {
+        ReactDOM.render(<Doms />, root)  
+       }
+        render()
+    </script>
+</body>
+
+</html>

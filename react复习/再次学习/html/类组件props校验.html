@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <script src="./node_modules/prop-types/prop-types.js"></script>
+    <style>
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        class Doms extends React.Component{
+          constructor(props){
+              super(props)
+              this.state ={
+                  isHot:true
+              }
+          }
+         static defaultProps ={
+           sex:'男生'
+       }
+       static propTypes ={
+           name:PropTypes.number.isRequired,
+           age:PropTypes.number
+       }
+          add(v1){
+             this.setState(
+                {
+                    isHot:!this.state.isHot
+                }
+             )
+          }
+        render(){
+            console.log(this.state);
+            const {isHot} =this.state
+            const {name,age,sex} =this.props
+            return (
+                <p onClick={this.add.bind(this,'ffff')}>有问题吗 今天是{isHot?'热':'凉爽'}，我叫{name}，今年{age}岁，性别{sex}</p>
+                // <p onClick={()=>{this.add()}}>有问题吗 今天是{isHot?'热':'凉爽'}</p>
+            )
+        }
+        }  
+       function render() {
+        const props ={name:1}
+        ReactDOM.render(<Doms {...props}  age={22} />, root)  
+       }
+        render()
+    </script>
+</body>
+
+</html>

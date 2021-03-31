@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+   class  Hboys extends React.Component{
+       constructor(props){
+           super(props)
+           this.state={
+              flag:false
+           }
+       }
+       func(){
+          this.setState({
+              flag:!this.state.flag
+          })
+       }
+        render(){
+    var text =''
+       if (this.state.flag) {
+           text ='好人'
+       }else{
+        text ='坏人'
+       }
+            return (
+                <div>
+                    <button onClick={ this.func.bind(this)}>点击切换</button>
+                    <br/>
+                   {text}
+                   <br/>
+                   {text==='好人'?'显示好人吧':'不是好人'}
+                </div>
+            )
+        }
+   }
+         function render(){
+        ReactDOM.render(<Hboys/>,root)
+       }
+       render()
+    </script>
+</body>
+
+</html> 

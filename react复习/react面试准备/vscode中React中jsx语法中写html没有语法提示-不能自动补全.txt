@@ -1,0 +1,2 @@
+搜索：includeLanguages
+添加："emmet.includeLanguages": { "javascript": "javascriptreact" }在这里插入代码片`

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./node_modules/react/umd/react.development.js"></script>
+    <script src="./node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./node_modules/babel-standalone/babel.min.js"></script>
+    <!-- <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script> -->
+    <style>
+     
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        let arr = ['吃饭', '睡觉', '玩耍']
+        let dx =-1
+        function fun() {
+            let myDom = arr.map((it, index) => {
+            return <p style={{color:dx===index?'red':''}} onClick={()=>{dx=index;render();}} key={index}>{it}</p>
+        }) 
+        return  myDom
+        }
+       function render() {
+        ReactDOM.render(fun(), root)  
+       }
+        render()
+    </script>
+</body>
+
+</html>
